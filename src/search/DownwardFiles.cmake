@@ -632,6 +632,7 @@ fast_downward_plugin(
         merge_and_shrink/label_equivalence_relation
         merge_and_shrink/label_reduction
         merge_and_shrink/labels
+        merge_and_shrink/max_scp_ms_heuristic
         merge_and_shrink/merge_and_shrink_algorithm
         merge_and_shrink/merge_and_shrink_heuristic
         merge_and_shrink/merge_and_shrink_representation

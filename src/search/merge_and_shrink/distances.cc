@@ -121,12 +121,26 @@ static void dijkstra_search(
     }
 }
 
-void Distances::compute_init_distances_general_cost() {
+void Distances::compute_init_distances_general_cost(const vector<int> &label_costs) {
     vector<vector<pair<int, int>>> forward_graph(get_num_states());
     for (const GroupAndTransitions &gat : transition_system) {
         const LabelGroup &label_group = gat.label_group;
         const vector<Transition> &transitions = gat.transitions;
-        int cost = label_group.get_cost();
+        int cost;
+        if (label_costs.empty()) {
+            cost = label_group.get_cost();
+        } else {
+            cost = INF;
+            for (int label_no : label_group) {
+                int label_cost = label_costs[label_no];
+                if (label_cost != -1) { // skip reduced labels
+                    cost = min(cost, label_cost);
+                }
+            }
+            assert(cost != INF);
+            assert(cost >= 0);
+//            cout << "label group cost: " << label_group.get_cost() << " vs modified cost: " << cost << endl;
+        }
         for (const Transition &transition : transitions) {
             forward_graph[transition.src].push_back(
                 make_pair(transition.target, cost));
@@ -141,12 +155,26 @@ void Distances::compute_init_distances_general_cost() {
     dijkstra_search(forward_graph, queue, init_distances);
 }
 
-void Distances::compute_goal_distances_general_cost() {
+void Distances::compute_goal_distances_general_cost(const vector<int> &label_costs) {
     vector<vector<pair<int, int>>> backward_graph(get_num_states());
     for (const GroupAndTransitions &gat : transition_system) {
         const LabelGroup &label_group = gat.label_group;
         const vector<Transition> &transitions = gat.transitions;
-        int cost = label_group.get_cost();
+        int cost;
+        if (label_costs.empty()) {
+            cost = label_group.get_cost();
+        } else {
+            cost = INF;
+            for (int label_no : label_group) {
+                int label_cost = label_costs[label_no];
+                if (label_cost != -1) { // skip reduced labels
+                    cost = min(cost, label_cost);
+                }
+            }
+            assert(cost != INF);
+            assert(cost >= 0);
+//            cout << "label group cost: " << label_group.get_cost() << " vs modified cost: " << cost << endl;
+        }
         for (const Transition &transition : transitions) {
             backward_graph[transition.target].push_back(
                 make_pair(transition.src, cost));
@@ -168,7 +196,8 @@ void Distances::compute_goal_distances_general_cost() {
 void Distances::compute_distances(
     bool compute_init_distances,
     bool compute_goal_distances,
-    Verbosity verbosity) {
+    Verbosity verbosity,
+    const vector<int> &label_costs) {
     assert(compute_init_distances || compute_goal_distances);
     /*
       This method does the following:
@@ -176,6 +205,10 @@ void Distances::compute_distances(
         initial state ("abstract g") and to the abstract goal states
         ("abstract h"), depending on the given flags.
     */
+
+    if (!label_costs.empty()) {
+        clear_distances();
+    }
 
     if (are_init_distances_computed()) {
         /*
@@ -228,9 +261,20 @@ void Distances::compute_distances(
         }
         cout << " distances using ";
     }
-    if (is_unit_cost()) {
+    bool unit_cost;
+    if (label_costs.empty()) {
+        unit_cost = is_unit_cost();
+    } else {
+        for (int label_cost : label_costs) {
+            if (label_cost != -1 && label_cost != 1) {
+                unit_cost = false;
+                break;
+            }
+        }
+    }
+    if (unit_cost) {
         if (verbosity >= Verbosity::VERBOSE) {
-            cout << "unit-cost";
+            cout << "unit-cost algorithm" << endl;
         }
         if (compute_init_distances) {
             compute_init_distances_unit_cost();
@@ -240,17 +284,14 @@ void Distances::compute_distances(
         }
     } else {
         if (verbosity >= Verbosity::VERBOSE) {
-            cout << "general-cost";
+            cout << "general-cost algorithm" << endl;
         }
         if (compute_init_distances) {
-            compute_init_distances_general_cost();
+            compute_init_distances_general_cost(label_costs);
         }
         if (compute_goal_distances) {
-            compute_goal_distances_general_cost();
+            compute_goal_distances_general_cost(label_costs);
         }
-    }
-    if (verbosity >= Verbosity::VERBOSE) {
-        cout << " algorithm" << endl;
     }
 
     if (compute_init_distances) {
