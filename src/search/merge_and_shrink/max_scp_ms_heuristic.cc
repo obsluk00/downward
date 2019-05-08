@@ -43,9 +43,13 @@ int MaxSCPMSHeuristic::compute_heuristic(const GlobalState &global_state) {
         int h_val = 0;
         for (size_t factor_index = 0; factor_index < scp_ms_heuristic.mas_representation_raw_ptrs.size(); ++factor_index) {
             int abstract_state = scp_ms_heuristic.mas_representation_raw_ptrs[factor_index]->get_value(state);
+            if (abstract_state == PRUNED_STATE)  {
+                // If the state has been pruned, we encountered a dead end.
+                return DEAD_END;
+            }
             int cost = scp_ms_heuristic.goal_distances[factor_index][abstract_state];
-            if (cost == PRUNED_STATE || cost == INF) {
-                // If state is unreachable or irrelevant, we encountered a dead end.
+            if (cost == INF) {
+                // If the state is unreachable or irrelevant, we encountered a dead end.
                 return DEAD_END;
             }
             h_val += cost;
