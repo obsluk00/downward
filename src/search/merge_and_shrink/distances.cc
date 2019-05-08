@@ -397,7 +397,6 @@ static void compute_goal_distances_general_cost(
                 cost = min(cost, label_cost);
             }
         }
-        assert(cost != INF);
         assert(cost >= 0);
         for (const Transition &transition : transitions) {
             backward_graph[transition.target].push_back(
