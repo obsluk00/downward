@@ -6,6 +6,7 @@
 #include "labels.h"
 #include "merge_and_shrink_algorithm.h"
 #include "merge_and_shrink_representation.h"
+#include "scp_merge_and_shrink_algorithm.h"
 #include "transition_system.h"
 #include "types.h"
 
@@ -30,7 +31,7 @@ MaxSCPMSHeuristic::MaxSCPMSHeuristic(const options::Options &opts)
     : Heuristic(opts),
       verbosity(static_cast<Verbosity>(opts.get_enum("verbosity"))) {
     cout << "Initializing maximum SCP merge-and-shrink heuristic..." << endl;
-    MergeAndShrinkAlgorithm algorithm(opts);
+    SCPMergeAndShrinkAlgorithm algorithm(opts);
     FactoredTransitionSystem fts = algorithm.build_factored_transition_system(task_proxy);
     finalize(fts);
     cout << "Done initializing maximum SCP merge-and-shrink heuristic." << endl << endl;
@@ -202,7 +203,7 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
         "M&S abstractions.");
 
     Heuristic::add_options_to_parser(parser);
-    add_merge_and_shrink_algorithm_options_to_parser(parser);
+    add_scp_merge_and_shrink_algorithm_options_to_parser(parser);
     options::Options opts = parser.parse();
     if (parser.help_mode()) {
         return nullptr;
