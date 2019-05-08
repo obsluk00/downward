@@ -2,6 +2,7 @@
 #define MERGE_AND_SHRINK_SCP_MERGE_AND_SHRINK_ALGORITHM_H
 
 #include <memory>
+#include <vector>
 
 class TaskProxy;
 
@@ -21,6 +22,16 @@ class MergeAndShrinkRepresentation;
 class MergeStrategyFactory;
 class ShrinkStrategy;
 enum class Verbosity;
+
+struct SCPMSHeuristic {
+    std::vector<std::vector<int>> goal_distances;
+    std::vector<const MergeAndShrinkRepresentation *> mas_representation_raw_ptrs;
+};
+
+struct SCPMSHeuristics {
+    std::vector<SCPMSHeuristic> scp_ms_heuristics;
+    std::vector<std::unique_ptr<MergeAndShrinkRepresentation>> mas_representations;
+};
 
 class SCPMergeAndShrinkAlgorithm {
     // TODO: when the option parser supports it, the following should become
@@ -47,18 +58,20 @@ class SCPMergeAndShrinkAlgorithm {
 
     long starting_peak_memory;
 
+    void report_peak_memory_delta(bool final = false) const;
+    void dump_options() const;
+    void warn_on_unusual_options() const;
     bool ran_out_of_time(const utils::CountdownTimer &timer) const;
     void statistics(int maximum_intermediate_size) const;
     void main_loop(
         FactoredTransitionSystem &fts,
-        const TaskProxy &task_proxy);
-
-    void report_peak_memory_delta(bool final = false) const;
+        const TaskProxy &task_proxy,
+        std::vector<SCPMSHeuristic> &scp_ms_heuristics);
+    SCPMSHeuristic compute_scp_ms_heuristic_over_fts(
+        const FactoredTransitionSystem &fts);
 public:
     explicit SCPMergeAndShrinkAlgorithm(const options::Options &opts);
-    void dump_options() const;
-    void warn_on_unusual_options() const;
-    FactoredTransitionSystem build_factored_transition_system(const TaskProxy &task_proxy);
+    SCPMSHeuristics compute_scp_ms_heuristics(const TaskProxy &task_proxy);
 };
 
 extern void add_scp_merge_and_shrink_algorithm_options_to_parser(options::OptionParser &parser);

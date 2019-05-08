@@ -31,8 +31,8 @@ class Distances {
 
     void compute_init_distances_unit_cost();
     void compute_goal_distances_unit_cost();
-    void compute_init_distances_general_cost(const std::vector<int> &label_costs);
-    void compute_goal_distances_general_cost(const std::vector<int> &label_costs);
+    void compute_init_distances_general_cost();
+    void compute_goal_distances_general_cost();
 public:
     explicit Distances(const TransitionSystem &transition_system);
     ~Distances() = default;
@@ -48,8 +48,7 @@ public:
     void compute_distances(
         bool compute_init_distances,
         bool compute_goal_distances,
-        Verbosity verbosity,
-        const std::vector<int> &label_costs = std::vector<int>());
+        Verbosity verbosity);
 
     /*
       Update distances according to the given abstraction. If the abstraction
@@ -76,13 +75,17 @@ public:
         return goal_distances[state];
     }
 
-    std::vector<int> get_goal_distances() const {
+    const std::vector<int> &get_goal_distances() const {
         return goal_distances;
     }
 
     void dump() const;
     void statistics() const;
 };
+
+extern std::vector<int> compute_goal_distances(
+    const TransitionSystem &transition_system,
+    const std::vector<int> &label_costs);
 }
 
 #endif

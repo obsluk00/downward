@@ -223,6 +223,10 @@ void FactoredTransitionSystem::dump() const {
     }
 }
 
+const MergeAndShrinkRepresentation *FactoredTransitionSystem::get_mas_representation_raw_ptr(int index) const {
+    return mas_representations[index].get();
+}
+
 bool FactoredTransitionSystem::is_factor_solvable(int index) const {
     assert(is_component_valid(index));
     return transition_systems[index]->is_solvable(*distances[index]);

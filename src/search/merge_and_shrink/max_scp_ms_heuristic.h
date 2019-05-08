@@ -3,21 +3,13 @@
 
 #include "../heuristic.h"
 
-#include <memory>
+#include "scp_merge_and_shrink_algorithm.h"
 
 namespace merge_and_shrink {
-class FactoredTransitionSystem;
 class MergeAndShrinkRepresentation;
-enum class Verbosity;
 
 class MaxSCPMSHeuristic : public Heuristic {
-    Verbosity verbosity;
-
-    // The final merge-and-shrink representations, storing goal distances.
-    std::vector<std::unique_ptr<MergeAndShrinkRepresentation>> mas_representations;
-
-    void finalize_factor(FactoredTransitionSystem &fts, int index);
-    void finalize(FactoredTransitionSystem &fts);
+    SCPMSHeuristics scp_ms_heuristics;
 protected:
     virtual int compute_heuristic(const GlobalState &global_state) override;
 public:
