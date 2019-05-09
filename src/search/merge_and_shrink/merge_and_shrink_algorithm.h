@@ -2,6 +2,7 @@
 #define MERGE_AND_SHRINK_MERGE_AND_SHRINK_ALGORITHM_H
 
 #include <memory>
+#include <vector>
 
 class TaskProxy;
 
@@ -21,6 +22,16 @@ class MergeAndShrinkRepresentation;
 class MergeStrategyFactory;
 class ShrinkStrategy;
 enum class Verbosity;
+
+struct SCPMSHeuristic {
+    std::vector<std::vector<int>> goal_distances;
+    std::vector<const MergeAndShrinkRepresentation *> mas_representation_raw_ptrs;
+};
+
+struct SCPMSHeuristics {
+    std::vector<SCPMSHeuristic> scp_ms_heuristics;
+    std::vector<std::unique_ptr<MergeAndShrinkRepresentation>> mas_representations;
+};
 
 class MergeAndShrinkAlgorithm {
     // TODO: when the option parser supports it, the following should become
@@ -54,9 +65,13 @@ class MergeAndShrinkAlgorithm {
     void statistics(int maximum_intermediate_size) const;
     void main_loop(
         FactoredTransitionSystem &fts,
-        const TaskProxy &task_proxy);
+        const TaskProxy &task_proxy,
+        std::vector<SCPMSHeuristic> *scp_ms_heuristics = nullptr);
+    SCPMSHeuristic compute_scp_ms_heuristic_over_fts(
+        const FactoredTransitionSystem &fts) const;
 public:
     explicit MergeAndShrinkAlgorithm(const options::Options &opts);
+    SCPMSHeuristics compute_scp_ms_heuristics(const TaskProxy &task_proxy);
     FactoredTransitionSystem build_factored_transition_system(const TaskProxy &task_proxy);
 };
 

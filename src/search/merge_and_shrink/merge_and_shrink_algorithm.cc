@@ -3,6 +3,7 @@
 #include "distances.h"
 #include "factored_transition_system.h"
 #include "fts_factory.h"
+#include "label_equivalence_relation.h"
 #include "label_reduction.h"
 #include "labels.h"
 #include "merge_and_shrink_representation.h"
@@ -19,6 +20,7 @@
 #include "../task_utils/task_properties.h"
 
 #include "../utils/countdown_timer.h"
+#include "../utils/logging.h"
 #include "../utils/markup.h"
 #include "../utils/math.h"
 #include "../utils/system.h"
@@ -163,7 +165,8 @@ bool MergeAndShrinkAlgorithm::ran_out_of_time(
 
 void MergeAndShrinkAlgorithm::main_loop(
     FactoredTransitionSystem &fts,
-    const TaskProxy &task_proxy) {
+    const TaskProxy &task_proxy,
+    vector<SCPMSHeuristic> *scp_ms_heuristics) {
     utils::CountdownTimer timer(main_loop_max_time);
     if (verbosity >= Verbosity::NORMAL) {
         cout << "Starting main loop ";
@@ -311,6 +314,15 @@ void MergeAndShrinkAlgorithm::main_loop(
             break;
         }
 
+        if (scp_ms_heuristics) {
+            scp_ms_heuristics->push_back(compute_scp_ms_heuristic_over_fts(fts));
+            log_main_loop_progress("after computing SCP M&S heuristics");
+
+            if (ran_out_of_time(timer)) {
+                break;
+            }
+        }
+
         // End-of-iteration output.
         if (verbosity >= Verbosity::VERBOSE) {
             report_peak_memory_delta();
@@ -328,6 +340,231 @@ void MergeAndShrinkAlgorithm::main_loop(
          << maximum_intermediate_size << endl;
     shrink_strategy = nullptr;
     label_reduction = nullptr;
+}
+
+SCPMSHeuristic MergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
+    const FactoredTransitionSystem &fts) const {
+    if (verbosity >= Verbosity::DEBUG) {
+        cout << "Computing SCP M&S heuristic over current FTS..." << endl;
+    }
+
+    // Compute original label costs.
+    const Labels &labels = fts.get_labels();
+    int num_labels = labels.get_size();
+    vector<int> remaining_label_costs;
+    remaining_label_costs.reserve(num_labels);
+    for (int label_no = 0; label_no < num_labels; ++label_no) {
+        int label_cost = -1;
+        if (labels.is_current_label(label_no)) {
+            label_cost = labels.get_label_cost(label_no);
+        }
+        remaining_label_costs.push_back(label_cost);
+    }
+
+    SCPMSHeuristic scp_ms_heuristic;
+    bool dump_if_empty_transitions = true;
+    bool dump_if_infinite_transitions = true;
+    for (int index = 0; index < fts.get_size(); ++index) {
+        if (!fts.is_active(index)) {
+            continue;
+        }
+        if (verbosity >= Verbosity::DEBUG) {
+            cout << "Considering factor at index " << index << endl;
+        }
+        const TransitionSystem &ts = fts.get_transition_system(index);
+        bool all_goal_states = true;
+        for (int state = 0; state < ts.get_size(); ++state) {
+            if (!ts.is_goal_state(state)) {
+                all_goal_states = false;
+                break;
+            }
+        }
+        if (all_goal_states) {
+            if (verbosity >= Verbosity::DEBUG) {
+                cout << "Factor consists of goal states only, skipping." << endl;
+            }
+            continue;
+        }
+
+//        const Distances &distances = fts.get_distances(index);
+//        cout << "Distances before re-computing them: " << distances.get_goal_distances() << endl;
+        if (verbosity >= Verbosity::DEBUG) {
+            cout << "Remaining label costs: " << remaining_label_costs << endl;
+        }
+        vector<int> goal_distances = compute_goal_distances(ts, remaining_label_costs);
+//        cout << "Distances after re-computing them: " << goal_distances << endl;
+        const MergeAndShrinkRepresentation *mas_representation = fts.get_mas_representation_raw_ptr(index);
+        scp_ms_heuristic.goal_distances.push_back(goal_distances);
+        scp_ms_heuristic.mas_representation_raw_ptrs.push_back(mas_representation);
+        if (index == fts.get_size() - 1) {
+            break;
+        }
+
+        // Compute saturated cost of all labels.
+        vector<int> saturated_label_costs(remaining_label_costs.size(), -1);
+        for (const GroupAndTransitions &gat : ts) {
+            const LabelGroup &label_group = gat.label_group;
+            const vector<Transition> &transitions = gat.transitions;
+            int group_saturated_cost = MINUSINF;
+            if (verbosity >= Verbosity::VERBOSE && dump_if_empty_transitions && transitions.empty()) {
+                dump_if_empty_transitions = false;
+                cout << "found dead label group" << endl;
+            } else {
+                for (const Transition &transition : transitions) {
+                    int src = transition.src;
+                    int target = transition.target;
+                    int h_src = goal_distances[src];
+                    int h_target = goal_distances[target];
+                    if (h_target != INF) {
+                        int diff = h_src - h_target;
+                        group_saturated_cost = max(group_saturated_cost, diff);
+                    }
+                }
+                if (verbosity >= Verbosity::VERBOSE && dump_if_infinite_transitions && group_saturated_cost == MINUSINF) {
+                    dump_if_infinite_transitions = false;
+                    cout << "label group does not lead to any state with finite heuristic value" << endl;
+                }
+            }
+            for (int label_no : label_group) {
+                saturated_label_costs[label_no] = group_saturated_cost;
+            }
+        }
+        if (verbosity >= Verbosity::DEBUG) {
+            cout << "Saturated label costs: " << saturated_label_costs << endl;
+        }
+
+        // Update remaining label costs.
+        for (size_t label_no = 0; label_no < remaining_label_costs.size(); ++label_no) {
+            if (remaining_label_costs[label_no] == -1) { // skip reduced labels
+                assert(saturated_label_costs[label_no] == -1);
+            } else {
+                if (saturated_label_costs[label_no] == MINUSINF) {
+                    remaining_label_costs[label_no] = INF;
+                } else {
+                    remaining_label_costs[label_no] =
+                        remaining_label_costs[label_no] - saturated_label_costs[label_no];
+                    assert(remaining_label_costs[label_no] >= 0);
+                }
+            }
+        }
+    }
+
+    if (verbosity >= Verbosity::DEBUG) {
+        cout << "Done computing SCP M&S heuristic over current FTS." << endl;
+    }
+
+    return scp_ms_heuristic;
+}
+
+// TODO: reduce code duplication with build_factored_transition_system
+SCPMSHeuristics MergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
+    const TaskProxy &task_proxy) {
+    if (starting_peak_memory) {
+        cerr << "Calling compute_scp_ms_heuristics twice is not "
+             << "supported!" << endl;
+        utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+    }
+    starting_peak_memory = utils::get_peak_memory_in_kb();
+
+    utils::Timer timer;
+    cout << "Running merge-and-shrink algorithm..." << endl;
+    task_properties::verify_no_axioms(task_proxy);
+    dump_options();
+    warn_on_unusual_options();
+    cout << endl;
+
+    const bool compute_init_distances =
+        shrink_strategy->requires_init_distances() ||
+        merge_strategy_factory->requires_init_distances() ||
+        prune_unreachable_states;
+    const bool compute_goal_distances =
+        shrink_strategy->requires_goal_distances() ||
+        merge_strategy_factory->requires_goal_distances() ||
+        prune_irrelevant_states;
+    FactoredTransitionSystem fts =
+        create_factored_transition_system(
+            task_proxy,
+            compute_init_distances,
+            compute_goal_distances,
+            verbosity);
+    if (verbosity >= Verbosity::NORMAL) {
+        log_progress(timer, "after computation of atomic factors");
+    }
+
+    // Collect SCP M&S heuristics over the computation of the algorithm.
+    SCPMSHeuristics scp_ms_heuristics;
+
+    /*
+      Prune all atomic factors according to the chosen options. Stop early if
+      one factor is unsolvable.
+
+      TODO: think about if we can prune already while creating the atomic FTS.
+    */
+    bool pruned = false;
+    bool unsolvable = false;
+    for (int index = 0; index < fts.get_size(); ++index) {
+        assert(fts.is_active(index));
+        if (prune_unreachable_states || prune_irrelevant_states) {
+            bool pruned_factor = prune_step(
+                fts,
+                index,
+                prune_unreachable_states,
+                prune_irrelevant_states,
+                verbosity);
+            pruned = pruned || pruned_factor;
+        }
+        if (!fts.is_factor_solvable(index)) {
+            unsolvable = true;
+            cout << "Atomic FTS is unsolvable, stopping computation." << endl;
+            cout << fts.get_transition_system(index).tag()
+                 << "use this unsolvable factor as only heuristic."
+                 << endl;
+
+            SCPMSHeuristic scp_ms_heuristic;
+            scp_ms_heuristic.goal_distances.reserve(1);
+            scp_ms_heuristic.mas_representation_raw_ptrs.reserve(1);
+            scp_ms_heuristic.goal_distances.push_back(fts.get_distances(index).get_goal_distances());
+            scp_ms_heuristic.mas_representation_raw_ptrs.push_back(fts.get_mas_representation_raw_ptr(index));
+
+            scp_ms_heuristics.scp_ms_heuristics.reserve(1);
+            scp_ms_heuristics.scp_ms_heuristics.push_back(move(scp_ms_heuristic));
+
+            auto factor = fts.extract_factor(index);
+            scp_ms_heuristics.mas_representations.reserve(1);
+            scp_ms_heuristics.mas_representations.push_back(move(factor.first));
+            break;
+        }
+    }
+    if (verbosity >= Verbosity::NORMAL && pruned) {
+        log_progress(timer, "after pruning atomic factors");
+    }
+
+    if (!unsolvable) {
+        scp_ms_heuristics.scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
+        if (verbosity >= Verbosity::NORMAL) {
+            log_progress(timer, "after computing SCP M&S heuristics over the atomic FTS");
+        }
+    }
+
+    if (verbosity >= Verbosity::NORMAL) {
+        cout << endl;
+    }
+
+    if (!unsolvable) {
+        if (main_loop_max_time > 0) {
+            main_loop(fts, task_proxy, &scp_ms_heuristics.scp_ms_heuristics);
+        }
+        scp_ms_heuristics.mas_representations.reserve(fts.get_num_active_entries());
+        for (int index : fts) {
+            scp_ms_heuristics.mas_representations.push_back(fts.extract_factor(index).first);
+        }
+    }
+
+    const bool final = true;
+    report_peak_memory_delta(final);
+    cout << "Merge-and-shrink algorithm runtime: " << timer << endl;
+    cout << endl;
+    return scp_ms_heuristics;
 }
 
 FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_system(

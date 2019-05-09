@@ -3,11 +3,9 @@
 
 #include "../heuristic.h"
 
-#include "scp_merge_and_shrink_algorithm.h"
+#include "merge_and_shrink_algorithm.h"
 
 namespace merge_and_shrink {
-class MergeAndShrinkRepresentation;
-
 class MaxSCPMSHeuristic : public Heuristic {
     SCPMSHeuristics scp_ms_heuristics;
 protected:

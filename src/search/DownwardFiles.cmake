@@ -657,7 +657,6 @@ fast_downward_plugin(
         merge_and_shrink/merge_tree
         merge_and_shrink/merge_tree_factory
         merge_and_shrink/merge_tree_factory_linear
-        merge_and_shrink/scp_merge_and_shrink_algorithm
         merge_and_shrink/shrink_bisimulation
         merge_and_shrink/shrink_bucket_based
         merge_and_shrink/shrink_fh
