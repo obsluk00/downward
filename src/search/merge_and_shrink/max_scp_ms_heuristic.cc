@@ -31,6 +31,17 @@ MaxSCPMSHeuristic::MaxSCPMSHeuristic(const options::Options &opts)
     cout << "Initializing maximum SCP merge-and-shrink heuristic..." << endl;
     MergeAndShrinkAlgorithm algorithm(opts);
     scp_ms_heuristics = move(algorithm.compute_scp_ms_heuristics(task_proxy));
+    int num_scp_ms_heuristics = scp_ms_heuristics.scp_ms_heuristics.size();
+    int sum_of_factors = 0;
+    for (const SCPMSHeuristic &scp_ms_heuristic : scp_ms_heuristics.scp_ms_heuristics) {
+        sum_of_factors += scp_ms_heuristic.mas_representation_raw_ptrs.size();
+    }
+    double average_number_of_factors_per_scp_ms_heuristic =
+        sum_of_factors / static_cast<double>(num_scp_ms_heuristics);
+    cout << "Number of SCP merge-and-shrink heuristics: "
+         << num_scp_ms_heuristics << endl;
+    cout << "Average number of factors per SCP merge-and-shrink heuristic: "
+         << average_number_of_factors_per_scp_ms_heuristic << endl;
     cout << "Done initializing maximum SCP merge-and-shrink heuristic." << endl << endl;
 }
 
@@ -39,6 +50,7 @@ int MaxSCPMSHeuristic::compute_heuristic(const GlobalState &global_state) {
     int max_h = MINUSINF;
     for (const SCPMSHeuristic &scp_ms_heuristic : scp_ms_heuristics.scp_ms_heuristics) {
         int h_val = 0;
+        assert(scp_ms_heuristic.mas_representation_raw_ptrs.size() == scp_ms_heuristic.goal_distances.size());
         for (size_t factor_index = 0; factor_index < scp_ms_heuristic.mas_representation_raw_ptrs.size(); ++factor_index) {
             int abstract_state = scp_ms_heuristic.mas_representation_raw_ptrs[factor_index]->get_value(state);
             if (abstract_state == PRUNED_STATE)  {
