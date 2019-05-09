@@ -68,7 +68,7 @@ class SCPMergeAndShrinkAlgorithm {
         const TaskProxy &task_proxy,
         std::vector<SCPMSHeuristic> &scp_ms_heuristics);
     SCPMSHeuristic compute_scp_ms_heuristic_over_fts(
-        const FactoredTransitionSystem &fts);
+        const FactoredTransitionSystem &fts) const;
 public:
     explicit SCPMergeAndShrinkAlgorithm(const options::Options &opts);
     SCPMSHeuristics compute_scp_ms_heuristics(const TaskProxy &task_proxy);

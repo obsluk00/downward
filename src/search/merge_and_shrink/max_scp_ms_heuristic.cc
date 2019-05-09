@@ -31,7 +31,6 @@ MaxSCPMSHeuristic::MaxSCPMSHeuristic(const options::Options &opts)
     : Heuristic(opts) {
     cout << "Initializing maximum SCP merge-and-shrink heuristic..." << endl;
     SCPMergeAndShrinkAlgorithm algorithm(opts);
-
     scp_ms_heuristics = move(algorithm.compute_scp_ms_heuristics(task_proxy));
     cout << "Done initializing maximum SCP merge-and-shrink heuristic." << endl << endl;
 }

@@ -106,6 +106,9 @@ void SCPMergeAndShrinkAlgorithm::dump_options() const {
     case Verbosity::VERBOSE:
         cout << "verbose";
         break;
+    case Verbosity::DEBUG:
+        cout << "debug";
+        break;
     }
     cout << endl;
 }
@@ -313,6 +316,7 @@ void SCPMergeAndShrinkAlgorithm::main_loop(
         }
 
         scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
+        log_main_loop_progress("after computing SCP M&S heuristics");
 
         if (ran_out_of_time(timer)) {
             break;
@@ -338,8 +342,8 @@ void SCPMergeAndShrinkAlgorithm::main_loop(
 }
 
 SCPMSHeuristic SCPMergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
-    const FactoredTransitionSystem &fts) {
-    if (verbosity >= Verbosity::VERBOSE) {
+    const FactoredTransitionSystem &fts) const {
+    if (verbosity >= Verbosity::DEBUG) {
         cout << "Computing SCP M&S heuristic over current FTS..." << endl;
     }
 
@@ -355,16 +359,18 @@ SCPMSHeuristic SCPMergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
         }
         remaining_label_costs.push_back(label_cost);
     }
-    if (verbosity >= Verbosity::VERBOSE) {
+    if (verbosity >= Verbosity::DEBUG) {
         cout << "Original label costs: " << remaining_label_costs << endl;
     }
 
     SCPMSHeuristic scp_ms_heuristic;
+    bool dump_if_empty_transitions = true;
+    bool dump_if_infinite_transitions = true;
     for (int index = 0; index < fts.get_size(); ++index) {
         if (!fts.is_active(index)) {
             continue;
         }
-        if (verbosity >= Verbosity::VERBOSE) {
+        if (verbosity >= Verbosity::DEBUG) {
             cout << "Considering factor at index " << index << endl;
         }
         const TransitionSystem &ts = fts.get_transition_system(index);
@@ -376,7 +382,7 @@ SCPMSHeuristic SCPMergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
             }
         }
         if (all_goal_states) {
-            if (verbosity >= Verbosity::VERBOSE) {
+            if (verbosity >= Verbosity::DEBUG) {
                 cout << "Factor consists of goal states only, skipping." << endl;
             }
             continue;
@@ -399,24 +405,30 @@ SCPMSHeuristic SCPMergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
             const LabelGroup &label_group = gat.label_group;
             const vector<Transition> &transitions = gat.transitions;
             int group_saturated_cost = MINUSINF;
-            for (const Transition &transition :transitions) {
-                int src = transition.src;
-                int target = transition.target;
-                int h_src = goal_distances[src];
-                int h_target = goal_distances[target];
-                if (h_target != INF) {
-                    int diff = h_src - h_target;
-                    group_saturated_cost = max(group_saturated_cost, diff);
+            if (verbosity >= Verbosity::VERBOSE && dump_if_empty_transitions && transitions.empty()) {
+                dump_if_empty_transitions = false;
+                cout << "found dead label group" << endl;
+            } else {
+                for (const Transition &transition : transitions) {
+                    int src = transition.src;
+                    int target = transition.target;
+                    int h_src = goal_distances[src];
+                    int h_target = goal_distances[target];
+                    if (h_target != INF) {
+                        int diff = h_src - h_target;
+                        group_saturated_cost = max(group_saturated_cost, diff);
+                    }
                 }
-            }
-            if (group_saturated_cost == MINUSINF) {
-                cout << "label group does not lead to any state with finite heuristic value" << endl;
+                if (verbosity >= Verbosity::VERBOSE && dump_if_infinite_transitions && group_saturated_cost == MINUSINF) {
+                    dump_if_infinite_transitions = false;
+                    cout << "label group does not lead to any state with finite heuristic value" << endl;
+                }
             }
             for (int label_no : label_group) {
                 saturated_label_costs[label_no] = group_saturated_cost;
             }
         }
-        if (verbosity >= Verbosity::VERBOSE) {
+        if (verbosity >= Verbosity::DEBUG) {
             cout << "Saturated label costs: " << saturated_label_costs << endl;
         }
 
@@ -434,12 +446,12 @@ SCPMSHeuristic SCPMergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
                 }
             }
         }
-        if (verbosity >= Verbosity::VERBOSE) {
+        if (verbosity >= Verbosity::DEBUG) {
             cout << "Remaining label costs: " << remaining_label_costs << endl;
         }
     }
 
-    if (verbosity >= Verbosity::VERBOSE) {
+    if (verbosity >= Verbosity::DEBUG) {
         cout << "Done computing SCP M&S heuristic over current FTS." << endl;
     }
 
@@ -526,11 +538,20 @@ SCPMSHeuristics SCPMergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
     }
     if (verbosity >= Verbosity::NORMAL && pruned) {
         log_progress(timer, "after pruning atomic factors");
-        cout << endl;
     }
 
     if (!unsolvable) {
         scp_ms_heuristics.scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
+        if (verbosity >= Verbosity::NORMAL) {
+            log_progress(timer, "after computing SCP M&S heuristics over the atomic FTS");
+        }
+    }
+
+    if (verbosity >= Verbosity::NORMAL) {
+        cout << endl;
+    }
+
+    if (!unsolvable) {
         if (main_loop_max_time > 0) {
             main_loop(fts, task_proxy, scp_ms_heuristics.scp_ms_heuristics);
         }
@@ -539,6 +560,7 @@ SCPMSHeuristics SCPMergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
             scp_ms_heuristics.mas_representations.push_back(fts.extract_factor(index).first);
         }
     }
+
     const bool final = true;
     report_peak_memory_delta(final);
     cout << "Merge-and-shrink algorithm runtime: " << timer << endl;

@@ -25,7 +25,8 @@ using StateEquivalenceRelation = std::vector<StateEquivalenceClass>;
 enum class Verbosity {
     SILENT,
     NORMAL,
-    VERBOSE
+    VERBOSE,
+    DEBUG
 };
 }
 

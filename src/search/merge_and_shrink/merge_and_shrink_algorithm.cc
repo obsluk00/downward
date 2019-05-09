@@ -103,6 +103,9 @@ void MergeAndShrinkAlgorithm::dump_options() const {
     case Verbosity::VERBOSE:
         cout << "verbose";
         break;
+    case Verbosity::DEBUG:
+        cout << "debug";
+        break;
     }
     cout << endl;
 }
@@ -454,6 +457,10 @@ void add_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
     verbosity_level_docs.push_back(
         "verbose: full output during construction, starting and final "
         "statistics");
+    verbosity_levels.push_back("debug");
+    verbosity_level_docs.push_back(
+        "debug: like verbose with additional debug output, not suited for "
+        "running experiments");
     parser.add_enum_option(
         "verbosity",
         verbosity_levels,
