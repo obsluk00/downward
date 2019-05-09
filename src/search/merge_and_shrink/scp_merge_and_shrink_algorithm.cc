@@ -359,9 +359,6 @@ SCPMSHeuristic SCPMergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
         }
         remaining_label_costs.push_back(label_cost);
     }
-    if (verbosity >= Verbosity::DEBUG) {
-        cout << "Original label costs: " << remaining_label_costs << endl;
-    }
 
     SCPMSHeuristic scp_ms_heuristic;
     bool dump_if_empty_transitions = true;
@@ -390,6 +387,9 @@ SCPMSHeuristic SCPMergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
 
 //        const Distances &distances = fts.get_distances(index);
 //        cout << "Distances before re-computing them: " << distances.get_goal_distances() << endl;
+        if (verbosity >= Verbosity::DEBUG) {
+            cout << "Remaining label costs: " << remaining_label_costs << endl;
+        }
         vector<int> goal_distances = compute_goal_distances(ts, remaining_label_costs);
 //        cout << "Distances after re-computing them: " << goal_distances << endl;
         const MergeAndShrinkRepresentation *mas_representation = fts.get_mas_representation_raw_ptr(index);
@@ -445,9 +445,6 @@ SCPMSHeuristic SCPMergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
                     assert(remaining_label_costs[label_no] >= 0);
                 }
             }
-        }
-        if (verbosity >= Verbosity::DEBUG) {
-            cout << "Remaining label costs: " << remaining_label_costs << endl;
         }
     }
 

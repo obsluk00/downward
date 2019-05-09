@@ -112,7 +112,11 @@ static void dijkstra_search(
             const pair<int, int> &transition = graph[state][i];
             int successor = transition.first;
             int cost = transition.second;
-            int successor_cost = state_distance + cost;
+            int successor_cost = INF;
+            if (cost != INF) {
+                successor_cost = state_distance + cost;
+            }
+            assert(successor_cost >= 0);
             if (distances[successor] > successor_cost) {
                 distances[successor] = successor_cost;
                 queue.push(successor_cost, successor);
