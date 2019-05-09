@@ -23,6 +23,8 @@
 #include "../utils/logging.h"
 #include "../utils/markup.h"
 #include "../utils/math.h"
+#include "../utils/rng.h"
+#include "../utils/rng_options.h"
 #include "../utils/system.h"
 #include "../utils/timer.h"
 
@@ -54,6 +56,8 @@ MergeAndShrinkAlgorithm::MergeAndShrinkAlgorithm(const Options &opts) :
     prune_irrelevant_states(opts.get<bool>("prune_irrelevant_states")),
     verbosity(static_cast<Verbosity>(opts.get_enum("verbosity"))),
     main_loop_max_time(opts.get<double>("main_loop_max_time")),
+    rng(utils::parse_rng_from_options(opts)),
+    factor_order(static_cast<FactorOrder>(opts.get_enum("factor_order"))),
     starting_peak_memory(0) {
     assert(max_states_before_merge > 0);
     assert(max_states >= max_states_before_merge);
@@ -359,6 +363,15 @@ SCPMSHeuristic MergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
             label_cost = labels.get_label_cost(label_no);
         }
         remaining_label_costs.push_back(label_cost);
+    }
+
+    vector<int> active_factor_indices;
+    active_factor_indices.reserve(fts.get_num_active_entries());
+    for (int index : fts) {
+        active_factor_indices.push_back(index);
+    }
+    if (factor_order == FactorOrder::RANDOM) {
+        rng->shuffle(active_factor_indices);
     }
 
     SCPMSHeuristic scp_ms_heuristic;
@@ -704,6 +717,24 @@ void add_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
         "Option to specify the level of verbosity.",
         "verbose",
         verbosity_level_docs);
+
+    utils::add_rng_options(parser);
+
+    vector<string> factor_order;
+    vector<string> factor_order_docs;
+    factor_order.push_back("given");
+    factor_order_docs.push_back(
+                "given: the order of factors as in the FTS");
+    factor_order.push_back("random");
+    factor_order_docs.push_back(
+                "random: random order of factors");
+    parser.add_enum_option(
+                "factor_order",
+                factor_order,
+                "Option to specify the order in which factors of the FTS are "
+                "considered for computing the SCP.",
+                "random",
+                factor_order_docs);
 
     parser.add_option<double>(
         "main_loop_max_time",

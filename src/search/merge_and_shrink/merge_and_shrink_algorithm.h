@@ -13,6 +13,7 @@ class Options;
 
 namespace utils {
 class CountdownTimer;
+class RandomNumberGenerator;
 }
 
 namespace merge_and_shrink {
@@ -22,6 +23,11 @@ class MergeAndShrinkRepresentation;
 class MergeStrategyFactory;
 class ShrinkStrategy;
 enum class Verbosity;
+
+enum class FactorOrder {
+    GIVEN,
+    RANDOM
+};
 
 struct SCPMSHeuristic {
     std::vector<std::vector<int>> goal_distances;
@@ -55,6 +61,8 @@ class MergeAndShrinkAlgorithm {
 
     const Verbosity verbosity;
     const double main_loop_max_time;
+    std::shared_ptr<utils::RandomNumberGenerator> rng;
+    const FactorOrder factor_order;
 
     long starting_peak_memory;
 
