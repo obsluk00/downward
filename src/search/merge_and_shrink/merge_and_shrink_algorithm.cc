@@ -58,6 +58,9 @@ MergeAndShrinkAlgorithm::MergeAndShrinkAlgorithm(const Options &opts) :
     main_loop_max_time(opts.get<double>("main_loop_max_time")),
     rng(utils::parse_rng_from_options(opts)),
     factor_order(static_cast<FactorOrder>(opts.get_enum("factor_order"))),
+    scp_over_atomic_fts(opts.get<bool>("scp_over_atomic_fts")),
+    scp_over_final_fts(opts.get<bool>("scp_over_final_fts")),
+    main_loop_num_scp_heuristics(opts.get<int>("main_loop_num_scp_heuristics")),
     starting_peak_memory(0) {
     assert(max_states_before_merge > 0);
     assert(max_states >= max_states_before_merge);
@@ -167,6 +170,91 @@ bool MergeAndShrinkAlgorithm::ran_out_of_time(
     return false;
 }
 
+class NextSCPHeuristic {
+private:
+    const double max_time;
+    const int max_iterations;
+    const int aimed_num_scp_heuristics;
+    const Verbosity verbosity;
+
+    double next_time_to_compute_heuristic;
+    int next_iteration_to_compute_heuristic;
+
+    void set_next_time_to_compute_heuristic(int num_computed_scp_heuristics, double current_time) {
+        int num_remaining_scp_heuristics = aimed_num_scp_heuristics - num_computed_scp_heuristics;
+        if (!num_remaining_scp_heuristics) {
+            next_time_to_compute_heuristic = max_time + 1.0;
+            return;
+        }
+        double remaining_time = max_time - current_time;
+        if (remaining_time <= 0.0) {
+            next_time_to_compute_heuristic = current_time;
+            return;
+        }
+        double time_offset = remaining_time / static_cast<double>(num_remaining_scp_heuristics);
+        next_time_to_compute_heuristic = current_time + time_offset;
+    }
+
+    void set_next_iteration_to_compute_heuristic(int num_computed_scp_heuristics, int current_iteration) {
+        int num_remaining_scp_heuristics = aimed_num_scp_heuristics - num_computed_scp_heuristics;
+        if (!num_remaining_scp_heuristics) {
+            next_iteration_to_compute_heuristic = max_iterations + 1;
+            return;
+        }
+        int num_remaining_iterations = max_iterations - current_iteration;
+        if (!num_remaining_iterations || num_remaining_scp_heuristics >= num_remaining_iterations) {
+            next_iteration_to_compute_heuristic = current_iteration;
+            return;
+        }
+        double iteration_offset = num_remaining_iterations / static_cast<double>(num_remaining_scp_heuristics);
+        assert(iteration_offset >= 1.0);
+        next_iteration_to_compute_heuristic = current_iteration + static_cast<int>(iteration_offset);
+    }
+public:
+    NextSCPHeuristic(
+        double max_time,
+        int max_iterations,
+        int aimed_num_scp_heuristics,
+        Verbosity verbosity)
+        : max_time(max_time),
+          max_iterations(max_iterations),
+          aimed_num_scp_heuristics(aimed_num_scp_heuristics),
+          verbosity(verbosity) {
+        set_next_time_to_compute_heuristic(0, 0);
+        set_next_iteration_to_compute_heuristic(0, 0);
+        if (verbosity == Verbosity::DEBUG) {
+            cout << "SCP: next time: " << next_time_to_compute_heuristic
+                 << ", next iteration: " << next_iteration_to_compute_heuristic
+                 << endl;
+        }
+    }
+
+    bool compute_next_heuristic(double current_time, int current_iteration, int num_computed_scp_heuristics) {
+        if (verbosity == Verbosity::DEBUG) {
+            cout << "SCP: compute next heuristic? current time: " << current_time
+                 << ", current iteration: " << current_iteration
+                 << ", num existing heuristics: " << num_computed_scp_heuristics
+                 << endl;
+        }
+        bool compute = false;
+        if (current_time >= next_time_to_compute_heuristic
+            || current_iteration >= next_iteration_to_compute_heuristic) {
+            compute = true;
+        }
+        if (compute) {
+            set_next_time_to_compute_heuristic(num_computed_scp_heuristics, current_time);
+            set_next_iteration_to_compute_heuristic(num_computed_scp_heuristics, current_iteration);
+            if (verbosity == Verbosity::DEBUG) {
+                cout << "SCP: yes" << endl;
+                cout << "SCP: next time: " << next_time_to_compute_heuristic
+                     << ", next iteration: " << next_iteration_to_compute_heuristic
+                     << endl;
+            }
+        }
+        return compute;
+    }
+};
+
 void MergeAndShrinkAlgorithm::main_loop(
     FactoredTransitionSystem &fts,
     const TaskProxy &task_proxy,
@@ -189,7 +277,6 @@ void MergeAndShrinkAlgorithm::main_loop(
         }
     }
 
-
     if (label_reduction) {
         label_reduction->initialize(task_proxy);
     }
@@ -203,6 +290,11 @@ void MergeAndShrinkAlgorithm::main_loop(
                  << " (" << msg << ")" << endl;
         };
     int iteration_counter = 0;
+    NextSCPHeuristic next_scp_heuristic(
+        main_loop_max_time,
+        fts.get_num_active_entries() * 2 - 1,
+        main_loop_num_scp_heuristics,
+        verbosity);
     while (fts.get_num_active_entries() > 1) {
         // Choose next transition systems to merge
         pair<int, int> merge_indices = merge_strategy->get_next();
@@ -318,7 +410,9 @@ void MergeAndShrinkAlgorithm::main_loop(
             break;
         }
 
-        if (scp_ms_heuristics) {
+        if (scp_ms_heuristics &&
+            next_scp_heuristic.compute_next_heuristic(
+                timer.get_elapsed_time(), iteration_counter, scp_ms_heuristics->size())) {
             scp_ms_heuristics->push_back(compute_scp_ms_heuristic_over_fts(fts));
             log_main_loop_progress("after computing SCP M&S heuristics");
 
@@ -552,7 +646,7 @@ SCPMSHeuristics MergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
         log_progress(timer, "after pruning atomic factors");
     }
 
-    if (!unsolvable) {
+    if (scp_over_atomic_fts && !unsolvable) {
         scp_ms_heuristics.scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
         if (verbosity >= Verbosity::NORMAL) {
             log_progress(timer, "after computing SCP M&S heuristics over the atomic FTS");
@@ -567,6 +661,12 @@ SCPMSHeuristics MergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
         if (main_loop_max_time > 0) {
             main_loop(fts, task_proxy, &scp_ms_heuristics.scp_ms_heuristics);
         }
+
+        if (scp_over_final_fts) {
+            scp_ms_heuristics.scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
+        }
+
+        // Extract the final merge-and-shrink representations from the FTS.
         scp_ms_heuristics.mas_representations.reserve(fts.get_num_active_entries());
         for (int index : fts) {
             scp_ms_heuristics.mas_representations.push_back(fts.extract_factor(index).first);
@@ -718,24 +818,6 @@ void add_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
         "verbose",
         verbosity_level_docs);
 
-    utils::add_rng_options(parser);
-
-    vector<string> factor_order;
-    vector<string> factor_order_docs;
-    factor_order.push_back("given");
-    factor_order_docs.push_back(
-                "given: the order of factors as in the FTS");
-    factor_order.push_back("random");
-    factor_order_docs.push_back(
-                "random: random order of factors");
-    parser.add_enum_option(
-                "factor_order",
-                factor_order,
-                "Option to specify the order in which factors of the FTS are "
-                "considered for computing the SCP.",
-                "random",
-                factor_order_docs);
-
     parser.add_option<double>(
         "main_loop_max_time",
         "A limit in seconds on the runtime of the main loop of the algorithm. "
@@ -746,6 +828,40 @@ void add_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
         "transformation is runtime-intense.",
         "infinity",
         Bounds("0.0", "infinity"));
+
+    utils::add_rng_options(parser);
+
+    vector<string> factor_order;
+    vector<string> factor_order_docs;
+    factor_order.push_back("given");
+    factor_order_docs.push_back(
+        "given: the order of factors as in the FTS");
+    factor_order.push_back("random");
+    factor_order_docs.push_back(
+        "random: random order of factors");
+    parser.add_enum_option(
+        "factor_order",
+        factor_order,
+        "Option to specify the order in which factors of the FTS are "
+        "considered for computing the SCP.",
+        "random",
+        factor_order_docs);
+
+    parser.add_option<bool>(
+        "scp_over_atomic_fts",
+        "Include an SCP heuristic computed over the atomic FTS.",
+        "false");
+    parser.add_option<bool>(
+        "scp_over_final_fts",
+        "Include an SCP heuristic computed over the final FTS (attention: "
+        "depending on main_loop_num_scp_heuristics, this might already have "
+        "been computed).",
+        "false");
+    parser.add_option<int>(
+        "main_loop_num_scp_heuristics",
+        "The maximum number of SCP heuristics to be computed over the main loop.",
+        "0",
+        Bounds("0", "infinity"));
 }
 
 void add_transition_system_size_limit_options_to_parser(OptionParser &parser) {

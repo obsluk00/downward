@@ -84,6 +84,15 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
 
     handle_shrink_limit_options_defaults(opts);
 
+    bool scp_over_atomic_fts = opts.get<bool>("scp_over_atomic_fts");
+    bool scp_over_final_fts = opts.get<bool>("scp_over_final_fts");
+    int main_loop_num_scp_heuristics = opts.get<int>("main_loop_num_scp_heuristics");
+    if (!scp_over_atomic_fts && !scp_over_final_fts && !main_loop_num_scp_heuristics) {
+        cerr << "At least one option for computing SCP merge-and-shrink "
+                "heuristics must be enabled! " << endl;
+        utils::exit_with(ExitCode::SEARCH_INPUT_ERROR);
+    }
+
     if (parser.dry_run()) {
         return nullptr;
     } else {

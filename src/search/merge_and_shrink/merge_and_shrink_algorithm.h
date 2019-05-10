@@ -63,6 +63,9 @@ class MergeAndShrinkAlgorithm {
     const double main_loop_max_time;
     std::shared_ptr<utils::RandomNumberGenerator> rng;
     const FactorOrder factor_order;
+    const bool scp_over_atomic_fts;
+    const bool scp_over_final_fts;
+    const int main_loop_num_scp_heuristics;
 
     long starting_peak_memory;
 
