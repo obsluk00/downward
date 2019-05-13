@@ -517,9 +517,18 @@ SCPMSHeuristic MergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
         vector<int> goal_distances = compute_goal_distances(
             ts, remaining_label_costs, verbosity);
 //        cout << "Distances under remaining costs: " << goal_distances << endl;
-        const MergeAndShrinkRepresentation *mas_representation = fts.get_mas_representation_raw_ptr(index);
+        unique_ptr<MergeAndShrinkRepresentation> mas_representation = nullptr;
+        if (dynamic_cast<const MergeAndShrinkRepresentationLeaf *>(fts.get_mas_representation_raw_ptr(index))) {
+            mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationLeaf>(
+                dynamic_cast<const MergeAndShrinkRepresentationLeaf *>
+                    (fts.get_mas_representation_raw_ptr(index)));
+        } else {
+            mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
+                dynamic_cast<const MergeAndShrinkRepresentationMerge *>(
+                    fts.get_mas_representation_raw_ptr(index)));
+        }
         scp_ms_heuristic.goal_distances.push_back(goal_distances);
-        scp_ms_heuristic.mas_representation_raw_ptrs.push_back(mas_representation);
+        scp_ms_heuristic.mas_representations.push_back(move(mas_representation));
         if (i == active_factor_indices.size() - 1) {
             break;
         }
@@ -581,7 +590,7 @@ SCPMSHeuristic MergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
 }
 
 // TODO: reduce code duplication with build_factored_transition_system
-SCPMSHeuristics MergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
+vector<SCPMSHeuristic> MergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
     const TaskProxy &task_proxy) {
     if (starting_peak_memory) {
         cerr << "Calling compute_scp_ms_heuristics twice is not "
@@ -616,7 +625,7 @@ SCPMSHeuristics MergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
     }
 
     // Collect SCP M&S heuristics over the computation of the algorithm.
-    SCPMSHeuristics scp_ms_heuristics;
+    vector<SCPMSHeuristic> scp_ms_heuristics;
 
     /*
       Prune all atomic factors according to the chosen options. Stop early if
@@ -646,16 +655,13 @@ SCPMSHeuristics MergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
 
             SCPMSHeuristic scp_ms_heuristic;
             scp_ms_heuristic.goal_distances.reserve(1);
-            scp_ms_heuristic.mas_representation_raw_ptrs.reserve(1);
-            scp_ms_heuristic.goal_distances.push_back(fts.get_distances(index).get_goal_distances());
-            scp_ms_heuristic.mas_representation_raw_ptrs.push_back(fts.get_mas_representation_raw_ptr(index));
-
-            scp_ms_heuristics.scp_ms_heuristics.reserve(1);
-            scp_ms_heuristics.scp_ms_heuristics.push_back(move(scp_ms_heuristic));
-
+            scp_ms_heuristic.mas_representations.reserve(1);
             auto factor = fts.extract_factor(index);
-            scp_ms_heuristics.mas_representations.reserve(1);
-            scp_ms_heuristics.mas_representations.push_back(move(factor.first));
+            scp_ms_heuristic.goal_distances.push_back(factor.second->get_goal_distances());
+            scp_ms_heuristic.mas_representations.push_back(move(factor.first));
+
+            scp_ms_heuristics.reserve(1);
+            scp_ms_heuristics.push_back(move(scp_ms_heuristic));
             break;
         }
     }
@@ -664,7 +670,7 @@ SCPMSHeuristics MergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
     }
 
     if (scp_over_atomic_fts && !unsolvable) {
-        scp_ms_heuristics.scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
+        scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
         if (verbosity >= Verbosity::NORMAL) {
             log_progress(timer, "after computing SCP M&S heuristics over the atomic FTS");
         }
@@ -676,17 +682,11 @@ SCPMSHeuristics MergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
 
     if (!unsolvable) {
         if (main_loop_max_time > 0) {
-            main_loop(fts, task_proxy, &scp_ms_heuristics.scp_ms_heuristics);
+            main_loop(fts, task_proxy, &scp_ms_heuristics);
         }
 
         if (scp_over_final_fts) {
-            scp_ms_heuristics.scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
-        }
-
-        // Extract the final merge-and-shrink representations from the FTS.
-        scp_ms_heuristics.mas_representations.reserve(fts.get_num_active_entries());
-        for (int index : fts) {
-            scp_ms_heuristics.mas_representations.push_back(fts.extract_factor(index).first);
+            scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
         }
     }
 

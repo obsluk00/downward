@@ -31,11 +31,6 @@ enum class FactorOrder {
 
 struct SCPMSHeuristic {
     std::vector<std::vector<int>> goal_distances;
-    std::vector<const MergeAndShrinkRepresentation *> mas_representation_raw_ptrs;
-};
-
-struct SCPMSHeuristics {
-    std::vector<SCPMSHeuristic> scp_ms_heuristics;
     std::vector<std::unique_ptr<MergeAndShrinkRepresentation>> mas_representations;
 };
 
@@ -83,7 +78,7 @@ class MergeAndShrinkAlgorithm {
         const FactoredTransitionSystem &fts) const;
 public:
     explicit MergeAndShrinkAlgorithm(const options::Options &opts);
-    SCPMSHeuristics compute_scp_ms_heuristics(const TaskProxy &task_proxy);
+    std::vector<SCPMSHeuristic> compute_scp_ms_heuristics(const TaskProxy &task_proxy);
     FactoredTransitionSystem build_factored_transition_system(const TaskProxy &task_proxy);
 };
 

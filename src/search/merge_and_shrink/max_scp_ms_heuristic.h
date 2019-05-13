@@ -7,7 +7,7 @@
 
 namespace merge_and_shrink {
 class MaxSCPMSHeuristic : public Heuristic {
-    SCPMSHeuristics scp_ms_heuristics;
+    std::vector<SCPMSHeuristic> scp_ms_heuristics;
 protected:
     virtual int compute_heuristic(const GlobalState &global_state) override;
 public:
