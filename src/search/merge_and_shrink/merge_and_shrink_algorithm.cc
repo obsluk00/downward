@@ -700,6 +700,10 @@ vector<SCPMSHeuristic> MergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
         }
     }
 
+    if (scp_ms_heuristics.empty()) {
+        scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
+    }
+
     const bool final = true;
     report_peak_memory_delta(final);
     cout << "Merge-and-shrink algorithm runtime: " << timer << endl;
