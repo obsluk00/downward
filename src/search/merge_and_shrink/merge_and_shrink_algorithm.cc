@@ -234,18 +234,22 @@ public:
           aimed_num_scp_heuristics(aimed_num_scp_heuristics),
           iteration_offset(iteration_offset),
           verbosity(verbosity) {
-        assert(aimed_num_scp_heuristics || iteration_offset);
-        assert(!aimed_num_scp_heuristics || !iteration_offset);
-        set_next_time_to_compute_heuristic(0, 0);
-        set_next_iteration_to_compute_heuristic(0, 0);
-        if (verbosity == Verbosity::DEBUG) {
-            cout << "SCP: next time: " << next_time_to_compute_heuristic
-                 << ", next iteration: " << next_iteration_to_compute_heuristic
-                 << endl;
+        if (aimed_num_scp_heuristics || iteration_offset) {
+            assert(!aimed_num_scp_heuristics || !iteration_offset);
+            set_next_time_to_compute_heuristic(0, 0);
+            set_next_iteration_to_compute_heuristic(0, 0);
+            if (verbosity == Verbosity::DEBUG) {
+                cout << "SCP: next time: " << next_time_to_compute_heuristic
+                     << ", next iteration: " << next_iteration_to_compute_heuristic
+                     << endl;
+            }
         }
     }
 
     bool compute_next_heuristic(double current_time, int current_iteration, int num_computed_scp_heuristics) {
+        if (!aimed_num_scp_heuristics && !iteration_offset) {
+            return false;
+        }
         if (verbosity == Verbosity::DEBUG) {
             cout << "SCP: compute next heuristic? current time: " << current_time
                  << ", current iteration: " << current_iteration
@@ -488,10 +492,7 @@ SCPMSHeuristic MergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
     SCPMSHeuristic scp_ms_heuristic;
     bool dump_if_empty_transitions = true;
     bool dump_if_infinite_transitions = true;
-    for (int index = 0; index < fts.get_size(); ++index) {
-        if (!fts.is_active(index)) {
-            continue;
-        }
+    for (int index : active_factor_indices) {
         if (verbosity >= Verbosity::DEBUG) {
             cout << "Considering factor at index " << index << endl;
         }
