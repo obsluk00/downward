@@ -492,7 +492,8 @@ SCPMSHeuristic MergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
     SCPMSHeuristic scp_ms_heuristic;
     bool dump_if_empty_transitions = true;
     bool dump_if_infinite_transitions = true;
-    for (int index : active_factor_indices) {
+    for (size_t i = 0; i < active_factor_indices.size(); ++i) {
+        int index = active_factor_indices[i];
         if (verbosity >= Verbosity::DEBUG) {
             cout << "Considering factor at index " << index << endl;
         }
@@ -521,7 +522,7 @@ SCPMSHeuristic MergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
         const MergeAndShrinkRepresentation *mas_representation = fts.get_mas_representation_raw_ptr(index);
         scp_ms_heuristic.goal_distances.push_back(goal_distances);
         scp_ms_heuristic.mas_representation_raw_ptrs.push_back(mas_representation);
-        if (index == fts.get_size() - 1) {
+        if (i == active_factor_indices.size() - 1) {
             break;
         }
 
