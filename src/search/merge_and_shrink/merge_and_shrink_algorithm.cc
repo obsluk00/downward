@@ -276,7 +276,18 @@ public:
     }
 };
 
-void MergeAndShrinkAlgorithm::main_loop(
+SCPMSHeuristic MergeAndShrinkAlgorithm::extract_scp_heuristic(
+    FactoredTransitionSystem &fts, int index) const {
+    SCPMSHeuristic scp_ms_heuristic;
+    scp_ms_heuristic.goal_distances.reserve(1);
+    scp_ms_heuristic.mas_representations.reserve(1);
+    auto factor = fts.extract_factor(index);
+    scp_ms_heuristic.goal_distances.push_back(factor.second->get_goal_distances());
+    scp_ms_heuristic.mas_representations.push_back(move(factor.first));
+    return scp_ms_heuristic;
+}
+
+bool MergeAndShrinkAlgorithm::main_loop(
     FactoredTransitionSystem &fts,
     const TaskProxy &task_proxy,
     vector<SCPMSHeuristic> *scp_ms_heuristics) {
@@ -311,6 +322,7 @@ void MergeAndShrinkAlgorithm::main_loop(
                  << " (" << msg << ")" << endl;
         };
     int iteration_counter = 0;
+    bool unsolvable = false;
     NextSCPHeuristic next_scp_heuristic(
         main_loop_max_time,
         fts.get_num_active_entries() - 1,
@@ -426,6 +438,10 @@ void MergeAndShrinkAlgorithm::main_loop(
                 cout << "Abstract problem is unsolvable, stopping "
                     "computation. " << endl << endl;
             }
+            scp_ms_heuristics->clear();
+            scp_ms_heuristics->reserve(1);
+            scp_ms_heuristics->push_back(extract_scp_heuristic(fts, merged_index));
+            unsolvable = true;
             break;
         }
 
@@ -459,6 +475,7 @@ void MergeAndShrinkAlgorithm::main_loop(
          << maximum_intermediate_size << endl;
     shrink_strategy = nullptr;
     label_reduction = nullptr;
+    return unsolvable;
 }
 
 SCPMSHeuristic MergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
@@ -653,15 +670,8 @@ vector<SCPMSHeuristic> MergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
                  << "use this unsolvable factor as only heuristic."
                  << endl;
 
-            SCPMSHeuristic scp_ms_heuristic;
-            scp_ms_heuristic.goal_distances.reserve(1);
-            scp_ms_heuristic.mas_representations.reserve(1);
-            auto factor = fts.extract_factor(index);
-            scp_ms_heuristic.goal_distances.push_back(factor.second->get_goal_distances());
-            scp_ms_heuristic.mas_representations.push_back(move(factor.first));
-
             scp_ms_heuristics.reserve(1);
-            scp_ms_heuristics.push_back(move(scp_ms_heuristic));
+            scp_ms_heuristics.push_back(extract_scp_heuristic(fts, index));
             break;
         }
     }
@@ -682,10 +692,10 @@ vector<SCPMSHeuristic> MergeAndShrinkAlgorithm::compute_scp_ms_heuristics(
 
     if (!unsolvable) {
         if (main_loop_max_time > 0) {
-            main_loop(fts, task_proxy, &scp_ms_heuristics);
+            unsolvable = main_loop(fts, task_proxy, &scp_ms_heuristics);
         }
 
-        if (scp_over_final_fts) {
+        if (scp_over_final_fts &&!unsolvable) {
             scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
         }
     }

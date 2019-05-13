@@ -70,7 +70,9 @@ class MergeAndShrinkAlgorithm {
     void warn_on_unusual_options() const;
     bool ran_out_of_time(const utils::CountdownTimer &timer) const;
     void statistics(int maximum_intermediate_size) const;
-    void main_loop(
+    SCPMSHeuristic extract_scp_heuristic(
+        FactoredTransitionSystem &fts, int index) const;
+    bool main_loop(
         FactoredTransitionSystem &fts,
         const TaskProxy &task_proxy,
         std::vector<SCPMSHeuristic> *scp_ms_heuristics = nullptr);
