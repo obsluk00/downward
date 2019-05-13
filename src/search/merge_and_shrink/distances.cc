@@ -397,9 +397,8 @@ static void compute_goal_distances_general_cost(
         int cost = INF;
         for (int label_no : label_group) {
             int label_cost = label_costs[label_no];
-            if (label_cost != -1) { // skip reduced labels
-                cost = min(cost, label_cost);
-            }
+            assert(label_cost != -1); // should not encounter reduced labels
+            cost = min(cost, label_cost);
         }
         assert(cost >= 0);
         for (const Transition &transition : transitions) {
@@ -422,13 +421,13 @@ static void compute_goal_distances_general_cost(
 
 vector<int> compute_goal_distances(
     const TransitionSystem &transition_system,
-    const vector<int> &label_costs) {
+    const vector<int> &label_costs,
+    Verbosity verbosity) {
     int num_states = transition_system.get_size();
     if (num_states == 0) {
         return vector<int>();
     }
 
-    vector<int> distances(num_states, INF);
     bool unit_cost = true;
     for (int label_cost : label_costs) {
         if (label_cost != -1 && label_cost != 1) {
@@ -436,9 +435,17 @@ vector<int> compute_goal_distances(
             break;
         }
     }
+
+    vector<int> distances(num_states, INF);
     if (unit_cost) {
+        if (verbosity == Verbosity::DEBUG) {
+            cout << "Computing distances using unit cost" << endl;
+        }
         compute_goal_distances_unit_cost(transition_system, distances);
     } else {
+        if (verbosity == Verbosity::DEBUG) {
+            cout << "Computing distances using general cost" << endl;
+        }
         compute_goal_distances_general_cost(transition_system, label_costs, distances);
     }
     return distances;

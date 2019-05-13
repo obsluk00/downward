@@ -470,14 +470,11 @@ SCPMSHeuristic MergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
     // Compute original label costs.
     const Labels &labels = fts.get_labels();
     int num_labels = labels.get_size();
-    vector<int> remaining_label_costs;
-    remaining_label_costs.reserve(num_labels);
+    vector<int> remaining_label_costs(num_labels, -1);
     for (int label_no = 0; label_no < num_labels; ++label_no) {
-        int label_cost = -1;
         if (labels.is_current_label(label_no)) {
-            label_cost = labels.get_label_cost(label_no);
+            remaining_label_costs[label_no] = labels.get_label_cost(label_no);
         }
-        remaining_label_costs.push_back(label_cost);
     }
 
     vector<int> active_factor_indices;
@@ -513,12 +510,13 @@ SCPMSHeuristic MergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
         }
 
 //        const Distances &distances = fts.get_distances(index);
-//        cout << "Distances before re-computing them: " << distances.get_goal_distances() << endl;
+//        cout << "Distances under full costs: " << distances.get_goal_distances() << endl;
         if (verbosity >= Verbosity::DEBUG) {
             cout << "Remaining label costs: " << remaining_label_costs << endl;
         }
-        vector<int> goal_distances = compute_goal_distances(ts, remaining_label_costs);
-//        cout << "Distances after re-computing them: " << goal_distances << endl;
+        vector<int> goal_distances = compute_goal_distances(
+            ts, remaining_label_costs, verbosity);
+//        cout << "Distances under remaining costs: " << goal_distances << endl;
         const MergeAndShrinkRepresentation *mas_representation = fts.get_mas_representation_raw_ptr(index);
         scp_ms_heuristic.goal_distances.push_back(goal_distances);
         scp_ms_heuristic.mas_representation_raw_ptrs.push_back(mas_representation);
@@ -566,7 +564,7 @@ SCPMSHeuristic MergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
             } else {
                 if (saturated_label_costs[label_no] == MINUSINF) {
                     remaining_label_costs[label_no] = INF;
-                } else {
+                } else if (remaining_label_costs[label_no] != INF) { // inf remains inf
                     remaining_label_costs[label_no] =
                         remaining_label_costs[label_no] - saturated_label_costs[label_no];
                     assert(remaining_label_costs[label_no] >= 0);

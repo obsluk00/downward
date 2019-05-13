@@ -85,7 +85,8 @@ public:
 
 extern std::vector<int> compute_goal_distances(
     const TransitionSystem &transition_system,
-    const std::vector<int> &label_costs);
+    const std::vector<int> &label_costs,
+    Verbosity verbosity);
 }
 
 #endif
