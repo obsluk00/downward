@@ -186,7 +186,8 @@ private:
 
     void set_next_time_to_compute_heuristic(int num_computed_scp_heuristics, double current_time) {
         int num_remaining_scp_heuristics = aimed_num_scp_heuristics - num_computed_scp_heuristics;
-        if (!num_remaining_scp_heuristics) {
+        // safeguard against having aimed_num_scp_heuristics = 0
+        if (num_remaining_scp_heuristics <= 0) {
             next_time_to_compute_heuristic = max_time + 1.0;
             return;
         }
@@ -202,13 +203,14 @@ private:
     void set_next_iteration_to_compute_heuristic(int num_computed_scp_heuristics, int current_iteration) {
         if (aimed_num_scp_heuristics) {
             int num_remaining_scp_heuristics = aimed_num_scp_heuristics - num_computed_scp_heuristics;
-            if (!num_remaining_scp_heuristics) {
+            // safeguard against having aimed_num_scp_heuristics = 0
+            if (num_remaining_scp_heuristics <= 0) {
                 next_iteration_to_compute_heuristic = max_iterations + 1;
                 return;
             }
             int num_remaining_iterations = max_iterations - current_iteration;
             if (!num_remaining_iterations || num_remaining_scp_heuristics >= num_remaining_iterations) {
-                next_iteration_to_compute_heuristic = current_iteration;
+                next_iteration_to_compute_heuristic = current_iteration + 1;
                 return;
             }
             double iteration_offset = num_remaining_iterations / static_cast<double>(num_remaining_scp_heuristics);
@@ -216,10 +218,6 @@ private:
             next_iteration_to_compute_heuristic = current_iteration + static_cast<int>(iteration_offset);
         } else {
             next_iteration_to_compute_heuristic = current_iteration + iteration_offset;
-            if (current_iteration == 0) {
-                // To balance off the fact that we start counting at 0.
-                next_iteration_to_compute_heuristic -= 1;
-            }
         }
     }
 public:
@@ -262,6 +260,9 @@ public:
             compute = true;
         }
         if (compute) {
+            // We return true, hence we will compute another SCP heuristic
+            // when this function returns.
+            ++num_computed_scp_heuristics;
             set_next_time_to_compute_heuristic(num_computed_scp_heuristics, current_time);
             set_next_iteration_to_compute_heuristic(num_computed_scp_heuristics, current_iteration);
             if (verbosity == Verbosity::DEBUG) {
@@ -312,11 +313,12 @@ void MergeAndShrinkAlgorithm::main_loop(
     int iteration_counter = 0;
     NextSCPHeuristic next_scp_heuristic(
         main_loop_max_time,
-        fts.get_num_active_entries() * 2 - 1,
+        fts.get_num_active_entries() - 1,
         main_loop_num_scp_heuristics,
         main_loop_iteration_offset_for_computing_scp_heuristics,
         verbosity);
     while (fts.get_num_active_entries() > 1) {
+        ++iteration_counter;
         // Choose next transition systems to merge
         pair<int, int> merge_indices = merge_strategy->get_next();
         if (ran_out_of_time(timer)) {
@@ -449,8 +451,6 @@ void MergeAndShrinkAlgorithm::main_loop(
         if (verbosity >= Verbosity::NORMAL) {
             cout << endl;
         }
-
-        ++iteration_counter;
     }
 
     cout << "End of merge-and-shrink algorithm, statistics:" << endl;
