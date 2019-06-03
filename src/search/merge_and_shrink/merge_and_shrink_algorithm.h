@@ -60,7 +60,7 @@ class MergeAndShrinkAlgorithm {
     const FactorOrder factor_order;
     const bool scp_over_atomic_fts;
     const bool scp_over_final_fts;
-    const int main_loop_num_scp_heuristics;
+    const int main_loop_aimed_num_scp_heuristics;
     const int main_loop_iteration_offset_for_computing_scp_heuristics;
 
     long starting_peak_memory;
