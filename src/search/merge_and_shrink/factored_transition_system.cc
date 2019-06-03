@@ -133,10 +133,6 @@ bool FactoredTransitionSystem::apply_abstraction(
 
     int new_num_states = state_equivalence_relation.size();
     if (new_num_states == transition_systems[index]->get_size()) {
-        if (verbosity >= Verbosity::VERBOSE) {
-            cout << transition_systems[index]->tag()
-                 << "not applying abstraction (same number of states)" << endl;
-        }
         return false;
     }
 
@@ -230,6 +226,21 @@ const MergeAndShrinkRepresentation *FactoredTransitionSystem::get_mas_representa
 bool FactoredTransitionSystem::is_factor_solvable(int index) const {
     assert(is_component_valid(index));
     return transition_systems[index]->is_solvable(*distances[index]);
+}
+
+bool FactoredTransitionSystem::is_factor_trivial(int index) const {
+    assert(is_component_valid(index));
+    const TransitionSystem &ts = *transition_systems[index];
+    bool all_goal_states = true;
+    for (int state = 0; state < ts.get_size(); ++state) {
+        if (!ts.is_goal_state(state)) {
+            all_goal_states = false;
+            break;
+        }
+    }
+    const MergeAndShrinkRepresentation &mas_repr = *mas_representations[index];
+    bool is_pruned = mas_repr.is_pruned();
+    return all_goal_states && !is_pruned;
 }
 
 bool FactoredTransitionSystem::is_active(int index) const {
