@@ -515,17 +515,10 @@ SCPMSHeuristic MergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
         if (verbosity >= Verbosity::DEBUG) {
             cout << "Considering factor at index " << index << endl;
         }
-        const TransitionSystem &ts = fts.get_transition_system(index);
-        bool all_goal_states = true;
-        for (int state = 0; state < ts.get_size(); ++state) {
-            if (!ts.is_goal_state(state)) {
-                all_goal_states = false;
-                break;
-            }
-        }
-        if (all_goal_states) {
+
+        if (fts.is_factor_trivial(index)) {
             if (verbosity >= Verbosity::DEBUG) {
-                cout << "Factor consists of goal states only, skipping." << endl;
+                cout << "factor is trivial" << endl;
             }
             continue;
         }
@@ -535,6 +528,7 @@ SCPMSHeuristic MergeAndShrinkAlgorithm::compute_scp_ms_heuristic_over_fts(
         if (verbosity >= Verbosity::DEBUG) {
             cout << "Remaining label costs: " << remaining_label_costs << endl;
         }
+        const TransitionSystem &ts = fts.get_transition_system(index);
         vector<int> goal_distances = compute_goal_distances(
             ts, remaining_label_costs, verbosity);
 //        cout << "Distances under remaining costs: " << goal_distances << endl;
