@@ -51,13 +51,13 @@ public:
 
 
 class MergeAndShrinkRepresentationMerge : public MergeAndShrinkRepresentation {
-    std::unique_ptr<MergeAndShrinkRepresentation> left_child;
-    std::unique_ptr<MergeAndShrinkRepresentation> right_child;
+    std::shared_ptr<MergeAndShrinkRepresentation> left_child;
+    std::shared_ptr<MergeAndShrinkRepresentation> right_child;
     std::vector<std::vector<int>> lookup_table;
 public:
     MergeAndShrinkRepresentationMerge(
-        std::unique_ptr<MergeAndShrinkRepresentation> left_child,
-        std::unique_ptr<MergeAndShrinkRepresentation> right_child);
+        const std::shared_ptr<MergeAndShrinkRepresentation> &left_child,
+        const std::shared_ptr<MergeAndShrinkRepresentation> &right_child);
     explicit MergeAndShrinkRepresentationMerge(const MergeAndShrinkRepresentationMerge *other);
     virtual ~MergeAndShrinkRepresentationMerge() = default;
 

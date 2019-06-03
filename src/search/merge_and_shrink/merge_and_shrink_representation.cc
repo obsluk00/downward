@@ -87,12 +87,12 @@ void MergeAndShrinkRepresentationLeaf::dump() const {
 
 
 MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(
-    unique_ptr<MergeAndShrinkRepresentation> left_child_,
-    unique_ptr<MergeAndShrinkRepresentation> right_child_)
+    const std::shared_ptr<MergeAndShrinkRepresentation> &left_child_,
+    const std::shared_ptr<MergeAndShrinkRepresentation> &right_child_)
     : MergeAndShrinkRepresentation(left_child_->get_domain_size() *
                                    right_child_->get_domain_size()),
-      left_child(move(left_child_)),
-      right_child(move(right_child_)),
+      left_child(left_child_),
+      right_child(right_child_),
       lookup_table(left_child->get_domain_size(),
                    vector<int>(right_child->get_domain_size())) {
     int counter = 0;
@@ -106,21 +106,9 @@ MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(
 
 MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(const MergeAndShrinkRepresentationMerge *other)
     : MergeAndShrinkRepresentation(other->domain_size),
+      left_child(other->left_child),
+      right_child(other->right_child),
       lookup_table(other->lookup_table) {
-    if (dynamic_cast<MergeAndShrinkRepresentationLeaf *>(other->left_child.get())) {
-        left_child = utils::make_unique_ptr<MergeAndShrinkRepresentationLeaf>(
-            dynamic_cast<MergeAndShrinkRepresentationLeaf *>(other->left_child.get()));
-    } else {
-        left_child = utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
-            dynamic_cast<MergeAndShrinkRepresentationMerge *>(other->left_child.get()));
-    }
-    if (dynamic_cast<MergeAndShrinkRepresentationLeaf *>(other->right_child.get())) {
-        right_child = utils::make_unique_ptr<MergeAndShrinkRepresentationLeaf>(
-            dynamic_cast<MergeAndShrinkRepresentationLeaf *>(other->right_child.get()));
-    } else {
-        right_child = utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
-            dynamic_cast<MergeAndShrinkRepresentationMerge *>(other->right_child.get()));
-    }
 }
 
 void MergeAndShrinkRepresentationMerge::set_distances(
