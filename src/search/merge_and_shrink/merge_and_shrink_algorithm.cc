@@ -441,9 +441,12 @@ bool MergeAndShrinkAlgorithm::main_loop(
                 cout << "Abstract problem is unsolvable, stopping "
                     "computation. " << endl << endl;
             }
-            scp_ms_heuristics->clear();
-            scp_ms_heuristics->reserve(1);
-            scp_ms_heuristics->push_back(extract_scp_heuristic(fts, merged_index));
+            if (next_scp_heuristic) {
+                assert(scp_ms_heuristics);
+                scp_ms_heuristics->clear();
+                scp_ms_heuristics->reserve(1);
+                scp_ms_heuristics->push_back(extract_scp_heuristic(fts, merged_index));
+            }
             unsolvable = true;
             break;
         }
