@@ -7,6 +7,7 @@
 #include "utils.h"
 
 #include "../utils/collections.h"
+#include "../utils/logging.h"
 #include "../utils/memory.h"
 #include "../utils/system.h"
 
@@ -42,7 +43,7 @@ FactoredTransitionSystem::FactoredTransitionSystem(
     vector<unique_ptr<Distances>> &&distances,
     const bool compute_init_distances,
     const bool compute_goal_distances,
-    Verbosity verbosity)
+    utils::Verbosity verbosity)
     : labels(move(labels)),
       transition_systems(move(transition_systems)),
       mas_representations(move(mas_representations)),
@@ -128,7 +129,7 @@ void FactoredTransitionSystem::apply_label_mapping(
 bool FactoredTransitionSystem::apply_abstraction(
     int index,
     const StateEquivalenceRelation &state_equivalence_relation,
-    Verbosity verbosity) {
+    utils::Verbosity verbosity) {
     assert(is_component_valid(index));
 
     int new_num_states = state_equivalence_relation.size();
@@ -160,7 +161,7 @@ bool FactoredTransitionSystem::apply_abstraction(
 int FactoredTransitionSystem::merge(
     int index1,
     int index2,
-    Verbosity verbosity) {
+    utils::Verbosity verbosity) {
     assert(is_component_valid(index1));
     assert(is_component_valid(index2));
     transition_systems.push_back(
@@ -230,17 +231,18 @@ bool FactoredTransitionSystem::is_factor_solvable(int index) const {
 
 bool FactoredTransitionSystem::is_factor_trivial(int index) const {
     assert(is_component_valid(index));
-    const TransitionSystem &ts = *transition_systems[index];
-    bool all_goal_states = true;
-    for (int state = 0; state < ts.get_size(); ++state) {
-        if (!ts.is_goal_state(state)) {
-            all_goal_states = false;
-            break;
+    bool is_pruned = mas_representations[index]->is_pruned();
+    if (is_pruned) {
+        return false;
+    } else {
+        const TransitionSystem &ts = *transition_systems[index];
+        for (int state = 0; state < ts.get_size(); ++state) {
+            if (!ts.is_goal_state(state)) {
+                return false;
+            }
         }
+        return true;
     }
-    const MergeAndShrinkRepresentation &mas_repr = *mas_representations[index];
-    bool is_pruned = mas_repr.is_pruned();
-    return all_goal_states && !is_pruned;
 }
 
 bool FactoredTransitionSystem::is_active(int index) const {

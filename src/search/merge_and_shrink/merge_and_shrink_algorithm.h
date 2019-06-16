@@ -14,6 +14,7 @@ class Options;
 namespace utils {
 class CountdownTimer;
 class RandomNumberGenerator;
+enum class Verbosity;
 }
 
 namespace merge_and_shrink {
@@ -22,7 +23,6 @@ class LabelReduction;
 class MergeAndShrinkRepresentation;
 class MergeStrategyFactory;
 class ShrinkStrategy;
-enum class Verbosity;
 
 enum class FactorOrder {
     GIVEN,
@@ -54,7 +54,7 @@ class MergeAndShrinkAlgorithm {
     const bool prune_unreachable_states;
     const bool prune_irrelevant_states;
 
-    const Verbosity verbosity;
+    const utils::Verbosity verbosity;
     const double main_loop_max_time;
     std::shared_ptr<utils::RandomNumberGenerator> rng;
     const FactorOrder factor_order;
