@@ -2,7 +2,6 @@
 #define MERGE_AND_SHRINK_MERGE_AND_SHRINK_ALGORITHM_H
 
 #include <memory>
-#include <vector>
 
 class TaskProxy;
 
@@ -13,26 +12,15 @@ class Options;
 
 namespace utils {
 class CountdownTimer;
-class RandomNumberGenerator;
 enum class Verbosity;
 }
 
 namespace merge_and_shrink {
 class FactoredTransitionSystem;
 class LabelReduction;
-class MergeAndShrinkRepresentation;
 class MergeStrategyFactory;
 class ShrinkStrategy;
-
-enum class FactorOrder {
-    GIVEN,
-    RANDOM
-};
-
-struct SCPMSHeuristic {
-    std::vector<std::vector<int>> goal_distances;
-    std::vector<std::unique_ptr<MergeAndShrinkRepresentation>> mas_representations;
-};
+struct SCPSnapshotCollector;
 
 class MergeAndShrinkAlgorithm {
     // TODO: when the option parser supports it, the following should become
@@ -56,12 +44,6 @@ class MergeAndShrinkAlgorithm {
 
     const utils::Verbosity verbosity;
     const double main_loop_max_time;
-    std::shared_ptr<utils::RandomNumberGenerator> rng;
-    const FactorOrder factor_order;
-    const bool scp_over_atomic_fts;
-    const bool scp_over_final_fts;
-    const int main_loop_aimed_num_scp_heuristics;
-    const int main_loop_iteration_offset_for_computing_scp_heuristics;
 
     long starting_peak_memory;
 
@@ -70,18 +52,14 @@ class MergeAndShrinkAlgorithm {
     void warn_on_unusual_options() const;
     bool ran_out_of_time(const utils::CountdownTimer &timer) const;
     void statistics(int maximum_intermediate_size) const;
-    SCPMSHeuristic extract_scp_heuristic(
-        FactoredTransitionSystem &fts, int index) const;
-    bool main_loop(
+    void main_loop(
         FactoredTransitionSystem &fts,
         const TaskProxy &task_proxy,
-        std::vector<SCPMSHeuristic> *scp_ms_heuristics = nullptr);
-    SCPMSHeuristic compute_scp_ms_heuristic_over_fts(
-        const FactoredTransitionSystem &fts) const;
+        SCPSnapshotCollector *scp_snapshot_collector);
 public:
     explicit MergeAndShrinkAlgorithm(const options::Options &opts);
-    std::vector<SCPMSHeuristic> compute_scp_ms_heuristics(const TaskProxy &task_proxy);
-    FactoredTransitionSystem build_factored_transition_system(const TaskProxy &task_proxy);
+    FactoredTransitionSystem build_factored_transition_system(
+        const TaskProxy &task_proxy, SCPSnapshotCollector *scp_snapshot_collector = nullptr);
 };
 
 extern void add_merge_and_shrink_algorithm_options_to_parser(options::OptionParser &parser);
