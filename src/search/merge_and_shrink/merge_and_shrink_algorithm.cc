@@ -184,7 +184,9 @@ void MergeAndShrinkAlgorithm::main_loop(
         };
     int iteration_counter = 0;
     int num_scp_heuristics = 0;
-    scp_snapshot_collector->start_main_loop(main_loop_max_time, fts.get_num_active_entries() - 1);
+    if (scp_snapshot_collector) {
+        scp_snapshot_collector->start_main_loop(main_loop_max_time, fts.get_num_active_entries() - 1);
+    }
     while (fts.get_num_active_entries() > 1) {
         ++iteration_counter;
         // Choose next transition systems to merge
@@ -396,7 +398,7 @@ FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_syst
         cout << endl;
     }
 
-    if (scp_snapshot_collector->scp_over_atomic_fts && !unsolvable) {
+    if (scp_snapshot_collector && scp_snapshot_collector->scp_over_atomic_fts && !unsolvable) {
         scp_snapshot_collector->add_snapshot(fts);
         if (verbosity >= utils::Verbosity::NORMAL) {
             log_progress(timer, "after computing SCP M&S heuristics over the atomic FTS");
