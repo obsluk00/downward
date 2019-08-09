@@ -63,8 +63,9 @@ MaxSCPMSHeuristic::MaxSCPMSHeuristic(const options::Options &opts)
 
     int num_scp_ms_heuristics = scp_ms_heuristics.size();
     if (!num_scp_ms_heuristics) {
-        cerr << "Got 0 SCP merge-and-shrink heuristics" << endl;
-        utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+        scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
+//        cerr << "Got 0 SCP merge-and-shrink heuristics" << endl;
+//        utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
     int sum_of_factors = 0;
     for (const SCPMSHeuristic &scp_ms_heuristic : scp_ms_heuristics) {
