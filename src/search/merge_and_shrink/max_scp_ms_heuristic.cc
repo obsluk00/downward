@@ -28,26 +28,48 @@ using namespace std;
 using utils::ExitCode;
 
 namespace merge_and_shrink {
-SCPSnapshotCollector::SCPSnapshotCollector(
-    bool scp_over_atomic_fts,
-    bool scp_over_final_fts,
-    int main_loop_aimed_num_scp_heuristics,
-    int main_loop_iteration_offset_for_computing_scp_heuristics,
-    function<void (const FactoredTransitionSystem &fts)> add_snapshot,
-    utils::Verbosity verbosity)
-    : scp_over_atomic_fts(scp_over_atomic_fts),
-      scp_over_final_fts(scp_over_final_fts),
-      main_loop_aimed_num_scp_heuristics(main_loop_aimed_num_scp_heuristics),
-      main_loop_iteration_offset_for_computing_scp_heuristics(
-          main_loop_iteration_offset_for_computing_scp_heuristics),
-      add_snapshot(add_snapshot),
-      verbosity(verbosity) {
-    assert(main_loop_aimed_num_scp_heuristics || main_loop_iteration_offset_for_computing_scp_heuristics);
-    assert(!main_loop_aimed_num_scp_heuristics || !main_loop_iteration_offset_for_computing_scp_heuristics);
+void FTSSnapshotCollector::report_atomic_snapshot(const FactoredTransitionSystem &fts) {
+    if (compute_atomic_snapshot) {
+        handle_snapshot(fts);
+    }
 }
 
-void SCPSnapshotCollector::set_next_time_to_compute_heuristic(int num_computed_scp_heuristics, double current_time) {
-    int num_remaining_scp_heuristics = main_loop_aimed_num_scp_heuristics - num_computed_scp_heuristics;
+void FTSSnapshotCollector::report_main_loop_snapshot(
+    const FactoredTransitionSystem &fts,
+    double current_time,
+    int current_iteration) {
+    if (compute_next_snapshot(current_time, current_iteration)) {
+        handle_snapshot(fts);
+        ++num_main_loop_snapshots;
+    }
+}
+
+void FTSSnapshotCollector::report_final_snapshot(const FactoredTransitionSystem &fts) {
+    if (compute_final_snapshot) {
+        handle_snapshot(fts);
+    }
+}
+
+FTSSnapshotCollector::FTSSnapshotCollector(
+    bool compute_atomic_snapshot,
+    bool compute_final_snapshot,
+    int main_loop_target_num_snapshots,
+    int main_loop_snapshot_each_iteration,
+    function<void (const FactoredTransitionSystem &fts)> handle_snapshot,
+    utils::Verbosity verbosity)
+    : compute_atomic_snapshot(compute_atomic_snapshot),
+      compute_final_snapshot(compute_final_snapshot),
+      main_loop_target_num_snapshots(main_loop_target_num_snapshots),
+      main_loop_snapshot_each_iteration(main_loop_snapshot_each_iteration),
+      handle_snapshot(handle_snapshot),
+      verbosity(verbosity),
+      num_main_loop_snapshots(0) {
+    assert(main_loop_target_num_snapshots || main_loop_snapshot_each_iteration);
+    assert(!main_loop_target_num_snapshots || !main_loop_snapshot_each_iteration);
+}
+
+void FTSSnapshotCollector::compute_next_snapshot_time(double current_time) {
+    int num_remaining_scp_heuristics = main_loop_target_num_snapshots - num_main_loop_snapshots;
     // safeguard against having aimed_num_scp_heuristics = 0
     if (num_remaining_scp_heuristics <= 0) {
         next_time_to_compute_heuristic = max_time + 1.0;
@@ -62,9 +84,9 @@ void SCPSnapshotCollector::set_next_time_to_compute_heuristic(int num_computed_s
     next_time_to_compute_heuristic = current_time + time_offset;
 }
 
-void SCPSnapshotCollector::set_next_iteration_to_compute_heuristic(int num_computed_scp_heuristics, int current_iteration) {
-    if (main_loop_aimed_num_scp_heuristics) {
-        int num_remaining_scp_heuristics = main_loop_aimed_num_scp_heuristics - num_computed_scp_heuristics;
+void FTSSnapshotCollector::compute_next_snapshot_iteration(int current_iteration) {
+    if (main_loop_target_num_snapshots) {
+        int num_remaining_scp_heuristics = main_loop_target_num_snapshots - num_main_loop_snapshots;
         // safeguard against having aimed_num_scp_heuristics = 0
         if (num_remaining_scp_heuristics <= 0) {
             next_iteration_to_compute_heuristic = max_iterations + 1;
@@ -79,30 +101,30 @@ void SCPSnapshotCollector::set_next_iteration_to_compute_heuristic(int num_compu
         assert(iteration_offset >= 1.0);
         next_iteration_to_compute_heuristic = current_iteration + static_cast<int>(iteration_offset);
     } else {
-        next_iteration_to_compute_heuristic = current_iteration + main_loop_iteration_offset_for_computing_scp_heuristics;
+        next_iteration_to_compute_heuristic = current_iteration + main_loop_snapshot_each_iteration;
     }
 }
 
-void SCPSnapshotCollector::start_main_loop(double max_time, int max_iterations) {
+void FTSSnapshotCollector::start_main_loop(double max_time, int max_iterations) {
     this->max_time = max_time;
     this->max_iterations = max_iterations;
-    set_next_time_to_compute_heuristic(0, 0);
-    set_next_iteration_to_compute_heuristic(0, 0);
+    compute_next_snapshot_time(0);
+    compute_next_snapshot_iteration(0);
     if (verbosity == utils::Verbosity::DEBUG) {
-        cout << "SCP: next time: " << next_time_to_compute_heuristic
+        cout << "Snapshot collector: next time: " << next_time_to_compute_heuristic
              << ", next iteration: " << next_iteration_to_compute_heuristic
              << endl;
     }
 }
 
-bool SCPSnapshotCollector::compute_next_heuristic(double current_time, int current_iteration, int num_computed_scp_heuristics) {
-    if (!main_loop_aimed_num_scp_heuristics && !main_loop_iteration_offset_for_computing_scp_heuristics) {
+bool FTSSnapshotCollector::compute_next_snapshot(double current_time, int current_iteration) {
+    if (!main_loop_target_num_snapshots && !main_loop_snapshot_each_iteration) {
         return false;
     }
     if (verbosity == utils::Verbosity::DEBUG) {
-        cout << "SCP: compute next heuristic? current time: " << current_time
+        cout << "Snapshot collector: compute next snapshot? current time: " << current_time
              << ", current iteration: " << current_iteration
-             << ", num existing heuristics: " << num_computed_scp_heuristics
+             << ", num existing heuristics: " << num_main_loop_snapshots
              << endl;
     }
     bool compute = false;
@@ -111,11 +133,8 @@ bool SCPSnapshotCollector::compute_next_heuristic(double current_time, int curre
         compute = true;
     }
     if (compute) {
-        // We return true, hence we will compute another SCP heuristic
-        // when this function returns.
-        ++num_computed_scp_heuristics;
-        set_next_time_to_compute_heuristic(num_computed_scp_heuristics, current_time);
-        set_next_iteration_to_compute_heuristic(num_computed_scp_heuristics, current_iteration);
+        compute_next_snapshot_time(current_time);
+        compute_next_snapshot_iteration(current_iteration);
         if (verbosity == utils::Verbosity::DEBUG) {
             cout << "SCP: yes" << endl;
             cout << "SCP: next time: " << next_time_to_compute_heuristic
@@ -133,11 +152,11 @@ MaxSCPMSHeuristic::MaxSCPMSHeuristic(const options::Options &opts)
     verbosity(static_cast<utils::Verbosity>(opts.get_enum("verbosity"))) {
     cout << "Initializing maximum SCP merge-and-shrink heuristic..." << endl;
     MergeAndShrinkAlgorithm algorithm(opts);
-    SCPSnapshotCollector scp_snapshot_collector(
-        opts.get<bool>("scp_over_atomic_fts"),
-        opts.get<bool>("scp_over_final_fts"),
-        opts.get<int>("main_loop_aimed_num_scp_heuristics"),
-        opts.get<int>("main_loop_iteration_offset_for_computing_scp_heuristics"),
+    FTSSnapshotCollector scp_snapshot_collector(
+        opts.get<bool>("compute_atomic_snapshot"),
+        opts.get<bool>("compute_final_snapshot"),
+        opts.get<int>("main_loop_target_num_snapshots"),
+        opts.get<int>("main_loop_snapshot_each_iteration"),
         [this](const FactoredTransitionSystem &fts) {
             scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
         },
@@ -146,7 +165,7 @@ MaxSCPMSHeuristic::MaxSCPMSHeuristic(const options::Options &opts)
         task_proxy, &scp_snapshot_collector);
     bool unsolvable = false;
     for (int index : fts) {
-        if (fts.is_factor_solvable(index)) {
+        if (!fts.is_factor_solvable(index)) {
             scp_ms_heuristics.clear();
             scp_ms_heuristics.reserve(1);
             scp_ms_heuristics.push_back(extract_scp_heuristic(fts, index));
@@ -154,8 +173,9 @@ MaxSCPMSHeuristic::MaxSCPMSHeuristic(const options::Options &opts)
             break;
         }
     }
-    if ((scp_snapshot_collector.scp_over_final_fts && !unsolvable) || scp_ms_heuristics.empty()) {
-        scp_ms_heuristics.push_back(compute_scp_ms_heuristic_over_fts(fts));
+
+    if (!unsolvable) {
+        scp_snapshot_collector.report_final_snapshot(fts);
     }
 
     int num_scp_ms_heuristics = scp_ms_heuristics.size();
@@ -358,22 +378,22 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
         factor_order_docs);
 
     parser.add_option<bool>(
-        "scp_over_atomic_fts",
+        "compute_atomic_snapshot",
         "Include an SCP heuristic computed over the atomic FTS.",
         "false");
     parser.add_option<bool>(
-        "scp_over_final_fts",
+        "compute_final_snapshot",
         "Include an SCP heuristic computed over the final FTS (attention: "
-        "depending on main_loop_aimed_num_scp_heuristics, this might already have "
+        "depending on main_loop_target_num_snapshots, this might already have "
         "been computed).",
         "false");
     parser.add_option<int>(
-        "main_loop_aimed_num_scp_heuristics",
+        "main_loop_target_num_snapshots",
         "The aimed number of SCP heuristics to be computed over the main loop.",
         "0",
         Bounds("0", "infinity"));
     parser.add_option<int>(
-        "main_loop_iteration_offset_for_computing_scp_heuristics",
+        "main_loop_snapshot_each_iteration",
         "A number of iterations after which an SCP heuristic is computed over "
         "the current FTS.",
         "0",
@@ -388,18 +408,18 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
 
     handle_shrink_limit_options_defaults(opts);
 
-    bool scp_over_atomic_fts = opts.get<bool>("scp_over_atomic_fts");
-    bool scp_over_final_fts = opts.get<bool>("scp_over_final_fts");
-    int main_loop_aimed_num_scp_heuristics = opts.get<int>("main_loop_aimed_num_scp_heuristics");
-    int main_loop_iteration_offset_for_computing_scp_heuristics =
-        opts.get<int>("main_loop_iteration_offset_for_computing_scp_heuristics");
-    if (!scp_over_atomic_fts &&
-        !scp_over_final_fts &&
-        !main_loop_aimed_num_scp_heuristics &&
-        !main_loop_iteration_offset_for_computing_scp_heuristics) {
+    bool compute_atomic_snapshot = opts.get<bool>("compute_atomic_snapshot");
+    bool compute_final_snapshot = opts.get<bool>("compute_final_snapshot");
+    int main_loop_target_num_snapshots = opts.get<int>("main_loop_target_num_snapshots");
+    int main_loop_snapshot_each_iteration =
+        opts.get<int>("main_loop_snapshot_each_iteration");
+    if (!compute_atomic_snapshot &&
+        !compute_final_snapshot &&
+        !main_loop_target_num_snapshots &&
+        !main_loop_snapshot_each_iteration) {
         cerr << "At least one option for computing SCP merge-and-shrink "
                 "heuristics must be enabled! " << endl;
-        if (main_loop_aimed_num_scp_heuristics && main_loop_iteration_offset_for_computing_scp_heuristics) {
+        if (main_loop_target_num_snapshots && main_loop_snapshot_each_iteration) {
             cerr << "Can't set both the number of heuristics and the iteration "
                     "offset in which heuristics are computed."
                  << endl;

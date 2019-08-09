@@ -20,7 +20,7 @@ class FactoredTransitionSystem;
 class LabelReduction;
 class MergeStrategyFactory;
 class ShrinkStrategy;
-struct SCPSnapshotCollector;
+class FTSSnapshotCollector;
 
 class MergeAndShrinkAlgorithm {
     // TODO: when the option parser supports it, the following should become
@@ -55,11 +55,11 @@ class MergeAndShrinkAlgorithm {
     void main_loop(
         FactoredTransitionSystem &fts,
         const TaskProxy &task_proxy,
-        SCPSnapshotCollector *scp_snapshot_collector);
+        FTSSnapshotCollector *fts_snapshot_collector);
 public:
     explicit MergeAndShrinkAlgorithm(const options::Options &opts);
     FactoredTransitionSystem build_factored_transition_system(
-        const TaskProxy &task_proxy, SCPSnapshotCollector *scp_snapshot_collector = nullptr);
+        const TaskProxy &task_proxy, FTSSnapshotCollector *fts_snapshot_collector = nullptr);
 };
 
 extern void add_merge_and_shrink_algorithm_options_to_parser(options::OptionParser &parser);

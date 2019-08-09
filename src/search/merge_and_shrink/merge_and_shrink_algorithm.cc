@@ -151,7 +151,7 @@ bool MergeAndShrinkAlgorithm::ran_out_of_time(
 void MergeAndShrinkAlgorithm::main_loop(
     FactoredTransitionSystem &fts,
     const TaskProxy &task_proxy,
-    SCPSnapshotCollector *scp_snapshot_collector) {
+    FTSSnapshotCollector *fts_snapshot_collector) {
     utils::CountdownTimer timer(main_loop_max_time);
     if (verbosity >= utils::Verbosity::NORMAL) {
         cout << "Starting main loop ";
@@ -183,9 +183,8 @@ void MergeAndShrinkAlgorithm::main_loop(
                  << " (" << msg << ")" << endl;
         };
     int iteration_counter = 0;
-    int num_scp_heuristics = 0;
-    if (scp_snapshot_collector) {
-        scp_snapshot_collector->start_main_loop(main_loop_max_time, fts.get_num_active_entries() - 1);
+    if (fts_snapshot_collector) {
+        fts_snapshot_collector->start_main_loop(main_loop_max_time, fts.get_num_active_entries() - 1);
     }
     while (fts.get_num_active_entries() > 1) {
         ++iteration_counter;
@@ -303,13 +302,9 @@ void MergeAndShrinkAlgorithm::main_loop(
             break;
         }
 
-        if (scp_snapshot_collector &&
-            scp_snapshot_collector->compute_next_heuristic(
-                timer.get_elapsed_time(), iteration_counter, num_scp_heuristics)) {
-            scp_snapshot_collector->add_snapshot(fts);
-            ++num_scp_heuristics;
-            log_main_loop_progress("after computing SCP M&S heuristics");
-
+        if (fts_snapshot_collector) {
+            fts_snapshot_collector->report_main_loop_snapshot(fts, timer.get_elapsed_time(), iteration_counter);
+            log_main_loop_progress("after handling main loop snapshot");
             if (ran_out_of_time(timer)) {
                 break;
             }
@@ -333,7 +328,7 @@ void MergeAndShrinkAlgorithm::main_loop(
 }
 
 FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_system(
-    const TaskProxy &task_proxy, SCPSnapshotCollector *scp_snapshot_collector) {
+    const TaskProxy &task_proxy, FTSSnapshotCollector *fts_snapshot_collector) {
     if (starting_peak_memory) {
         cerr << "Calling build_factored_transition_system twice is not "
              << "supported!" << endl;
@@ -398,15 +393,15 @@ FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_syst
         cout << endl;
     }
 
-    if (scp_snapshot_collector && scp_snapshot_collector->scp_over_atomic_fts && !unsolvable) {
-        scp_snapshot_collector->add_snapshot(fts);
+    if (!unsolvable && fts_snapshot_collector) {
+        fts_snapshot_collector->report_atomic_snapshot(fts);
         if (verbosity >= utils::Verbosity::NORMAL) {
-            log_progress(timer, "after computing SCP M&S heuristics over the atomic FTS");
+            log_progress(timer, "after handling atomic snapshot");
         }
     }
 
     if (!unsolvable && main_loop_max_time > 0) {
-        main_loop(fts, task_proxy, scp_snapshot_collector);
+        main_loop(fts, task_proxy, fts_snapshot_collector);
     }
     const bool final = true;
     report_peak_memory_delta(final);
