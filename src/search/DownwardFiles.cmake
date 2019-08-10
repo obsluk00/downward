@@ -626,6 +626,7 @@ fast_downward_plugin(
     NAME MAS_HEURISTIC
     HELP "The Merge-and-Shrink heuristic"
     SOURCES
+        merge_and_shrink/cost_partitioning
         merge_and_shrink/distances
         merge_and_shrink/factored_transition_system
         merge_and_shrink/fts_factory
@@ -657,6 +658,7 @@ fast_downward_plugin(
         merge_and_shrink/merge_tree
         merge_and_shrink/merge_tree_factory
         merge_and_shrink/merge_tree_factory_linear
+        merge_and_shrink/saturated_cost_partitioning
         merge_and_shrink/shrink_bisimulation
         merge_and_shrink/shrink_bucket_based
         merge_and_shrink/shrink_fh

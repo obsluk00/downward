@@ -138,8 +138,8 @@ bool FTSSnapshotCollector::compute_next_snapshot(double current_time, int curren
         compute_next_snapshot_time(current_time);
         compute_next_snapshot_iteration(current_iteration);
         if (verbosity == utils::Verbosity::DEBUG) {
-            cout << "SCP: yes" << endl;
-            cout << "SCP: next time: " << next_time_to_compute_heuristic
+            cout << "Compute snapshot now" << endl;
+            cout << "Next snapshot: next time: " << next_time_to_compute_heuristic
                  << ", next iteration: " << next_iteration_to_compute_heuristic
                  << endl;
         }
