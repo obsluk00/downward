@@ -3,11 +3,8 @@
 
 #include "cost_partitioning.h"
 
-#include "../option_parser.h"
-
 namespace utils {
 class RandomNumberGenerator;
-enum class Verbosity;
 }
 
 namespace merge_and_shrink {
@@ -33,20 +30,21 @@ public:
 };
 
 class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
-    const options::Options options;
     std::shared_ptr<utils::RandomNumberGenerator> rng;
     const FactorOrder factor_order;
-    const utils::Verbosity verbosity;
 
-    std::unique_ptr<CostPartitioning> compute_scp_over_fts(
-        const FactoredTransitionSystem &fts) const;
     SCPMSHeuristic extract_scp_heuristic(
         FactoredTransitionSystem &fts, int index) const;
+protected:
+    virtual std::unique_ptr<CostPartitioning> handle_snapshot(
+        const FactoredTransitionSystem &fts) override;
+    virtual std::unique_ptr<CostPartitioning> handle_unsolvable_snapshot(
+        FactoredTransitionSystem &fts, int index) override;
 public:
     explicit SaturatedCostPartitioningFactory(const options::Options &opts);
     virtual ~SaturatedCostPartitioningFactory() override;
     virtual std::vector<std::unique_ptr<CostPartitioning>> generate(
-        const TaskProxy &task_proxy) const override;
+        const TaskProxy &task_proxy) override;
 };
 }
 

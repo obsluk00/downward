@@ -1,5 +1,6 @@
 #include "merge_and_shrink_algorithm.h"
 
+#include "cost_partitioning.h"
 #include "distances.h"
 #include "factored_transition_system.h"
 #include "fts_factory.h"
@@ -40,123 +41,6 @@ using utils::ExitCode;
 namespace merge_and_shrink {
 static void log_progress(const utils::Timer &timer, string msg) {
     cout << "M&S algorithm timer: " << timer << " (" << msg << ")" << endl;
-}
-
-FTSSnapshotCollector::FTSSnapshotCollector(
-    bool compute_atomic_snapshot,
-    bool compute_final_snapshot,
-    int main_loop_target_num_snapshots,
-    int main_loop_snapshot_each_iteration,
-    function<void (const FactoredTransitionSystem &fts)> handle_snapshot,
-    utils::Verbosity verbosity)
-    : compute_atomic_snapshot(compute_atomic_snapshot),
-      compute_final_snapshot(compute_final_snapshot),
-      main_loop_target_num_snapshots(main_loop_target_num_snapshots),
-      main_loop_snapshot_each_iteration(main_loop_snapshot_each_iteration),
-      handle_snapshot(handle_snapshot),
-      verbosity(verbosity),
-      num_main_loop_snapshots(0) {
-    assert(main_loop_target_num_snapshots || main_loop_snapshot_each_iteration);
-    assert(!main_loop_target_num_snapshots || !main_loop_snapshot_each_iteration);
-}
-
-void FTSSnapshotCollector::report_atomic_snapshot(const FactoredTransitionSystem &fts) {
-    if (compute_atomic_snapshot) {
-        handle_snapshot(fts);
-    }
-}
-
-void FTSSnapshotCollector::report_main_loop_snapshot(
-    const FactoredTransitionSystem &fts,
-    double current_time,
-    int current_iteration) {
-    if (compute_next_snapshot(current_time, current_iteration)) {
-        handle_snapshot(fts);
-        ++num_main_loop_snapshots;
-    }
-}
-
-void FTSSnapshotCollector::report_final_snapshot(const FactoredTransitionSystem &fts) {
-    if (compute_final_snapshot) {
-        handle_snapshot(fts);
-    }
-}
-
-void FTSSnapshotCollector::compute_next_snapshot_time(double current_time) {
-    int num_remaining_scp_heuristics = main_loop_target_num_snapshots - num_main_loop_snapshots;
-    // safeguard against having aimed_num_scp_heuristics = 0
-    if (num_remaining_scp_heuristics <= 0) {
-        next_time_to_compute_heuristic = max_time + 1.0;
-        return;
-    }
-    double remaining_time = max_time - current_time;
-    if (remaining_time <= 0.0) {
-        next_time_to_compute_heuristic = current_time;
-        return;
-    }
-    double time_offset = remaining_time / static_cast<double>(num_remaining_scp_heuristics);
-    next_time_to_compute_heuristic = current_time + time_offset;
-}
-
-void FTSSnapshotCollector::compute_next_snapshot_iteration(int current_iteration) {
-    if (main_loop_target_num_snapshots) {
-        int num_remaining_scp_heuristics = main_loop_target_num_snapshots - num_main_loop_snapshots;
-        // safeguard against having aimed_num_scp_heuristics = 0
-        if (num_remaining_scp_heuristics <= 0) {
-            next_iteration_to_compute_heuristic = max_iterations + 1;
-            return;
-        }
-        int num_remaining_iterations = max_iterations - current_iteration;
-        if (!num_remaining_iterations || num_remaining_scp_heuristics >= num_remaining_iterations) {
-            next_iteration_to_compute_heuristic = current_iteration + 1;
-            return;
-        }
-        double iteration_offset = num_remaining_iterations / static_cast<double>(num_remaining_scp_heuristics);
-        assert(iteration_offset >= 1.0);
-        next_iteration_to_compute_heuristic = current_iteration + static_cast<int>(iteration_offset);
-    } else {
-        next_iteration_to_compute_heuristic = current_iteration + main_loop_snapshot_each_iteration;
-    }
-}
-
-bool FTSSnapshotCollector::compute_next_snapshot(double current_time, int current_iteration) {
-    if (!main_loop_target_num_snapshots && !main_loop_snapshot_each_iteration) {
-        return false;
-    }
-    if (verbosity == utils::Verbosity::DEBUG) {
-        cout << "Snapshot collector: compute next snapshot? current time: " << current_time
-             << ", current iteration: " << current_iteration
-             << ", num existing heuristics: " << num_main_loop_snapshots
-             << endl;
-    }
-    bool compute = false;
-    if (current_time >= next_time_to_compute_heuristic ||
-        current_iteration >= next_iteration_to_compute_heuristic) {
-        compute = true;
-    }
-    if (compute) {
-        compute_next_snapshot_time(current_time);
-        compute_next_snapshot_iteration(current_iteration);
-        if (verbosity == utils::Verbosity::DEBUG) {
-            cout << "Compute snapshot now" << endl;
-            cout << "Next snapshot: next time: " << next_time_to_compute_heuristic
-                 << ", next iteration: " << next_iteration_to_compute_heuristic
-                 << endl;
-        }
-    }
-    return compute;
-}
-
-void FTSSnapshotCollector::start_main_loop(double max_time, int max_iterations) {
-    this->max_time = max_time;
-    this->max_iterations = max_iterations;
-    compute_next_snapshot_time(0);
-    compute_next_snapshot_iteration(0);
-    if (verbosity == utils::Verbosity::DEBUG) {
-        cout << "Snapshot collector: next time: " << next_time_to_compute_heuristic
-             << ", next iteration: " << next_iteration_to_compute_heuristic
-             << endl;
-    }
 }
 
 MergeAndShrinkAlgorithm::MergeAndShrinkAlgorithm(const Options &opts) :
@@ -267,7 +151,7 @@ bool MergeAndShrinkAlgorithm::ran_out_of_time(
 void MergeAndShrinkAlgorithm::main_loop(
     FactoredTransitionSystem &fts,
     const TaskProxy &task_proxy,
-    FTSSnapshotCollector *fts_snapshot_collector) {
+    CostPartitioningFactory *cost_partitioning_factory) {
     utils::CountdownTimer timer(main_loop_max_time);
     if (verbosity >= utils::Verbosity::NORMAL) {
         cout << "Starting main loop ";
@@ -299,8 +183,8 @@ void MergeAndShrinkAlgorithm::main_loop(
                  << " (" << msg << ")" << endl;
         };
     int iteration_counter = 0;
-    if (fts_snapshot_collector) {
-        fts_snapshot_collector->start_main_loop(main_loop_max_time, fts.get_num_active_entries() - 1);
+    if (cost_partitioning_factory) {
+        cost_partitioning_factory->start_main_loop(main_loop_max_time, fts.get_num_active_entries() - 1);
     }
     while (fts.get_num_active_entries() > 1) {
         ++iteration_counter;
@@ -418,8 +302,8 @@ void MergeAndShrinkAlgorithm::main_loop(
             break;
         }
 
-        if (fts_snapshot_collector) {
-            fts_snapshot_collector->report_main_loop_snapshot(fts, timer.get_elapsed_time(), iteration_counter);
+        if (cost_partitioning_factory) {
+            cost_partitioning_factory->report_main_loop_snapshot(fts, timer.get_elapsed_time(), iteration_counter);
             log_main_loop_progress("after handling main loop snapshot");
             if (ran_out_of_time(timer)) {
                 break;
@@ -444,7 +328,7 @@ void MergeAndShrinkAlgorithm::main_loop(
 }
 
 FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_system(
-    const TaskProxy &task_proxy, FTSSnapshotCollector *fts_snapshot_collector) {
+    const TaskProxy &task_proxy, CostPartitioningFactory *cost_partitioning_factory) {
     if (starting_peak_memory) {
         cerr << "Calling build_factored_transition_system twice is not "
              << "supported!" << endl;
@@ -509,15 +393,15 @@ FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_syst
         cout << endl;
     }
 
-    if (!unsolvable && fts_snapshot_collector) {
-        fts_snapshot_collector->report_atomic_snapshot(fts);
+    if (!unsolvable && cost_partitioning_factory) {
+        cost_partitioning_factory->report_atomic_snapshot(fts);
         if (verbosity >= utils::Verbosity::NORMAL) {
             log_progress(timer, "after handling atomic snapshot");
         }
     }
 
     if (!unsolvable && main_loop_max_time > 0) {
-        main_loop(fts, task_proxy, fts_snapshot_collector);
+        main_loop(fts, task_proxy, cost_partitioning_factory);
     }
     const bool final = true;
     report_peak_memory_delta(final);

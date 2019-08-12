@@ -9,6 +9,7 @@
 #include "transition_system.h"
 #include "types.h"
 
+#include "../option_parser.h"
 #include "../plugin.h"
 
 #include "../utils/logging.h"
@@ -52,61 +53,27 @@ int SaturatedCostPartitioning::compute_value(const State &state) {
 
 SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
     const options::Options &opts)
-    : CostPartitioningFactory(),
-      options(opts),
+    : CostPartitioningFactory(opts),
       rng(utils::parse_rng_from_options(opts)),
-      factor_order(static_cast<FactorOrder>(opts.get_enum("factor_order"))),
-      verbosity(static_cast<utils::Verbosity>(opts.get_enum("verbosity"))) {
+      factor_order(static_cast<FactorOrder>(opts.get_enum("factor_order"))) {
 }
 
 SaturatedCostPartitioningFactory::~SaturatedCostPartitioningFactory() {
 }
 
-vector<unique_ptr<CostPartitioning>> SaturatedCostPartitioningFactory::generate(const TaskProxy &task_proxy) const {
-    MergeAndShrinkAlgorithm algorithm(options);
-    vector<unique_ptr<CostPartitioning>> result;
-    FTSSnapshotCollector fts_snapshot_collector(
-        options.get<bool>("compute_atomic_snapshot"),
-        options.get<bool>("compute_final_snapshot"),
-        options.get<int>("main_loop_target_num_snapshots"),
-        options.get<int>("main_loop_snapshot_each_iteration"),
-        [this,result](const FactoredTransitionSystem &fts) {
-            result.push_back(compute_scp_over_fts(fts));
-        },
-        verbosity);
-    FactoredTransitionSystem fts = algorithm.build_factored_transition_system(
-        task_proxy, &fts_snapshot_collector);
-    bool unsolvable = false;
-    for (int index : fts) {
-        if (!fts.is_factor_solvable(index)) {
-            result.clear();
-            result.reserve(1);
-            result.push_back(utils::make_unique_ptr<SaturatedCostPartitioning>(extract_scp_heuristic(fts, index)));
-            unsolvable= true;
-            break;
-        }
-    }
-
-    if (!unsolvable) {
-        fts_snapshot_collector.report_final_snapshot(fts);
-    }
-
-    /*int sum_of_factors = 0;
-    for (const SCPMSHeuristic &scp_ms_heuristic : scp_ms_heuristics) {
-        sum_of_factors += scp_ms_heuristic.mas_representations.size();
-    }
-    double average_number_of_factors_per_scp_ms_heuristic =
-        sum_of_factors / static_cast<double>(num_cps);
-    cout << "Number of SCP merge-and-shrink heuristics: "
-         << num_cps << endl;
-    cout << "Average number of factors per SCP merge-and-shrink heuristic: "
-         << average_number_of_factors_per_scp_ms_heuristic << endl;*/
-
-    return result;
+SCPMSHeuristic SaturatedCostPartitioningFactory::extract_scp_heuristic(
+    FactoredTransitionSystem &fts, int index) const {
+    SCPMSHeuristic scp_ms_heuristic;
+    scp_ms_heuristic.goal_distances.reserve(1);
+    scp_ms_heuristic.mas_representations.reserve(1);
+    auto factor = fts.extract_factor(index);
+    scp_ms_heuristic.goal_distances.push_back(factor.second->get_goal_distances());
+    scp_ms_heuristic.mas_representations.push_back(move(factor.first));
+    return scp_ms_heuristic;
 }
 
-unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::compute_scp_over_fts(
-    const FactoredTransitionSystem &fts) const {
+unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::handle_snapshot(
+    const FactoredTransitionSystem &fts) {
     if (verbosity >= utils::Verbosity::DEBUG) {
         cout << "Computing SCP M&S heuristic over current FTS..." << endl;
     }
@@ -227,15 +194,9 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::compute_scp_over_
     return utils::make_unique_ptr<SaturatedCostPartitioning>(scp_ms_heuristic);
 }
 
-SCPMSHeuristic SaturatedCostPartitioningFactory::extract_scp_heuristic(
-    FactoredTransitionSystem &fts, int index) const {
-    SCPMSHeuristic scp_ms_heuristic;
-    scp_ms_heuristic.goal_distances.reserve(1);
-    scp_ms_heuristic.mas_representations.reserve(1);
-    auto factor = fts.extract_factor(index);
-    scp_ms_heuristic.goal_distances.push_back(factor.second->get_goal_distances());
-    scp_ms_heuristic.mas_representations.push_back(move(factor.first));
-    return scp_ms_heuristic;
+unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::handle_unsolvable_snapshot(
+    FactoredTransitionSystem &fts, int index) {
+    return utils::make_unique_ptr<SaturatedCostPartitioning>(extract_scp_heuristic(fts, index));
 }
 
 static shared_ptr<SaturatedCostPartitioningFactory>_parse(options::OptionParser &parser) {
@@ -257,54 +218,12 @@ static shared_ptr<SaturatedCostPartitioningFactory>_parse(options::OptionParser 
         "random",
         factor_order_docs);
 
-    parser.add_option<bool>(
-        "compute_atomic_snapshot",
-        "Include an SCP heuristic computed over the atomic FTS.",
-        "false");
-    parser.add_option<bool>(
-        "compute_final_snapshot",
-        "Include an SCP heuristic computed over the final FTS (attention: "
-        "depending on main_loop_target_num_snapshots, this might already have "
-        "been computed).",
-        "false");
-    parser.add_option<int>(
-        "main_loop_target_num_snapshots",
-        "The aimed number of SCP heuristics to be computed over the main loop.",
-        "0",
-        Bounds("0", "infinity"));
-    parser.add_option<int>(
-        "main_loop_snapshot_each_iteration",
-        "A number of iterations after which an SCP heuristic is computed over "
-        "the current FTS.",
-        "0",
-        Bounds("0", "infinity"));
-
-    add_merge_and_shrink_algorithm_options_to_parser(parser);
     options::Options opts = parser.parse();
     if (parser.help_mode()) {
         return nullptr;
     }
 
-    handle_shrink_limit_options_defaults(opts);
-
-    bool compute_atomic_snapshot = opts.get<bool>("compute_atomic_snapshot");
-    bool compute_final_snapshot = opts.get<bool>("compute_final_snapshot");
-    int main_loop_target_num_snapshots = opts.get<int>("main_loop_target_num_snapshots");
-    int main_loop_snapshot_each_iteration =
-        opts.get<int>("main_loop_snapshot_each_iteration");
-    if (!compute_atomic_snapshot &&
-        !compute_final_snapshot &&
-        !main_loop_target_num_snapshots &&
-        !main_loop_snapshot_each_iteration) {
-        cerr << "At least one option for computing SCP merge-and-shrink "
-                "heuristics must be enabled! " << endl;
-        if (main_loop_target_num_snapshots && main_loop_snapshot_each_iteration) {
-            cerr << "Can't set both the number of heuristics and the iteration "
-                    "offset in which heuristics are computed."
-                 << endl;
-        }
-        utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
-    }
+    handle_cost_partitioning_factory_options(opts);
 
     if (parser.dry_run())
         return nullptr;

@@ -17,47 +17,11 @@ enum class Verbosity;
 }
 
 namespace merge_and_shrink {
+class CostPartitioningFactory;
 class FactoredTransitionSystem;
 class LabelReduction;
 class MergeStrategyFactory;
 class ShrinkStrategy;
-
-class FTSSnapshotCollector {
-private:
-    const bool compute_atomic_snapshot;
-    const bool compute_final_snapshot;
-    const int main_loop_target_num_snapshots;
-    const int main_loop_snapshot_each_iteration;
-    std::function<void (const FactoredTransitionSystem &fts)> handle_snapshot;
-    utils::Verbosity verbosity;
-
-    int num_main_loop_snapshots;
-public:
-    FTSSnapshotCollector(
-        bool compute_atomic_snapshot,
-        bool compute_final_snapshot,
-        int main_loop_target_num_snapshots,
-        int main_loop_snapshot_each_iteration,
-        std::function<void (const FactoredTransitionSystem &fts)> handle_snapshot,
-        utils::Verbosity verbosity);
-    void report_atomic_snapshot(const FactoredTransitionSystem &fts);
-    void report_main_loop_snapshot(
-        const FactoredTransitionSystem &fts,
-        double current_time,
-        int current_iteration);
-    void report_final_snapshot(const FactoredTransitionSystem &fts);
-
-private:
-    double max_time;
-    int max_iterations;
-    double next_time_to_compute_heuristic;
-    int next_iteration_to_compute_heuristic;
-    void compute_next_snapshot_time(double current_time);
-    void compute_next_snapshot_iteration(int current_iteration);
-    bool compute_next_snapshot(double current_time, int current_iteration);
-public:
-    void start_main_loop(double max_time, int max_iterations);
-};
 
 class MergeAndShrinkAlgorithm {
     // TODO: when the option parser supports it, the following should become
@@ -92,11 +56,11 @@ class MergeAndShrinkAlgorithm {
     void main_loop(
         FactoredTransitionSystem &fts,
         const TaskProxy &task_proxy,
-        FTSSnapshotCollector *fts_snapshot_collector);
+        CostPartitioningFactory *cost_partitioning_factory);
 public:
     explicit MergeAndShrinkAlgorithm(const options::Options &opts);
     FactoredTransitionSystem build_factored_transition_system(
-        const TaskProxy &task_proxy, FTSSnapshotCollector *fts_snapshot_collector = nullptr);
+        const TaskProxy &task_proxy, CostPartitioningFactory *cost_partitioning_factory = nullptr);
 };
 
 extern void add_merge_and_shrink_algorithm_options_to_parser(options::OptionParser &parser);
