@@ -125,6 +125,7 @@ void CostPartitioningFactory::report_final_snapshot(const FactoredTransitionSyst
 
 vector<unique_ptr<CostPartitioning>> &&CostPartitioningFactory::generate(
     const TaskProxy &task_proxy) {
+    cout << "Generating cost partitionings using the merge-and-shrink algorithm..." << endl;
     MergeAndShrinkAlgorithm algorithm(options);
     vector<unique_ptr<CostPartitioning>> result;
     FactoredTransitionSystem fts = algorithm.build_factored_transition_system(
@@ -148,18 +149,9 @@ vector<unique_ptr<CostPartitioning>> &&CostPartitioningFactory::generate(
         handle_snapshot(fts);
     }
 
-    // TODO: have generic statistics here and call abstract method
-    /*int sum_of_factors = 0;
-    for (const SCPMSHeuristic &scp_ms_heuristic : scp_ms_heuristics) {
-        sum_of_factors += scp_ms_heuristic.mas_representations.size();
-    }
-    double average_number_of_factors_per_scp_ms_heuristic =
-        sum_of_factors / static_cast<double>(num_cps);
-    cout << "Number of SCP merge-and-shrink heuristics: "
-         << num_cps << endl;
-    cout << "Average number of factors per SCP merge-and-shrink heuristic: "
-         << average_number_of_factors_per_scp_ms_heuristic << endl;*/
-
+    int num_cps = result.size();
+    cout << "Number of cost partitionings: " << num_cps << endl;
+    cout << "Done generating cost partitionings." << endl << endl;
     return move(cost_partitionings);
 }
 

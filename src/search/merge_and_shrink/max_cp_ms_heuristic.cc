@@ -15,7 +15,6 @@ using utils::ExitCode;
 namespace merge_and_shrink {
 MaxCPMSHeuristic::MaxCPMSHeuristic(const options::Options &opts)
     : Heuristic(opts) {
-    cout << "Initializing maximum CP merge-and-shrink heuristic..." << endl;
     shared_ptr<CostPartitioningFactory> cp_factory = opts.get<shared_ptr<CostPartitioningFactory>>("cost_partitioning");
     cost_partitionings = cp_factory->generate(task_proxy);
     int num_cps= cost_partitionings.size();
@@ -23,7 +22,6 @@ MaxCPMSHeuristic::MaxCPMSHeuristic(const options::Options &opts)
         cerr << "Got 0 cost partitionings" << endl;
         utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
-    cout << "Done initializing maximum CP merge-and-shrink heuristic." << endl << endl;
 }
 
 int MaxCPMSHeuristic::compute_heuristic(const GlobalState &global_state) {
