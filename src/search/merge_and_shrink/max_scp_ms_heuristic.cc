@@ -13,7 +13,7 @@ using namespace std;
 using utils::ExitCode;
 
 namespace merge_and_shrink {
-MaxSCPMSHeuristic::MaxSCPMSHeuristic(const options::Options &opts)
+MaxCPMSHeuristic::MaxCPMSHeuristic(const options::Options &opts)
     : Heuristic(opts) {
     cout << "Initializing maximum CP merge-and-shrink heuristic..." << endl;
     shared_ptr<CostPartitioningFactory> cp_factory = opts.get<shared_ptr<CostPartitioningFactory>>("cost_partitioning");
@@ -26,7 +26,7 @@ MaxSCPMSHeuristic::MaxSCPMSHeuristic(const options::Options &opts)
     cout << "Done initializing maximum CP merge-and-shrink heuristic." << endl << endl;
 }
 
-int MaxSCPMSHeuristic::compute_heuristic(const GlobalState &global_state) {
+int MaxCPMSHeuristic::compute_heuristic(const GlobalState &global_state) {
     State state = convert_global_state(global_state);
     int max_h = MINUSINF;
     for (const auto &cp: cost_partitionings) {
@@ -54,9 +54,9 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
     if (parser.dry_run()) {
         return nullptr;
     } else {
-        return make_shared<MaxSCPMSHeuristic>(opts);
+        return make_shared<MaxCPMSHeuristic>(opts);
     }
 }
 
-static options::Plugin<Evaluator> _plugin("max_scp_ms", _parse);
+static options::Plugin<Evaluator> _plugin("max_cp_ms", _parse);
 }
