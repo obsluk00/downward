@@ -11,6 +11,9 @@
 using namespace std;
 
 namespace merge_and_shrink {
+CostPartitioning::~CostPartitioning(){
+}
+
 CostPartitioningFactory::CostPartitioningFactory(const options::Options &opts)
     : options(opts),
       compute_atomic_snapshot(opts.get<bool>("compute_atomic_snapshot")),

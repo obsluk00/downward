@@ -24,12 +24,10 @@
 using namespace std;
 
 namespace merge_and_shrink {
-SaturatedCostPartitioning::SaturatedCostPartitioning(SCPMSHeuristic scp_ms_heuristic)
+SaturatedCostPartitioning::SaturatedCostPartitioning(
+    SCPMSHeuristic &&scp_ms_heuristic)
     : CostPartitioning(),
-      scp_ms_heuristic(scp_ms_heuristic) {
-}
-
-SaturatedCostPartitioning::~SaturatedCostPartitioning() {
+      scp_ms_heuristic(move(scp_ms_heuristic)) {
 }
 
 int SaturatedCostPartitioning::compute_value(const State &state) {
@@ -56,9 +54,6 @@ SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
     : CostPartitioningFactory(opts),
       rng(utils::parse_rng_from_options(opts)),
       factor_order(static_cast<FactorOrder>(opts.get_enum("factor_order"))) {
-}
-
-SaturatedCostPartitioningFactory::~SaturatedCostPartitioningFactory() {
 }
 
 SCPMSHeuristic SaturatedCostPartitioningFactory::extract_scp_heuristic(
@@ -191,7 +186,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::handle_snapshot(
         cout << "Done computing SCP M&S heuristic over current FTS." << endl;
     }
 
-    return utils::make_unique_ptr<SaturatedCostPartitioning>(scp_ms_heuristic);
+    return utils::make_unique_ptr<SaturatedCostPartitioning>(move(scp_ms_heuristic));
 }
 
 unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::handle_unsolvable_snapshot(

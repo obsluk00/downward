@@ -54,7 +54,7 @@ protected:
         FactoredTransitionSystem &fts, int index) = 0;
 public:
     explicit CostPartitioningFactory(const options::Options &opts);
-    virtual ~CostPartitioningFactory() = 0;
+    virtual ~CostPartitioningFactory() = default;
     void start_main_loop(double max_time, int max_iterations);
     void report_atomic_snapshot(const FactoredTransitionSystem &fts);
     void report_main_loop_snapshot(
