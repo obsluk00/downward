@@ -127,7 +127,6 @@ vector<unique_ptr<CostPartitioning>> &&CostPartitioningFactory::generate(
     const TaskProxy &task_proxy) {
     cout << "Generating cost partitionings using the merge-and-shrink algorithm..." << endl;
     MergeAndShrinkAlgorithm algorithm(options);
-    vector<unique_ptr<CostPartitioning>> result;
     FactoredTransitionSystem fts = algorithm.build_factored_transition_system(
         task_proxy, this);
     bool unsolvable = false;
@@ -145,11 +144,12 @@ vector<unique_ptr<CostPartitioning>> &&CostPartitioningFactory::generate(
         report_final_snapshot(fts);
     }
 
-    if (result.empty()) {
+    if (cost_partitionings.empty()) {
+        assert(!unsolvable);
         handle_snapshot(fts);
     }
 
-    int num_cps = result.size();
+    int num_cps = cost_partitionings.size();
     cout << "Number of cost partitionings: " << num_cps << endl;
     cout << "Done generating cost partitionings." << endl << endl;
     return move(cost_partitionings);
