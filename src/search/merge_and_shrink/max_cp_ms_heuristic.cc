@@ -1,4 +1,4 @@
-#include "max_scp_ms_heuristic.h"
+#include "max_cp_ms_heuristic.h"
 
 #include "cost_partitioning.h"
 #include "types.h"
