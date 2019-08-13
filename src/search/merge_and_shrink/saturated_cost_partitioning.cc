@@ -195,8 +195,9 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::handle_unsolvable
 }
 
 static shared_ptr<SaturatedCostPartitioningFactory>_parse(options::OptionParser &parser) {
-    utils::add_rng_options(parser);
+    add_cost_partitioning_factory_options_to_parser(parser);
 
+    utils::add_rng_options(parser);
     vector<string> factor_order;
     vector<string> factor_order_docs;
     factor_order.push_back("given");

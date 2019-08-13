@@ -123,7 +123,7 @@ void CostPartitioningFactory::report_final_snapshot(const FactoredTransitionSyst
     }
 }
 
-vector<unique_ptr<CostPartitioning>> CostPartitioningFactory::generate(
+vector<unique_ptr<CostPartitioning>> &&CostPartitioningFactory::generate(
     const TaskProxy &task_proxy) {
     MergeAndShrinkAlgorithm algorithm(options);
     vector<unique_ptr<CostPartitioning>> result;
@@ -160,7 +160,7 @@ vector<unique_ptr<CostPartitioning>> CostPartitioningFactory::generate(
     cout << "Average number of factors per SCP merge-and-shrink heuristic: "
          << average_number_of_factors_per_scp_ms_heuristic << endl;*/
 
-    return result;
+    return move(cost_partitionings);
 }
 
 void add_cost_partitioning_factory_options_to_parser(OptionParser &parser) {
@@ -209,7 +209,6 @@ void handle_cost_partitioning_factory_options(Options &opts) {
         }
         utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
-
 }
 
 static options::PluginTypePlugin<CostPartitioningFactory> _type_plugin(

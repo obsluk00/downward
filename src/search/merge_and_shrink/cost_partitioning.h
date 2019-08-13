@@ -62,7 +62,7 @@ public:
         double current_time,
         int current_iteration);
     void report_final_snapshot(const FactoredTransitionSystem &fts);
-    virtual std::vector<std::unique_ptr<CostPartitioning>> generate(
+    std::vector<std::unique_ptr<CostPartitioning>> &&generate(
         const TaskProxy &task_proxy);
 };
 
