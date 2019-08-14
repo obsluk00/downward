@@ -182,6 +182,8 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::handle_snapshot(
         }
     }
 
+    assert(scp_ms_heuristic.goal_distances.size());
+
     if (verbosity >= utils::Verbosity::DEBUG) {
         cout << "Done computing SCP M&S heuristic over current FTS." << endl;
     }

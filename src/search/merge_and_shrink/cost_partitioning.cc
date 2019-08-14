@@ -146,7 +146,7 @@ vector<unique_ptr<CostPartitioning>> &&CostPartitioningFactory::generate(
 
     if (cost_partitionings.empty()) {
         assert(!unsolvable);
-        handle_snapshot(fts);
+        cost_partitionings.push_back(handle_snapshot(fts));
     }
 
     int num_cps = cost_partitionings.size();
