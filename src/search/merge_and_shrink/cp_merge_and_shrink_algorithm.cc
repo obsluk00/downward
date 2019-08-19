@@ -513,7 +513,6 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
         if (pruned) {
             log_progress(timer, "after pruning atomic factors");
         }
-        cout << endl;
     }
 
     if (!unsolvable && compute_atomic_snapshot) {
@@ -521,6 +520,10 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
         if (verbosity >= utils::Verbosity::NORMAL) {
             log_progress(timer, "after handling atomic snapshot");
         }
+    }
+
+    if (verbosity >= utils::Verbosity::NORMAL) {
+        cout << endl;
     }
 
     if (!unsolvable && main_loop_max_time > 0) {
