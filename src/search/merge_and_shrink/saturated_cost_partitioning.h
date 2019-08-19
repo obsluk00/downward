@@ -42,6 +42,7 @@ class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
 public:
     explicit SaturatedCostPartitioningFactory(const Options &opts);
     virtual ~SaturatedCostPartitioningFactory() = default;
+    // fts is non-const due to extracting unsolvable factors.
     virtual std::unique_ptr<CostPartitioning> generate(
         FactoredTransitionSystem &fts,
         utils::Verbosity verbosity,
