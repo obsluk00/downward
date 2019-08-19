@@ -291,12 +291,15 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
                  << " (" << msg << ")" << endl;
         };
     int iteration_counter = 0;
-    NextSnapshot next_snapshot(
+    unique_ptr<NextSnapshot> next_snapshot = nullptr;
+    if (main_loop_target_num_snapshots || main_loop_snapshot_each_iteration) {
+        next_snapshot = utils::make_unique_ptr<NextSnapshot>(
         main_loop_max_time,
         fts.get_num_active_entries() - 1,
         main_loop_target_num_snapshots,
         main_loop_snapshot_each_iteration,
         verbosity);
+    }
     bool unsolvable = false;
     while (fts.get_num_active_entries() > 1) {
         ++iteration_counter;
@@ -418,10 +421,12 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
             break;
         }
 
-        cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
-        log_main_loop_progress("after handling main loop snapshot");
-        if (ran_out_of_time(timer)) {
-            break;
+        if (next_snapshot && next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            log_main_loop_progress("after handling main loop snapshot");
+            if (ran_out_of_time(timer)) {
+                break;
+            }
         }
 
         // End-of-iteration output.
