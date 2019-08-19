@@ -49,6 +49,10 @@ int SaturatedCostPartitioning::compute_value(const State &state) {
     return h_val;
 }
 
+int SaturatedCostPartitioning::get_number_of_factors() const {
+    return scp_ms_heuristic.goal_distances.size();
+}
+
 SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
     const Options &opts)
     : CostPartitioningFactory(),

@@ -62,16 +62,16 @@ int OptimalCostPartitioning::compute_value(const State &state) {
         return INF;
     }
 
-    utils::Timer solve_time;
+//    utils::Timer solve_time;
     lp_solver->solve();
 
-    static bool first = true;
+    /*static bool first = true;
     if (first) {
         cout << "LP solve time: " << solve_time << endl;
         cout << "LP peak memory after solve: " << utils::get_peak_memory_in_kb() << endl;
 
         first = false;
-    }
+    }*/
 
     if (lp_solver->has_optimal_solution()) {
         double heuristic_value = lp_solver->get_objective_value();
@@ -80,6 +80,10 @@ int OptimalCostPartitioning::compute_value(const State &state) {
     } else {
         return INF;
     }
+}
+
+int OptimalCostPartitioning::get_number_of_factors() const {
+    return abstractions.size();
 }
 
 OptimalCostPartitioningFactory::OptimalCostPartitioningFactory(

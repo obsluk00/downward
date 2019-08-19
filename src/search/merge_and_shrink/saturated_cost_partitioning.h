@@ -31,6 +31,7 @@ public:
     explicit SaturatedCostPartitioning(SCPMSHeuristic &&scp_ms_heuristic);
     virtual ~SaturatedCostPartitioning() = default;
     virtual int compute_value(const State &state) override;
+    virtual int get_number_of_factors() const override;
 };
 
 class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
