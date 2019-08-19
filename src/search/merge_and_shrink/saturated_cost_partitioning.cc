@@ -50,8 +50,8 @@ int SaturatedCostPartitioning::compute_value(const State &state) {
 }
 
 SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
-    const options::Options &opts)
-    : CostPartitioningFactory(opts),
+    const Options &opts)
+    : CostPartitioningFactory(),
       rng(utils::parse_rng_from_options(opts)),
       factor_order(static_cast<FactorOrder>(opts.get_enum("factor_order"))) {
 }
@@ -67,10 +67,19 @@ SCPMSHeuristic SaturatedCostPartitioningFactory::extract_scp_heuristic(
     return scp_ms_heuristic;
 }
 
-unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::handle_snapshot(
-    const FactoredTransitionSystem &fts) {
+unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
+    FactoredTransitionSystem &fts,
+    utils::Verbosity verbosity,
+    int unsolvable_index) {
     if (verbosity >= utils::Verbosity::DEBUG) {
         cout << "Computing SCP M&S heuristic over current FTS..." << endl;
+    }
+
+    if (unsolvable_index != -1) {
+        if (verbosity >= utils::Verbosity::DEBUG) {
+            cout << "FTS is unsolvable, using single factor for CP." << endl;
+        }
+        return utils::make_unique_ptr<SaturatedCostPartitioning>(extract_scp_heuristic(fts, unsolvable_index));
     }
 
     // Compute original label costs.
@@ -191,14 +200,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::handle_snapshot(
     return utils::make_unique_ptr<SaturatedCostPartitioning>(move(scp_ms_heuristic));
 }
 
-unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::handle_unsolvable_snapshot(
-    FactoredTransitionSystem &fts, int index) {
-    return utils::make_unique_ptr<SaturatedCostPartitioning>(extract_scp_heuristic(fts, index));
-}
-
-static shared_ptr<SaturatedCostPartitioningFactory>_parse(options::OptionParser &parser) {
-    add_cost_partitioning_factory_options_to_parser(parser);
-
+static shared_ptr<SaturatedCostPartitioningFactory>_parse(OptionParser &parser) {
     utils::add_rng_options(parser);
     vector<string> factor_order;
     vector<string> factor_order_docs;
@@ -216,12 +218,10 @@ static shared_ptr<SaturatedCostPartitioningFactory>_parse(options::OptionParser 
         "random",
         factor_order_docs);
 
-    options::Options opts = parser.parse();
+    Options opts = parser.parse();
     if (parser.help_mode()) {
         return nullptr;
     }
-
-    handle_cost_partitioning_factory_options(opts);
 
     if (parser.dry_run())
         return nullptr;
@@ -229,5 +229,5 @@ static shared_ptr<SaturatedCostPartitioningFactory>_parse(options::OptionParser 
         return make_shared<SaturatedCostPartitioningFactory>(opts);
 }
 
-static options::Plugin<CostPartitioningFactory> _plugin("scp", _parse);
+static Plugin<CostPartitioningFactory> _plugin("scp", _parse);
 }

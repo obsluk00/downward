@@ -1,5 +1,6 @@
 #include "max_cp_ms_heuristic.h"
 
+#include "cp_merge_and_shrink_algorithm.h"
 #include "cost_partitioning.h"
 #include "types.h"
 
@@ -15,9 +16,11 @@ using utils::ExitCode;
 namespace merge_and_shrink {
 MaxCPMSHeuristic::MaxCPMSHeuristic(const options::Options &opts)
     : Heuristic(opts) {
-    shared_ptr<CostPartitioningFactory> cp_factory = opts.get<shared_ptr<CostPartitioningFactory>>("cost_partitioning");
-    cost_partitionings = cp_factory->generate(task_proxy);
-    int num_cps= cost_partitionings.size();
+    CPMergeAndShrinkAlgorithm algorithm(opts);
+    cost_partitionings = algorithm.compute_ms_cps(task_proxy);
+    int num_cps = cost_partitionings.size();
+    cout << "Number of cost partitioning snapshots: " << num_cps << endl;
+    // TODO: go over cps and report average number of abstractions per cp.
     if (!num_cps) {
         cerr << "Got 0 cost partitionings" << endl;
         utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
@@ -42,13 +45,16 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
         "Maximum CP merge-and-shrink heuristic",
         "The maximum heuristic computed over CP heuristics computed over "
         "M&S abstractions.");
-    parser.add_option<shared_ptr<CostPartitioningFactory>>(
-        "cost_partitioning",
-        "method to generate cost partitionings");
 
     Heuristic::add_options_to_parser(parser);
+    add_cp_merge_and_shrink_algorithm_options_to_parser(parser);
+    options::Options opts = parser.parse();
+    if (parser.help_mode()) {
+        return nullptr;
+    }
 
-    Options opts = parser.parse();
+    handle_cp_merge_and_shrink_algorithm_options(opts);
+
     if (parser.dry_run()) {
         return nullptr;
     } else {

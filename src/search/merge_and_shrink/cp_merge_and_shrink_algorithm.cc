@@ -1,10 +1,12 @@
-#include "merge_and_shrink_algorithm.h"
+#include "cp_merge_and_shrink_algorithm.h"
 
+#include "cost_partitioning.h"
 #include "distances.h"
 #include "factored_transition_system.h"
 #include "fts_factory.h"
 #include "label_reduction.h"
 #include "labels.h"
+#include "merge_and_shrink_algorithm.h"
 #include "merge_and_shrink_representation.h"
 #include "merge_strategy.h"
 #include "merge_strategy_factory.h"
@@ -42,10 +44,11 @@ static void log_progress(const utils::Timer &timer, string msg) {
     cout << "M&S algorithm timer: " << timer << " (" << msg << ")" << endl;
 }
 
-MergeAndShrinkAlgorithm::MergeAndShrinkAlgorithm(const Options &opts) :
+CPMergeAndShrinkAlgorithm::CPMergeAndShrinkAlgorithm(const Options &opts) :
     merge_strategy_factory(opts.get<shared_ptr<MergeStrategyFactory>>("merge_strategy")),
     shrink_strategy(opts.get<shared_ptr<ShrinkStrategy>>("shrink_strategy")),
     label_reduction(opts.get<shared_ptr<LabelReduction>>("label_reduction", nullptr)),
+    cp_factory(opts.get<shared_ptr<CostPartitioningFactory>>("cost_partitioning", nullptr)),
     max_states(opts.get<int>("max_states")),
     max_states_before_merge(opts.get<int>("max_states_before_merge")),
     shrink_threshold_before_merge(opts.get<int>("threshold_before_merge")),
@@ -53,13 +56,17 @@ MergeAndShrinkAlgorithm::MergeAndShrinkAlgorithm(const Options &opts) :
     prune_irrelevant_states(opts.get<bool>("prune_irrelevant_states")),
     verbosity(static_cast<utils::Verbosity>(opts.get_enum("verbosity"))),
     main_loop_max_time(opts.get<double>("main_loop_max_time")),
+    compute_atomic_snapshot(opts.get<bool>("compute_atomic_snapshot")),
+    compute_final_snapshot(opts.get<bool>("compute_final_snapshot")),
+    main_loop_target_num_snapshots(opts.get<int>("main_loop_target_num_snapshots")),
+    main_loop_snapshot_each_iteration(opts.get<int>("main_loop_snapshot_each_iteration")),
     starting_peak_memory(0) {
     assert(max_states_before_merge > 0);
     assert(max_states >= max_states_before_merge);
     assert(shrink_threshold_before_merge <= max_states_before_merge);
 }
 
-void MergeAndShrinkAlgorithm::report_peak_memory_delta(bool final) const {
+void CPMergeAndShrinkAlgorithm::report_peak_memory_delta(bool final) const {
     if (final)
         cout << "Final";
     else
@@ -69,7 +76,7 @@ void MergeAndShrinkAlgorithm::report_peak_memory_delta(bool final) const {
          << endl;
 }
 
-void MergeAndShrinkAlgorithm::dump_options() const {
+void CPMergeAndShrinkAlgorithm::dump_options() const {
     if (verbosity >= utils::Verbosity::VERBOSE) {
         if (merge_strategy_factory) { // deleted after merge strategy extraction
             merge_strategy_factory->dump_options();
@@ -96,7 +103,7 @@ void MergeAndShrinkAlgorithm::dump_options() const {
     }
 }
 
-void MergeAndShrinkAlgorithm::warn_on_unusual_options() const {
+void CPMergeAndShrinkAlgorithm::warn_on_unusual_options() const {
     string dashes(79, '=');
     if (!label_reduction) {
         cout << dashes << endl
@@ -135,7 +142,7 @@ void MergeAndShrinkAlgorithm::warn_on_unusual_options() const {
     }
 }
 
-bool MergeAndShrinkAlgorithm::ran_out_of_time(
+bool CPMergeAndShrinkAlgorithm::ran_out_of_time(
     const utils::CountdownTimer &timer) const {
     if (timer.is_expired()) {
         if (verbosity >= utils::Verbosity::NORMAL) {
@@ -147,9 +154,112 @@ bool MergeAndShrinkAlgorithm::ran_out_of_time(
     return false;
 }
 
-void MergeAndShrinkAlgorithm::main_loop(
+class NextSnapshot {
+private:
+    const double max_time;
+    const int max_iterations;
+    const int main_loop_target_num_snapshots;
+    const int main_loop_snapshot_each_iteration;
+    const utils::Verbosity verbosity;
+
+    double next_time_to_compute_snapshot;
+    int next_iteration_to_compute_snapshot;
+    int num_main_loop_snapshots;
+
+    void compute_next_snapshot_time(double current_time) {
+        int num_remaining_scp_heuristics = main_loop_target_num_snapshots - num_main_loop_snapshots;
+        // safeguard against having aimed_num_scp_heuristics = 0
+        if (num_remaining_scp_heuristics <= 0) {
+            next_time_to_compute_snapshot = max_time + 1.0;
+            return;
+        }
+        double remaining_time = max_time - current_time;
+        if (remaining_time <= 0.0) {
+            next_time_to_compute_snapshot = current_time;
+            return;
+        }
+        double time_offset = remaining_time / static_cast<double>(num_remaining_scp_heuristics);
+        next_time_to_compute_snapshot = current_time + time_offset;
+    }
+
+    void compute_next_snapshot_iteration(int current_iteration) {
+        if (main_loop_target_num_snapshots) {
+            int num_remaining_scp_heuristics = main_loop_target_num_snapshots - num_main_loop_snapshots;
+            // safeguard against having aimed_num_scp_heuristics = 0
+            if (num_remaining_scp_heuristics <= 0) {
+                next_iteration_to_compute_snapshot = max_iterations + 1;
+                return;
+            }
+            int num_remaining_iterations = max_iterations - current_iteration;
+            if (!num_remaining_iterations || num_remaining_scp_heuristics >= num_remaining_iterations) {
+                next_iteration_to_compute_snapshot = current_iteration + 1;
+                return;
+            }
+            double iteration_offset = num_remaining_iterations / static_cast<double>(num_remaining_scp_heuristics);
+            assert(iteration_offset >= 1.0);
+            next_iteration_to_compute_snapshot = current_iteration + static_cast<int>(iteration_offset);
+        } else {
+            next_iteration_to_compute_snapshot = current_iteration + main_loop_snapshot_each_iteration;
+        }
+    }
+public:
+    NextSnapshot(
+        double max_time,
+        int max_iterations,
+        int main_loop_target_num_snapshots,
+        int main_loop_snapshot_each_iteration,
+        utils::Verbosity verbosity)
+        : max_time(max_time),
+          max_iterations(max_iterations),
+          main_loop_target_num_snapshots(main_loop_target_num_snapshots),
+          main_loop_snapshot_each_iteration(main_loop_snapshot_each_iteration),
+          verbosity(verbosity),
+          num_main_loop_snapshots(0) {
+        assert(main_loop_target_num_snapshots || main_loop_snapshot_each_iteration);
+        assert(!main_loop_target_num_snapshots || !main_loop_snapshot_each_iteration);
+        compute_next_snapshot_time(0);
+        compute_next_snapshot_iteration(0);
+        if (verbosity == utils::Verbosity::DEBUG) {
+            cout << "Snapshot collector: next time: " << next_time_to_compute_snapshot
+                 << ", next iteration: " << next_iteration_to_compute_snapshot
+                 << endl;
+        }
+    }
+
+    bool compute_next_snapshot(double current_time, int current_iteration) {
+        if (!main_loop_target_num_snapshots && !main_loop_snapshot_each_iteration) {
+            return false;
+        }
+        if (verbosity == utils::Verbosity::DEBUG) {
+            cout << "Snapshot collector: compute next snapshot? current time: " << current_time
+                 << ", current iteration: " << current_iteration
+                 << ", num existing heuristics: " << num_main_loop_snapshots
+                 << endl;
+        }
+        bool compute = false;
+        if (current_time >= next_time_to_compute_snapshot ||
+            current_iteration >= next_iteration_to_compute_snapshot) {
+            compute = true;
+        }
+        if (compute) {
+            compute_next_snapshot_time(current_time);
+            compute_next_snapshot_iteration(current_iteration);
+            if (verbosity == utils::Verbosity::DEBUG) {
+                cout << "Compute snapshot now" << endl;
+                cout << "Next snapshot: next time: " << next_time_to_compute_snapshot
+                     << ", next iteration: " << next_iteration_to_compute_snapshot
+                     << endl;
+            }
+            ++num_main_loop_snapshots;
+        }
+        return compute;
+    }
+};
+
+bool CPMergeAndShrinkAlgorithm::main_loop(
     FactoredTransitionSystem &fts,
-    const TaskProxy &task_proxy) {
+    const TaskProxy &task_proxy,
+    vector<unique_ptr<CostPartitioning>> &cost_partitionings) {
     utils::CountdownTimer timer(main_loop_max_time);
     if (verbosity >= utils::Verbosity::NORMAL) {
         cout << "Starting main loop ";
@@ -181,7 +291,15 @@ void MergeAndShrinkAlgorithm::main_loop(
                  << " (" << msg << ")" << endl;
         };
     int iteration_counter = 0;
+    NextSnapshot next_snapshot(
+        main_loop_max_time,
+        fts.get_num_active_entries() - 1,
+        main_loop_target_num_snapshots,
+        main_loop_snapshot_each_iteration,
+        verbosity);
+    bool unsolvable = false;
     while (fts.get_num_active_entries() > 1) {
+        ++iteration_counter;
         // Choose next transition systems to merge
         pair<int, int> merge_indices = merge_strategy->get_next();
         if (ran_out_of_time(timer)) {
@@ -289,9 +407,19 @@ void MergeAndShrinkAlgorithm::main_loop(
                 cout << "Abstract problem is unsolvable, stopping "
                     "computation. " << endl << endl;
             }
+            unsolvable = true;
+            vector<unique_ptr<CostPartitioning>>().swap(cost_partitionings);
+            cost_partitionings.reserve(1);
+            cost_partitionings.push_back(cp_factory->generate(fts, verbosity, merged_index));
             break;
         }
 
+        if (ran_out_of_time(timer)) {
+            break;
+        }
+
+        cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+        log_main_loop_progress("after handling main loop snapshot");
         if (ran_out_of_time(timer)) {
             break;
         }
@@ -303,8 +431,6 @@ void MergeAndShrinkAlgorithm::main_loop(
         if (verbosity >= utils::Verbosity::NORMAL) {
             cout << endl;
         }
-
-        ++iteration_counter;
     }
 
     cout << "End of merge-and-shrink algorithm, statistics:" << endl;
@@ -313,9 +439,10 @@ void MergeAndShrinkAlgorithm::main_loop(
          << maximum_intermediate_size << endl;
     shrink_strategy = nullptr;
     label_reduction = nullptr;
+    return unsolvable;
 }
 
-FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_system(
+vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
     const TaskProxy &task_proxy) {
     if (starting_peak_memory) {
         cerr << "Calling build_factored_transition_system twice is not "
@@ -349,6 +476,8 @@ FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_syst
         log_progress(timer, "after computation of atomic factors");
     }
 
+    vector<unique_ptr<CostPartitioning>> cost_partitionings;
+
     /*
       Prune all atomic factors according to the chosen options. Stop early if
       one factor is unsolvable.
@@ -371,6 +500,7 @@ FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_syst
         if (!fts.is_factor_solvable(index)) {
             cout << "Atomic FTS is unsolvable, stopping computation." << endl;
             unsolvable = true;
+            cost_partitionings.push_back(cp_factory->generate(fts, verbosity, index));
             break;
         }
     }
@@ -381,17 +511,29 @@ FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_syst
         cout << endl;
     }
 
-    if (!unsolvable && main_loop_max_time > 0) {
-        main_loop(fts, task_proxy);
+    if (!unsolvable && compute_atomic_snapshot) {
+        cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+        if (verbosity >= utils::Verbosity::NORMAL) {
+            log_progress(timer, "after handling atomic snapshot");
+        }
     }
+
+    if (!unsolvable && main_loop_max_time > 0) {
+        unsolvable = main_loop(fts, task_proxy, cost_partitionings);
+    }
+
+    if (!unsolvable && (compute_final_snapshot || cost_partitionings.empty())) {
+        cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+    }
+
     const bool final = true;
     report_peak_memory_delta(final);
     cout << "Merge-and-shrink algorithm runtime: " << timer << endl;
     cout << endl;
-    return fts;
+    return cost_partitionings;
 }
 
-void add_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
+void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
     // Merge strategy option.
     parser.add_option<shared_ptr<MergeStrategyFactory>>(
         "merge_strategy",
@@ -433,6 +575,7 @@ void add_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
       silent: no output during construction, only starting and final statistics
       normal: basic output during construction, starting and final statistics
       verbose: full output during construction, starting and final statistics
+      debug: like verbose with additional debug output
     */
     utils::add_verbosity_option_to_parser(parser);
 
@@ -446,83 +589,55 @@ void add_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
         "transformation is runtime-intense.",
         "infinity",
         Bounds("0.0", "infinity"));
+
+    // Cost partitioning options
+    parser.add_option<shared_ptr<CostPartitioningFactory>>(
+        "cost_partitioning",
+        "A method for computing cost partitionings over intermediate "
+        "'snapshots' of the factored transition system.");
+    parser.add_option<bool>(
+        "compute_atomic_snapshot",
+        "Include an SCP heuristic computed over the atomic FTS.",
+        "false");
+    parser.add_option<bool>(
+        "compute_final_snapshot",
+        "Include an SCP heuristic computed over the final FTS (attention: "
+        "depending on main_loop_target_num_snapshots, this might already have "
+        "been computed).",
+        "false");
+    parser.add_option<int>(
+        "main_loop_target_num_snapshots",
+        "The aimed number of SCP heuristics to be computed over the main loop.",
+        "0",
+        Bounds("0", "infinity"));
+    parser.add_option<int>(
+        "main_loop_snapshot_each_iteration",
+        "A number of iterations after which an SCP heuristic is computed over "
+        "the current FTS.",
+        "0",
+        Bounds("0", "infinity"));
 }
 
-void add_transition_system_size_limit_options_to_parser(OptionParser &parser) {
-    parser.add_option<int>(
-        "max_states",
-        "maximum transition system size allowed at any time point.",
-        "-1",
-        Bounds("-1", "infinity"));
-    parser.add_option<int>(
-        "max_states_before_merge",
-        "maximum transition system size allowed for two transition systems "
-        "before being merged to form the synchronized product.",
-        "-1",
-        Bounds("-1", "infinity"));
-    parser.add_option<int>(
-        "threshold_before_merge",
-        "If a transition system, before being merged, surpasses this soft "
-        "transition system size limit, the shrink strategy is called to "
-        "possibly shrink the transition system.",
-        "-1",
-        Bounds("-1", "infinity"));
-}
+void handle_cp_merge_and_shrink_algorithm_options(Options &opts) {
+    handle_shrink_limit_options_defaults(opts);
 
-void handle_shrink_limit_options_defaults(Options &opts) {
-    int max_states = opts.get<int>("max_states");
-    int max_states_before_merge = opts.get<int>("max_states_before_merge");
-    int threshold = opts.get<int>("threshold_before_merge");
-
-    // If none of the two state limits has been set: set default limit.
-    if (max_states == -1 && max_states_before_merge == -1) {
-        max_states = 50000;
-    }
-
-    // If exactly one of the max_states options has been set, set the other
-    // so that it imposes no further limits.
-    if (max_states_before_merge == -1) {
-        max_states_before_merge = max_states;
-    } else if (max_states == -1) {
-        int n = max_states_before_merge;
-        if (utils::is_product_within_limit(n, n, INF)) {
-            max_states = n * n;
-        } else {
-            max_states = INF;
+    bool compute_atomic_snapshot = opts.get<bool>("compute_atomic_snapshot");
+    bool compute_final_snapshot = opts.get<bool>("compute_final_snapshot");
+    int main_loop_target_num_snapshots = opts.get<int>("main_loop_target_num_snapshots");
+    int main_loop_snapshot_each_iteration =
+        opts.get<int>("main_loop_snapshot_each_iteration");
+    if (!compute_atomic_snapshot &&
+        !compute_final_snapshot &&
+        !main_loop_target_num_snapshots &&
+        !main_loop_snapshot_each_iteration) {
+        cerr << "At least one option for computing SCP merge-and-shrink "
+                "heuristics must be enabled! " << endl;
+        if (main_loop_target_num_snapshots && main_loop_snapshot_each_iteration) {
+            cerr << "Can't set both the number of heuristics and the iteration "
+                    "offset in which heuristics are computed."
+                 << endl;
         }
+        utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
-
-    if (max_states_before_merge > max_states) {
-        cout << "warning: max_states_before_merge exceeds max_states, "
-             << "correcting." << endl;
-        max_states_before_merge = max_states;
-    }
-
-    if (max_states < 1) {
-        cerr << "error: transition system size must be at least 1" << endl;
-        utils::exit_with(ExitCode::SEARCH_INPUT_ERROR);
-    }
-
-    if (max_states_before_merge < 1) {
-        cerr << "error: transition system size before merge must be at least 1"
-             << endl;
-        utils::exit_with(ExitCode::SEARCH_INPUT_ERROR);
-    }
-
-    if (threshold == -1) {
-        threshold = max_states;
-    }
-    if (threshold < 1) {
-        cerr << "error: threshold must be at least 1" << endl;
-        utils::exit_with(ExitCode::SEARCH_INPUT_ERROR);
-    }
-    if (threshold > max_states) {
-        cout << "warning: threshold exceeds max_states, correcting" << endl;
-        threshold = max_states;
-    }
-
-    opts.set<int>("max_states", max_states);
-    opts.set<int>("max_states_before_merge", max_states_before_merge);
-    opts.set<int>("threshold_before_merge", threshold);
 }
 }

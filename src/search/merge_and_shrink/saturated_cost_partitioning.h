@@ -3,6 +3,10 @@
 
 #include "cost_partitioning.h"
 
+#include "../option_parser.h"
+
+#include <vector>
+
 namespace utils {
 class RandomNumberGenerator;
 }
@@ -35,14 +39,13 @@ class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
 
     SCPMSHeuristic extract_scp_heuristic(
         FactoredTransitionSystem &fts, int index) const;
-protected:
-    virtual std::unique_ptr<CostPartitioning> handle_snapshot(
-        const FactoredTransitionSystem &fts) override;
-    virtual std::unique_ptr<CostPartitioning> handle_unsolvable_snapshot(
-        FactoredTransitionSystem &fts, int index) override;
 public:
-    explicit SaturatedCostPartitioningFactory(const options::Options &opts);
+    explicit SaturatedCostPartitioningFactory(const Options &opts);
     virtual ~SaturatedCostPartitioningFactory() = default;
+    virtual std::unique_ptr<CostPartitioning> generate(
+        FactoredTransitionSystem &fts,
+        utils::Verbosity verbosity,
+        int unsolvable_index = -1) override;
 };
 }
 

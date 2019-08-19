@@ -5,7 +5,6 @@
 
 namespace merge_and_shrink {
 class CostPartitioning;
-class CostPartitioningFactory;
 
 class MaxCPMSHeuristic : public Heuristic {
     std::vector<std::unique_ptr<CostPartitioning>> cost_partitionings;
