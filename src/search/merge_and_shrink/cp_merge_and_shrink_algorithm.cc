@@ -333,6 +333,14 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
             break;
         }
 
+        if (next_snapshot && next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            log_main_loop_progress("after handling main loop snapshot");
+            if (ran_out_of_time(timer)) {
+                break;
+            }
+        }
+
         // Shrinking
         bool shrunk = shrink_before_merge_step(
             fts,
@@ -419,14 +427,6 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
 
         if (ran_out_of_time(timer)) {
             break;
-        }
-
-        if (next_snapshot && next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
-            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
-            log_main_loop_progress("after handling main loop snapshot");
-            if (ran_out_of_time(timer)) {
-                break;
-            }
         }
 
         // End-of-iteration output.
