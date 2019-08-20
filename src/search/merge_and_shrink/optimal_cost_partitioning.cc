@@ -141,6 +141,7 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
     }
 
     for (GroupAndTransitions gat : transition_system) {
+        bool have_set_lower_bound = false;
         for (const Transition &transition : gat.transitions) {
             if (transition.src != transition.target) {
                 // Create constraints for state-changing transitions.
@@ -158,14 +159,17 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
                     constraints.push_back(constraint);
                 }
             } else {
-                /*
-                  Self loops are a special case of transitions that can be treated more
-                  efficiently, because the variables H_alpha(s) and H_alpha(s') cancel out.
-                */
-                for (int label_no : gat.label_group) {
-                    int op_var = abstraction_info.get_local_op_cost_variable(
-                            contiguous_label_mapping[label_no]);
-                    variables[op_var].lower_bound = 0;
+                if (!have_set_lower_bound) {
+                    /*
+                      Self loops are a special case of transitions that can be treated more
+                      efficiently, because the variables H_alpha(s) and H_alpha(s') cancel out.
+                    */
+                    for (int label_no : gat.label_group) {
+                        int op_var = abstraction_info.get_local_op_cost_variable(
+                                contiguous_label_mapping[label_no]);
+                        variables[op_var].lower_bound = 0;
+                    }
+                    have_set_lower_bound = true;
                 }
             }
         }
