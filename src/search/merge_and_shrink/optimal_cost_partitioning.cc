@@ -206,16 +206,23 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
         cout << "LP peak memory before construct: " << utils::get_peak_memory_in_kb() << endl;
     }
 
-    vector<int> active_factor_indices;
+    vector<int> active_nontrivial_factor_indices;
     if (unsolvable_index == -1) {
-        active_factor_indices.reserve(fts.get_num_active_entries());
+        active_nontrivial_factor_indices.reserve(fts.get_num_active_entries());
         for (int index : fts) {
-            active_factor_indices.push_back(index);
+            if (fts.is_factor_trivial(index)) {
+                if (verbosity >= utils::Verbosity::DEBUG) {
+                    cout << "factor at index " << index << " is trivial" << endl;
+                }
+            } else {
+                active_nontrivial_factor_indices.push_back(index);
+            }
         }
     } else {
-        active_factor_indices.reserve(1);
-        active_factor_indices.push_back(unsolvable_index);
+        active_nontrivial_factor_indices.reserve(1);
+        active_nontrivial_factor_indices.push_back(unsolvable_index);
     }
+    assert(!active_nontrivial_factor_indices.empty());
 
     const Labels &labels = fts.get_labels();
     int largest_label_no = labels.get_size();
@@ -234,19 +241,8 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
     vector<lp::LPConstraint> constraints;
     double infinity = lp_solver->get_infinity();
     int num_abstract_states = 0;
-    for (size_t i = 0; i < active_factor_indices.size(); ++i) {
-        int index = active_factor_indices[i];
-        if (verbosity >= utils::Verbosity::DEBUG) {
-            cout << "Considering factor at index " << index << endl;
-        }
-
-        if (fts.is_factor_trivial(index)) {
-            if (verbosity >= utils::Verbosity::DEBUG) {
-                cout << "factor is trivial" << endl;
-            }
-            continue;
-        }
-
+    for (size_t i = 0; i < active_nontrivial_factor_indices.size(); ++i) {
+        int index = active_nontrivial_factor_indices[i];
         unique_ptr<MergeAndShrinkRepresentation> mas_representation = nullptr;
         if (dynamic_cast<const MergeAndShrinkRepresentationLeaf *>(fts.get_mas_representation_raw_ptr(index))) {
             mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationLeaf>(

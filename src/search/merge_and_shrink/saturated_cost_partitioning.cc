@@ -96,29 +96,29 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
         }
     }
 
-    vector<int> active_factor_indices;
-    active_factor_indices.reserve(fts.get_num_active_entries());
+    vector<int> active_nontrivial_factor_indices;
+    active_nontrivial_factor_indices.reserve(fts.get_num_active_entries());
     for (int index : fts) {
-        active_factor_indices.push_back(index);
+        if (fts.is_factor_trivial(index)) {
+            if (verbosity >= utils::Verbosity::DEBUG) {
+                cout << "factor at index " << index << " is trivial" << endl;
+            }
+        } else {
+            active_nontrivial_factor_indices.push_back(index);
+        }
     }
+    assert(!active_nontrivial_factor_indices.empty());
     if (factor_order == FactorOrder::RANDOM) {
-        rng->shuffle(active_factor_indices);
+        rng->shuffle(active_nontrivial_factor_indices);
     }
 
     SCPMSHeuristic scp_ms_heuristic;
     bool dump_if_empty_transitions = true;
     bool dump_if_infinite_transitions = true;
-    for (size_t i = 0; i < active_factor_indices.size(); ++i) {
-        int index = active_factor_indices[i];
+    for (size_t i = 0; i < active_nontrivial_factor_indices.size(); ++i) {
+        int index = active_nontrivial_factor_indices[i];
         if (verbosity >= utils::Verbosity::DEBUG) {
             cout << "Considering factor at index " << index << endl;
-        }
-
-        if (fts.is_factor_trivial(index)) {
-            if (verbosity >= utils::Verbosity::DEBUG) {
-                cout << "factor is trivial" << endl;
-            }
-            continue;
         }
 
 //        const Distances &distances = fts.get_distances(index);
@@ -142,7 +142,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
         }
         scp_ms_heuristic.goal_distances.push_back(goal_distances);
         scp_ms_heuristic.mas_representations.push_back(move(mas_representation));
-        if (i == active_factor_indices.size() - 1) {
+        if (i == active_nontrivial_factor_indices.size() - 1) {
             break;
         }
 
