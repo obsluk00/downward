@@ -48,6 +48,7 @@ class CPMergeAndShrinkAlgorithm {
 
     const utils::Verbosity verbosity;
     const double main_loop_max_time;
+    const bool atomic_label_reduction;
 
     const bool compute_atomic_snapshot;
     const bool compute_final_snapshot;

@@ -56,6 +56,7 @@ CPMergeAndShrinkAlgorithm::CPMergeAndShrinkAlgorithm(const Options &opts) :
     prune_irrelevant_states(opts.get<bool>("prune_irrelevant_states")),
     verbosity(static_cast<utils::Verbosity>(opts.get_enum("verbosity"))),
     main_loop_max_time(opts.get<double>("main_loop_max_time")),
+    atomic_label_reduction(opts.get<bool>("atomic_label_reduction")),
     compute_atomic_snapshot(opts.get<bool>("compute_atomic_snapshot")),
     compute_final_snapshot(opts.get<bool>("compute_final_snapshot")),
     main_loop_target_num_snapshots(opts.get<int>("main_loop_target_num_snapshots")),
@@ -278,9 +279,6 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         }
     }
 
-    if (label_reduction) {
-        label_reduction->initialize(task_proxy);
-    }
     unique_ptr<MergeStrategy> merge_strategy =
         merge_strategy_factory->compute_merge_strategy(task_proxy, fts);
     merge_strategy_factory = nullptr;
@@ -515,6 +513,17 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
         }
     }
 
+    if (label_reduction) {
+        label_reduction->initialize(task_proxy);
+    }
+
+    if (label_reduction && atomic_label_reduction) {
+        bool reduced = label_reduction->reduce(pair<int, int>(-1, -1), fts, verbosity);
+        if (verbosity >= utils::Verbosity::NORMAL && reduced) {
+            log_progress(timer, "after label reduction on atomic FTS");
+        }
+    }
+
     if (!unsolvable && compute_atomic_snapshot) {
         cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
         if (verbosity >= utils::Verbosity::NORMAL) {
@@ -597,6 +606,11 @@ void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
         "transformation is runtime-intense.",
         "infinity",
         Bounds("0.0", "infinity"));
+
+    parser.add_option<bool>(
+        "atomic_label_reduction",
+        "Use the label reduction method to reduce labels on the atomic FTS",
+        "false");
 
     // Cost partitioning options
     parser.add_option<shared_ptr<CostPartitioningFactory>>(
