@@ -90,7 +90,8 @@ OptimalCostPartitioningFactory::OptimalCostPartitioningFactory(
     const Options &opts)
     : CostPartitioningFactory(),
       lp_solver_type(lp::LPSolverType(opts.get_enum("lpsolver"))),
-      allow_negative_costs(opts.get<bool>("allow_negative_costs")) {
+      allow_negative_costs(opts.get<bool>("allow_negative_costs")),
+      efficient_cp(opts.get<bool>("efficient_cp")) {
 }
 
 void OptimalCostPartitioningFactory::create_abstraction_variables(
@@ -98,22 +99,16 @@ void OptimalCostPartitioningFactory::create_abstraction_variables(
     double infinity,
     AbstractionInformation &abstraction_info,
     int num_states,
-    const Labels &labels) {
+    int num_labels) {
 
     // Create variables for local operator cost.
     abstraction_info.local_op_cost_offset = variables.size();
-    int num_labels = labels.get_size();
-    contiguous_label_mapping.resize(num_labels, -1);
-    int mapped_label_no = 0;
     for (int label_no = 0; label_no < num_labels; ++label_no) {
-        if (labels.is_current_label(label_no)) {
-            contiguous_label_mapping[label_no] = mapped_label_no++;
-            double lower_bound = 0;
-            if (allow_negative_costs) {
-                lower_bound = -infinity;
-            }
-            variables.emplace_back(lower_bound, infinity, 0);
+        double lower_bound = 0;
+        if (allow_negative_costs) {
+            lower_bound = -infinity;
         }
+        variables.emplace_back(lower_bound, infinity, 0);
     }
 
     // Create variables for abstract state heuristic values.
@@ -130,7 +125,8 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
     vector<lp::LPConstraint> &constraints,
     double infinity,
     const AbstractionInformation &abstraction_info,
-    const TransitionSystem &transition_system) const {
+    const TransitionSystem &transition_system,
+    const vector<int> &contiguous_label_mapping) const {
 
     // Add constraints: H_alpha(g) <= 0 (as variable lower bounds) for all abstract goals g.
     for (int state = 0; state < transition_system.get_size(); ++state) {
@@ -179,6 +175,7 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
 void OptimalCostPartitioningFactory::create_global_constraints(
     vector<lp::LPConstraint> &constraints,
     const Labels &labels,
+    vector<int> &contiguous_label_mapping,
     const std::vector<AbstractionInformation> &abstractions) const {
     // Create cost partitioning constraints.
     for (int label_no = 0; label_no < labels.get_size(); ++label_no) {
@@ -214,13 +211,22 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
         active_factor_indices.push_back(unsolvable_index);
     }
 
+    const Labels &labels = fts.get_labels();
+    int largest_label_no = labels.get_size();
+    // Contiguous renumbering of labels.
+    vector<int> contiguous_label_mapping(largest_label_no, -1);
+    int num_labels = 0;
+    for (int label_no = 0; label_no < largest_label_no; ++label_no) {
+        if (labels.is_current_label(label_no)) {
+            contiguous_label_mapping[label_no] = num_labels++;
+        }
+    }
+
     std::vector<AbstractionInformation> abstractions;
     std::unique_ptr<lp::LPSolver> lp_solver = utils::make_unique_ptr<lp::LPSolver>(lp_solver_type);
-
     vector<lp::LPVariable> variables;
     vector<lp::LPConstraint> constraints;
     double infinity = lp_solver->get_infinity();
-
     int num_abstract_states = 0;
     for (size_t i = 0; i < active_factor_indices.size(); ++i) {
         int index = active_factor_indices[i];
@@ -250,12 +256,12 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
         const TransitionSystem &ts = fts.get_transition_system(index);
         num_abstract_states += ts.get_size();
         create_abstraction_variables(
-            variables, infinity, abstraction_info, ts.get_size(), fts.get_labels());
+            variables, infinity, abstraction_info, ts.get_size(), num_labels);
         create_abstraction_constraints(
-            variables, constraints, infinity, abstraction_info, ts);
+            variables, constraints, infinity, abstraction_info, ts, contiguous_label_mapping);
         abstractions.push_back(move(abstraction_info));
     }
-    create_global_constraints(constraints, fts.get_labels(), abstractions);
+    create_global_constraints(constraints, labels, contiguous_label_mapping, abstractions);
 
     if (verbosity >= utils::Verbosity::DEBUG) {
         cout << "Abstract states in projections: " << num_abstract_states << endl;
@@ -278,6 +284,10 @@ static shared_ptr<OptimalCostPartitioningFactory>_parse(OptionParser &parser) {
         "allow_negative_costs",
         "general cost partitioning allows positive and negative operator costs. "
         "Set to false for non-negative cost partitioning.",
+        "true");
+    parser.add_option<bool>(
+        "efficient_cp",
+        "use only one constraint per label group rather than per label",
         "true");
 
     Options opts = parser.parse();

@@ -49,24 +49,27 @@ public:
 };
 
 class OptimalCostPartitioningFactory : public CostPartitioningFactory {
-    lp::LPSolverType lp_solver_type;
-    bool allow_negative_costs;
-    // Contiguous renumbering of labels.
-    std::vector<int> contiguous_label_mapping;
+    const lp::LPSolverType lp_solver_type;
+    const bool allow_negative_costs;
+    const bool efficient_cp;
 
     void create_abstraction_variables(
-        std::vector<lp::LPVariable> &variables, double infinity,
-        AbstractionInformation &abstraction_info, int num_states,
-        const Labels &labels);
+        std::vector<lp::LPVariable> &variables,
+        double infinity,
+        AbstractionInformation &abstraction_info,
+        int num_states,
+        int num_labels);
     void create_abstraction_constraints(
         std::vector<lp::LPVariable> &variables,
         std::vector<lp::LPConstraint> &constraints,
         double infinity,
         const AbstractionInformation &abstraction_info,
-        const TransitionSystem &transition_system) const;
+        const TransitionSystem &transition_system,
+        const std::vector<int> &contiguous_label_mapping) const;
     void create_global_constraints(
         std::vector<lp::LPConstraint> &constraints,
         const Labels &labels,
+        std::vector<int> &contiguous_label_mapping,
         const std::vector<AbstractionInformation> &abstractions) const;
 public:
     explicit OptimalCostPartitioningFactory(const Options &opts);
