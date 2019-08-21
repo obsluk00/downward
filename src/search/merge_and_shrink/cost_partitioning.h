@@ -18,6 +18,7 @@ public:
     virtual ~CostPartitioning() = default;
     virtual int compute_value(const State &state) = 0;
     virtual int get_number_of_factors() const = 0;
+    virtual void print_statistics() const {};
 };
 
 class CostPartitioningFactory {

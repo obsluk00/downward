@@ -46,6 +46,7 @@ public:
     virtual ~OptimalCostPartitioning() = default;
     virtual int compute_value(const State &state) override;
     virtual int get_number_of_factors() const override;
+    virtual void print_statistics() const override;
 };
 
 class OptimalCostPartitioningFactory : public CostPartitioningFactory {

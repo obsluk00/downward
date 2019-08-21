@@ -86,6 +86,10 @@ int OptimalCostPartitioning::get_number_of_factors() const {
     return abstractions.size();
 }
 
+void OptimalCostPartitioning::print_statistics() const {
+    lp_solver->print_statistics();
+}
+
 OptimalCostPartitioningFactory::OptimalCostPartitioningFactory(
     const Options &opts)
     : CostPartitioningFactory(),
@@ -272,7 +276,7 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
 
     lp_solver->load_problem(lp::LPObjectiveSense::MAXIMIZE, variables, constraints);
     if (verbosity >= utils::Verbosity::DEBUG) {
-        cout << "LP peak memory before solve: " << utils::get_peak_memory_in_kb() << endl;
+        cout << "LP peak memory after load: " << utils::get_peak_memory_in_kb() << endl;
     }
 
     return utils::make_unique_ptr<OptimalCostPartitioning>(move(abstractions), move(lp_solver));
