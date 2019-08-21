@@ -527,7 +527,6 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
 
         if (compute_atomic_snapshot) {
             cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
-            cost_partitionings.back()->print_statistics();
             if (verbosity >= utils::Verbosity::NORMAL) {
                 log_progress(timer, "after handling atomic snapshot");
             }
@@ -544,6 +543,10 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
         if (!unsolvable && (compute_final_snapshot || cost_partitionings.empty())) {
             cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
         }
+    }
+
+    if (cost_partitionings.size() == 1) {
+        cost_partitionings.back()->print_statistics();
     }
 
     const bool final = true;
