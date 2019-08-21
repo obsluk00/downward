@@ -376,23 +376,29 @@ FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_syst
         if (pruned) {
             log_progress(timer, "after pruning atomic factors");
         }
-        cout << endl;
     }
 
-    if (label_reduction) {
-        label_reduction->initialize(task_proxy);
-    }
+    if (!unsolvable) {
+        if (label_reduction) {
+            label_reduction->initialize(task_proxy);
+        }
 
-    if (label_reduction && atomic_label_reduction) {
-        bool reduced = label_reduction->reduce(pair<int, int>(-1, -1), fts, verbosity);
-        if (verbosity >= utils::Verbosity::NORMAL && reduced) {
-            log_progress(timer, "after label reduction on atomic FTS");
+        if (label_reduction && atomic_label_reduction) {
+            bool reduced = label_reduction->reduce(pair<int, int>(-1, -1), fts, verbosity);
+            if (verbosity >= utils::Verbosity::NORMAL && reduced) {
+                log_progress(timer, "after label reduction on atomic FTS");
+            }
+        }
+
+        if (verbosity >= utils::Verbosity::NORMAL) {
+            cout << endl;
+        }
+
+        if (main_loop_max_time > 0) {
+            main_loop(fts, task_proxy);
         }
     }
 
-    if (!unsolvable && main_loop_max_time > 0) {
-        main_loop(fts, task_proxy);
-    }
     const bool final = true;
     report_peak_memory_delta(final);
     cout << "Merge-and-shrink algorithm runtime: " << timer << endl;

@@ -513,35 +513,37 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
         }
     }
 
-    if (label_reduction) {
-        label_reduction->initialize(task_proxy);
-    }
-
-    if (label_reduction && atomic_label_reduction) {
-        bool reduced = label_reduction->reduce(pair<int, int>(-1, -1), fts, verbosity);
-        if (verbosity >= utils::Verbosity::NORMAL && reduced) {
-            log_progress(timer, "after label reduction on atomic FTS");
+    if (!unsolvable) {
+        if (label_reduction) {
+            label_reduction->initialize(task_proxy);
         }
-    }
 
-    if (!unsolvable && compute_atomic_snapshot) {
-        cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
-        cost_partitionings.back()->print_statistics();
+        if (label_reduction && atomic_label_reduction) {
+            bool reduced = label_reduction->reduce(pair<int, int>(-1, -1), fts, verbosity);
+            if (verbosity >= utils::Verbosity::NORMAL && reduced) {
+                log_progress(timer, "after label reduction on atomic FTS");
+            }
+        }
+
+        if (compute_atomic_snapshot) {
+            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            cost_partitionings.back()->print_statistics();
+            if (verbosity >= utils::Verbosity::NORMAL) {
+                log_progress(timer, "after handling atomic snapshot");
+            }
+        }
+
         if (verbosity >= utils::Verbosity::NORMAL) {
-            log_progress(timer, "after handling atomic snapshot");
+            cout << endl;
         }
-    }
 
-    if (verbosity >= utils::Verbosity::NORMAL) {
-        cout << endl;
-    }
+        if (main_loop_max_time > 0) {
+            unsolvable = main_loop(fts, task_proxy, cost_partitionings);
+        }
 
-    if (!unsolvable && main_loop_max_time > 0) {
-        unsolvable = main_loop(fts, task_proxy, cost_partitionings);
-    }
-
-    if (!unsolvable && (compute_final_snapshot || cost_partitionings.empty())) {
-        cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+        if (!unsolvable && (compute_final_snapshot || cost_partitionings.empty())) {
+            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+        }
     }
 
     const bool final = true;
