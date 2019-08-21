@@ -26,7 +26,7 @@ MaxCPMSHeuristic::MaxCPMSHeuristic(const options::Options &opts)
     }
     double average_num_factors = static_cast<double>(summed_num_factors) /
         static_cast<double>(cost_partitionings.size());
-    cout << "Average number of factors per snapshot:  "
+    cout << "Average number of factors per snapshot: "
          << average_num_factors << endl;
     if (!num_cps) {
         cerr << "Got 0 cost partitionings" << endl;
