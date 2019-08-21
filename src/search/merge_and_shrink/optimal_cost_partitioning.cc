@@ -43,13 +43,15 @@ OptimalCostPartitioning::OptimalCostPartitioning(
 bool OptimalCostPartitioning::set_current_state(const State &state) {
     // Change objective to maximize heuristic value of initial states in all projections.
     for (AbstractionInformation &abstraction_info : abstractions) {
-        // Unset previous state.
-        lp_solver->set_objective_coefficient(abstraction_info.variable_in_objective, 0);
-
+        // First check if the state is a dead end.
         int abstract_state = abstraction_info.abstraction_function->get_value(state);
         if (abstract_state == PRUNED_STATE) {
             return false;
         }
+
+        // Unset previous state.
+        lp_solver->set_objective_coefficient(abstraction_info.variable_in_objective, 0);
+
         int var_id = abstraction_info.get_state_cost_variable(abstract_state);
         lp_solver->set_objective_coefficient(var_id, 1);
         abstraction_info.variable_in_objective = var_id;
