@@ -19,16 +19,16 @@ class TransitionSystem;
 
 struct AbstractionInformation {
     int state_cost_offset;
-    int local_op_cost_offset;
+    int local_label_cost_offset;
     int variable_in_objective;
     std::unique_ptr<MergeAndShrinkRepresentation> abstraction_function;
 
-    int get_local_op_cost_variable(int op_id) const;
+    int get_local_label_cost_variable(int label_no) const;
     int get_state_cost_variable(int state_id) const;
 
     AbstractionInformation(std::unique_ptr<MergeAndShrinkRepresentation> abstraction_function)
         : state_cost_offset(0),
-          local_op_cost_offset(0),
+          local_label_cost_offset(0),
           variable_in_objective(0),
           abstraction_function(std::move(abstraction_function)) {
     }
@@ -69,7 +69,7 @@ class OptimalCostPartitioningFactory : public CostPartitioningFactory {
     void create_global_constraints(
         std::vector<lp::LPConstraint> &constraints,
         const Labels &labels,
-        std::vector<int> &contiguous_label_mapping,
+        const std::vector<int> &contiguous_label_mapping,
         const std::vector<AbstractionInformation> &abstractions) const;
 public:
     explicit OptimalCostPartitioningFactory(const Options &opts);

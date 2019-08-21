@@ -24,8 +24,8 @@
 using namespace std;
 
 namespace merge_and_shrink {
-int AbstractionInformation::get_local_op_cost_variable(int op_id) const {
-    return local_op_cost_offset + op_id;
+int AbstractionInformation::get_local_label_cost_variable(int label_no) const {
+    return local_label_cost_offset + label_no;
 }
 
 int AbstractionInformation::get_state_cost_variable(int state_id) const {
@@ -101,8 +101,8 @@ void OptimalCostPartitioningFactory::create_abstraction_variables(
     int num_states,
     int num_labels) {
 
-    // Create variables for local operator cost.
-    abstraction_info.local_op_cost_offset = variables.size();
+    // Create variables for local label cost.
+    abstraction_info.local_label_cost_offset = variables.size();
     for (int label_no = 0; label_no < num_labels; ++label_no) {
         double lower_bound = 0;
         if (allow_negative_costs) {
@@ -144,13 +144,13 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
                 int source_var = abstraction_info.get_state_cost_variable(transition.src);
                 int target_var = abstraction_info.get_state_cost_variable(transition.target);
                 for (int label_no : gat.label_group) {
-                    int op_var = abstraction_info.get_local_op_cost_variable(
+                    int label_var = abstraction_info.get_local_label_cost_variable(
                             contiguous_label_mapping[label_no]);
 
-                    // Add constraint: H_alpha(s) <= H_alpha(s') + C_alpha(o)
+                    // Add constraint: H_alpha(s) <= H_alpha(s') + C_alpha(l)
                     lp::LPConstraint constraint(0, infinity);
                     constraint.insert(source_var, -1);
-                    constraint.insert(op_var, 1);
+                    constraint.insert(label_var, 1);
                     constraint.insert(target_var, 1);
                     constraints.push_back(constraint);
                 }
@@ -161,9 +161,9 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
                       efficiently, because the variables H_alpha(s) and H_alpha(s') cancel out.
                     */
                     for (int label_no : gat.label_group) {
-                        int op_var = abstraction_info.get_local_op_cost_variable(
+                        int label_var = abstraction_info.get_local_label_cost_variable(
                                 contiguous_label_mapping[label_no]);
-                        variables[op_var].lower_bound = 0;
+                        variables[label_var].lower_bound = 0;
                     }
                     have_set_lower_bound = true;
                 }
@@ -175,7 +175,7 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
 void OptimalCostPartitioningFactory::create_global_constraints(
     vector<lp::LPConstraint> &constraints,
     const Labels &labels,
-    vector<int> &contiguous_label_mapping,
+    const vector<int> &contiguous_label_mapping,
     const std::vector<AbstractionInformation> &abstractions) const {
     // Create cost partitioning constraints.
     for (int label_no = 0; label_no < labels.get_size(); ++label_no) {
@@ -183,7 +183,7 @@ void OptimalCostPartitioningFactory::create_global_constraints(
             // Add constraint: sum_alpha Cost_alpha(o) <= cost(o)
             lp::LPConstraint constraint(0, labels.get_label_cost(label_no));
             for (const AbstractionInformation &abstraction_info : abstractions) {
-                constraint.insert(abstraction_info.get_local_op_cost_variable(
+                constraint.insert(abstraction_info.get_local_label_cost_variable(
                         contiguous_label_mapping[label_no]), 1);
             }
             constraints.push_back(constraint);
@@ -264,7 +264,7 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
     create_global_constraints(constraints, labels, contiguous_label_mapping, abstractions);
 
     if (verbosity >= utils::Verbosity::DEBUG) {
-        cout << "Abstract states in projections: " << num_abstract_states << endl;
+        cout << "Abstract states in abstractions: " << num_abstract_states << endl;
         cout << "LP variables: " << variables.size() << endl;
         cout << "LP constraints: " << constraints.size() << endl;
         cout << "LP peak memory before load: " << utils::get_peak_memory_in_kb() << endl;
@@ -282,7 +282,7 @@ static shared_ptr<OptimalCostPartitioningFactory>_parse(OptionParser &parser) {
     lp::add_lp_solver_option_to_parser(parser);
     parser.add_option<bool>(
         "allow_negative_costs",
-        "general cost partitioning allows positive and negative operator costs. "
+        "general cost partitioning allows positive and negative label costs. "
         "Set to false for non-negative cost partitioning.",
         "true");
     parser.add_option<bool>(
