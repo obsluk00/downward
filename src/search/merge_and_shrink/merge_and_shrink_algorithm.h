@@ -43,6 +43,7 @@ class MergeAndShrinkAlgorithm {
 
     const utils::Verbosity verbosity;
     const double main_loop_max_time;
+    const bool atomic_label_reduction;
 
     long starting_peak_memory;
 

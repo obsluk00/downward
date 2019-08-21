@@ -552,66 +552,7 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
 }
 
 void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
-    // Merge strategy option.
-    parser.add_option<shared_ptr<MergeStrategyFactory>>(
-        "merge_strategy",
-        "See detailed documentation for merge strategies. "
-        "We currently recommend SCC-DFP, which can be achieved using "
-        "{{{merge_strategy=merge_sccs(order_of_sccs=topological,merge_selector="
-        "score_based_filtering(scoring_functions=[goal_relevance,dfp,total_order"
-        "]))}}}");
-
-    // Shrink strategy option.
-    parser.add_option<shared_ptr<ShrinkStrategy>>(
-        "shrink_strategy",
-        "See detailed documentation for shrink strategies. "
-        "We currently recommend non-greedy shrink_bisimulation, which can be "
-        "achieved using {{{shrink_strategy=shrink_bisimulation(greedy=false)}}}");
-
-    // Label reduction option.
-    parser.add_option<shared_ptr<LabelReduction>>(
-        "label_reduction",
-        "See detailed documentation for labels. There is currently only "
-        "one 'option' to use label_reduction, which is {{{label_reduction=exact}}} "
-        "Also note the interaction with shrink strategies.",
-        OptionParser::NONE);
-
-    // Pruning options.
-    parser.add_option<bool>(
-        "prune_unreachable_states",
-        "If true, prune abstract states unreachable from the initial state.",
-        "true");
-    parser.add_option<bool>(
-        "prune_irrelevant_states",
-        "If true, prune abstract states from which no goal state can be "
-        "reached.",
-        "true");
-
-    add_transition_system_size_limit_options_to_parser(parser);
-
-    /*
-      silent: no output during construction, only starting and final statistics
-      normal: basic output during construction, starting and final statistics
-      verbose: full output during construction, starting and final statistics
-      debug: like verbose with additional debug output
-    */
-    utils::add_verbosity_option_to_parser(parser);
-
-    parser.add_option<double>(
-        "main_loop_max_time",
-        "A limit in seconds on the runtime of the main loop of the algorithm. "
-        "If the limit is exceeded, the algorithm terminates, potentially "
-        "returning a factored transition system with several factors. Also "
-        "note that the time limit is only checked between transformations "
-        "of the main loop, but not during, so it can be exceeded if a "
-        "transformation is runtime-intense.",
-        "infinity",
-        Bounds("0.0", "infinity"));
-
-    parser.add_option<bool>(
-        "atomic_label_reduction",
-        "Use the label reduction method to reduce labels on the atomic FTS",
-        "false");
+    add_merge_and_shrink_algorithm_options_to_parser(parser);
 
     // Cost partitioning options
     parser.add_option<shared_ptr<CostPartitioningFactory>>(

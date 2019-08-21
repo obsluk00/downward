@@ -53,6 +53,7 @@ MergeAndShrinkAlgorithm::MergeAndShrinkAlgorithm(const Options &opts) :
     prune_irrelevant_states(opts.get<bool>("prune_irrelevant_states")),
     verbosity(static_cast<utils::Verbosity>(opts.get_enum("verbosity"))),
     main_loop_max_time(opts.get<double>("main_loop_max_time")),
+    atomic_label_reduction(opts.get<bool>("atomic_label_reduction")),
     starting_peak_memory(0) {
     assert(max_states_before_merge > 0);
     assert(max_states >= max_states_before_merge);
@@ -168,9 +169,6 @@ void MergeAndShrinkAlgorithm::main_loop(
         }
     }
 
-    if (label_reduction) {
-        label_reduction->initialize(task_proxy);
-    }
     unique_ptr<MergeStrategy> merge_strategy =
         merge_strategy_factory->compute_merge_strategy(task_proxy, fts);
     merge_strategy_factory = nullptr;
@@ -381,6 +379,17 @@ FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_syst
         cout << endl;
     }
 
+    if (label_reduction) {
+        label_reduction->initialize(task_proxy);
+    }
+
+    if (label_reduction && atomic_label_reduction) {
+        bool reduced = label_reduction->reduce(pair<int, int>(-1, -1), fts, verbosity);
+        if (verbosity >= utils::Verbosity::NORMAL && reduced) {
+            log_progress(timer, "after label reduction on atomic FTS");
+        }
+    }
+
     if (!unsolvable && main_loop_max_time > 0) {
         main_loop(fts, task_proxy);
     }
@@ -446,6 +455,11 @@ void add_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
         "transformation is runtime-intense.",
         "infinity",
         Bounds("0.0", "infinity"));
+
+    parser.add_option<bool>(
+        "atomic_label_reduction",
+        "Use the label reduction method to reduce labels on the atomic FTS",
+        "false");
 }
 
 void add_transition_system_size_limit_options_to_parser(OptionParser &parser) {
