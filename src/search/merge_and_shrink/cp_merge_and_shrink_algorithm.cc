@@ -600,6 +600,7 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
         if ((compute_final_snapshot && !computed_snapshot_after_last_transformation) ||
             cost_partitionings.empty()) {
             cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            log_progress(timer, "after handling final snapshot");
         }
     }
 
