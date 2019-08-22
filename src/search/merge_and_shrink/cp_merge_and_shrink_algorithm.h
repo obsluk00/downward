@@ -55,6 +55,14 @@ class CPMergeAndShrinkAlgorithm {
     const int main_loop_target_num_snapshots;
     const int main_loop_snapshot_each_iteration;
 
+    enum class SnapshotMoment {
+        AFTER_LABEL_REDUCTION,
+        AFTER_SHRINKING,
+        AFTER_MERGING,
+        AFTER_PRUNING
+    };
+    const SnapshotMoment snapshot_moment;
+
     long starting_peak_memory;
 
     void report_peak_memory_delta(bool final = false) const;

@@ -61,6 +61,7 @@ CPMergeAndShrinkAlgorithm::CPMergeAndShrinkAlgorithm(const Options &opts) :
     compute_final_snapshot(opts.get<bool>("compute_final_snapshot")),
     main_loop_target_num_snapshots(opts.get<int>("main_loop_target_num_snapshots")),
     main_loop_snapshot_each_iteration(opts.get<int>("main_loop_snapshot_each_iteration")),
+    snapshot_moment(static_cast<SnapshotMoment>(opts.get_enum("snapshot_moment"))),
     starting_peak_memory(0) {
     assert(max_states_before_merge > 0);
     assert(max_states >= max_states_before_merge);
@@ -298,7 +299,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         main_loop_snapshot_each_iteration,
         verbosity);
     }
-    bool unsolvable = false;
+    bool computed_snapshot_after_last_transformation = false;
     while (fts.get_num_active_entries() > 1) {
         ++iteration_counter;
         // Choose next transition systems to merge
@@ -322,6 +323,9 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         // Label reduction (before shrinking)
         if (label_reduction && label_reduction->reduce_before_shrinking()) {
             bool reduced = label_reduction->reduce(merge_indices, fts, verbosity);
+            if (reduced) {
+                computed_snapshot_after_last_transformation = false;
+            }
             if (verbosity >= utils::Verbosity::NORMAL && reduced) {
                 log_main_loop_progress("after label reduction");
             }
@@ -331,12 +335,16 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
             break;
         }
 
-        if (next_snapshot && next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+        if (snapshot_moment == SnapshotMoment::AFTER_LABEL_REDUCTION &&
+            next_snapshot &&
+            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
             cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            computed_snapshot_after_last_transformation = true;
             log_main_loop_progress("after handling main loop snapshot");
-            if (ran_out_of_time(timer)) {
-                break;
-            }
+        }
+
+        if (ran_out_of_time(timer)) {
+            break;
         }
 
         // Shrinking
@@ -349,8 +357,23 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
             shrink_threshold_before_merge,
             *shrink_strategy,
             verbosity);
+        if (shrunk) {
+            computed_snapshot_after_last_transformation = false;
+        }
         if (verbosity >= utils::Verbosity::NORMAL && shrunk) {
             log_main_loop_progress("after shrinking");
+        }
+
+        if (ran_out_of_time(timer)) {
+            break;
+        }
+
+        if (snapshot_moment == SnapshotMoment::AFTER_SHRINKING &&
+            next_snapshot &&
+            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            computed_snapshot_after_last_transformation = true;
+            log_main_loop_progress("after handling main loop snapshot");
         }
 
         if (ran_out_of_time(timer)) {
@@ -360,6 +383,9 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         // Label reduction (before merging)
         if (label_reduction && label_reduction->reduce_before_merging()) {
             bool reduced = label_reduction->reduce(merge_indices, fts, verbosity);
+            if (reduced) {
+                computed_snapshot_after_last_transformation = false;
+            }
             if (verbosity >= utils::Verbosity::NORMAL && reduced) {
                 log_main_loop_progress("after label reduction");
             }
@@ -383,8 +409,19 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
             log_main_loop_progress("after merging");
         }
 
-        // We do not check for num transitions here but only after pruning
-        // to allow recovering a too large product.
+        computed_snapshot_after_last_transformation = false;
+        if (ran_out_of_time(timer)) {
+            break;
+        }
+
+        if (snapshot_moment == SnapshotMoment::AFTER_MERGING &&
+            next_snapshot &&
+            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            computed_snapshot_after_last_transformation = true;
+            log_main_loop_progress("after handling main loop snapshot");
+        }
+
         if (ran_out_of_time(timer)) {
             break;
         }
@@ -397,6 +434,9 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
                 prune_unreachable_states,
                 prune_irrelevant_states,
                 verbosity);
+            if (pruned) {
+                computed_snapshot_after_last_transformation = false;
+            }
             if (verbosity >= utils::Verbosity::NORMAL && pruned) {
                 if (verbosity >= utils::Verbosity::VERBOSE) {
                     fts.statistics(merged_index);
@@ -416,11 +456,23 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
                 cout << "Abstract problem is unsolvable, stopping "
                     "computation. " << endl << endl;
             }
-            unsolvable = true;
             vector<unique_ptr<CostPartitioning>>().swap(cost_partitionings);
             cost_partitionings.reserve(1);
             cost_partitionings.push_back(cp_factory->generate(fts, verbosity, merged_index));
+            computed_snapshot_after_last_transformation = true;
             break;
+        }
+
+        if (ran_out_of_time(timer)) {
+            break;
+        }
+
+        if (snapshot_moment == SnapshotMoment::AFTER_PRUNING &&
+            next_snapshot &&
+            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            computed_snapshot_after_last_transformation = true;
+            log_main_loop_progress("after handling main loop snapshot");
         }
 
         if (ran_out_of_time(timer)) {
@@ -442,7 +494,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
          << maximum_intermediate_size << endl;
     shrink_strategy = nullptr;
     label_reduction = nullptr;
-    return unsolvable;
+    return computed_snapshot_after_last_transformation;
 }
 
 vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
@@ -536,11 +588,17 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
             cout << endl;
         }
 
+        bool computed_snapshot_after_last_transformation = false;
         if (main_loop_max_time > 0) {
-            unsolvable = main_loop(fts, task_proxy, cost_partitionings);
+            computed_snapshot_after_last_transformation = main_loop(fts, task_proxy, cost_partitionings);
         }
 
-        if (!unsolvable && (compute_final_snapshot || cost_partitionings.empty())) {
+        if (computed_snapshot_after_last_transformation) {
+            assert(!cost_partitionings.empty());
+        }
+
+        if ((compute_final_snapshot && !computed_snapshot_after_last_transformation) ||
+            cost_partitionings.empty()) {
             cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
         }
     }
@@ -566,11 +624,11 @@ void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
         "'snapshots' of the factored transition system.");
     parser.add_option<bool>(
         "compute_atomic_snapshot",
-        "Include an SCP heuristic computed over the atomic FTS.",
+        "Include a snapshot over the atomic FTS.",
         "false");
     parser.add_option<bool>(
         "compute_final_snapshot",
-        "Include an SCP heuristic computed over the final FTS (attention: "
+        "Include a snapshot over the final FTS if this has not already been(attention: "
         "depending on main_loop_target_num_snapshots, this might already have "
         "been computed).",
         "false");
@@ -585,6 +643,23 @@ void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
         "the current FTS.",
         "0",
         Bounds("0", "infinity"));
+
+    vector<string> snapshot_moment;
+    vector<string> snapshot_moment_doc;
+    snapshot_moment.push_back("after_label_reduction");
+    snapshot_moment_doc.push_back("after 'label reduction before shrinking'");
+    snapshot_moment.push_back("after_shrinking");
+    snapshot_moment_doc.push_back("after shrinking");
+    snapshot_moment.push_back("after_merging");
+    snapshot_moment_doc.push_back("after merging");
+    snapshot_moment.push_back("after_pruning");
+    snapshot_moment_doc.push_back("after pruning, i.e., at end of iteration");
+    parser.add_enum_option(
+        "snapshot_moment",
+        snapshot_moment,
+        "the point in one iteration at which a snapshot should be computed",
+        "after_label_reduction",
+        snapshot_moment_doc);
 }
 
 void handle_cp_merge_and_shrink_algorithm_options(Options &opts) {
