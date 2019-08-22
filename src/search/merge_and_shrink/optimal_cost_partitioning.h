@@ -66,18 +66,21 @@ class OptimalCostPartitioningFactory : public CostPartitioningFactory {
         double infinity,
         const AbstractionInformation &abstraction_info,
         const TransitionSystem &ts,
-        const std::vector<int> &contiguous_label_mapping) const;
+        const std::vector<int> &contiguous_label_mapping,
+        utils::Verbosity verbosity) const;
     void create_global_constraints_efficient(
         std::vector<lp::LPConstraint> &constraints,
         const FactoredTransitionSystem &fts,
         const std::vector<int> active_nontrivial_indices,
         const std::vector<std::vector<int>> &abs_to_contiguous_label_group_mapping,
-        const std::vector<AbstractionInformation> &abstractions) const;
+        const std::vector<AbstractionInformation> &abstractions,
+        utils::Verbosity verbosity) const;
     void create_global_constraints(
         std::vector<lp::LPConstraint> &constraints,
         const Labels &labels,
         const std::vector<int> &contiguous_label_mapping,
-        const std::vector<AbstractionInformation> &abstractions) const;
+        const std::vector<AbstractionInformation> &abstractions,
+        utils::Verbosity verbosity) const;
 public:
     explicit OptimalCostPartitioningFactory(const Options &opts);
     virtual ~OptimalCostPartitioningFactory() = default;
