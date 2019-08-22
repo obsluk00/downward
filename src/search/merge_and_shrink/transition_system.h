@@ -225,6 +225,10 @@ public:
     const std::vector<int> &get_incorporated_variables() const {
         return incorporated_variables;
     }
+
+    const LabelEquivalenceRelation &get_label_equivalence_relation() const {
+        return *label_equivalence_relation;
+    }
 };
 }
 

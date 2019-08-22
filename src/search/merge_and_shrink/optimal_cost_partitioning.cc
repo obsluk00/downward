@@ -131,49 +131,107 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
     vector<lp::LPConstraint> &constraints,
     double infinity,
     const AbstractionInformation &abstraction_info,
-    const TransitionSystem &transition_system,
+    const TransitionSystem &ts,
     const vector<int> &contiguous_label_mapping) const {
 
     // Add constraints: H_alpha(g) <= 0 (as variable lower bounds) for all abstract goals g.
-    for (int state = 0; state < transition_system.get_size(); ++state) {
-        if (transition_system.is_goal_state(state)) {
+    for (int state = 0; state < ts.get_size(); ++state) {
+        if (ts.is_goal_state(state)) {
             int goal_var = abstraction_info.get_state_cost_variable(state);
             variables[goal_var].upper_bound = 0;
         }
     }
 
-    for (GroupAndTransitions gat : transition_system) {
-        bool have_set_lower_bound = false;
-        for (const Transition &transition : gat.transitions) {
-            if (transition.src != transition.target) {
-                // Create constraints for state-changing transitions.
-                int source_var = abstraction_info.get_state_cost_variable(transition.src);
-                int target_var = abstraction_info.get_state_cost_variable(transition.target);
-                for (int label_no : gat.label_group) {
-                    int label_var = abstraction_info.get_local_label_cost_variable(
-                            contiguous_label_mapping[label_no]);
+    for (GroupAndTransitions gat : ts) {
+        if (efficient_cp) {
+            // Label group var is the same for the group.
+            int some_label_no = *gat.label_group.begin();
+            int group_id = ts.get_label_equivalence_relation().get_group_id(some_label_no);
+            int group_var = abstraction_info.get_local_label_cost_variable(
+                    contiguous_label_mapping[group_id]);
+
+            bool have_set_lower_bound = false;
+            for (const Transition &transition : gat.transitions) {
+                if (transition.src != transition.target) {
+                    // Create constraints for state-changing transitions.
+                    int source_var = abstraction_info.get_state_cost_variable(transition.src);
+                    int target_var = abstraction_info.get_state_cost_variable(transition.target);
 
                     // Add constraint: H_alpha(s) <= H_alpha(s') + C_alpha(l)
                     lp::LPConstraint constraint(0, infinity);
                     constraint.insert(source_var, -1);
-                    constraint.insert(label_var, 1);
+                    constraint.insert(group_var, 1);
                     constraint.insert(target_var, 1);
                     constraints.push_back(constraint);
+                } else {
+                    if (!have_set_lower_bound) {
+                        /*
+                          Self loops are a special case of transitions that can be treated more
+                          efficiently, because the variables H_alpha(s) and H_alpha(s') cancel out.
+                        */
+                        variables[group_var].lower_bound = 0;
+                        have_set_lower_bound = true;
+                    }
                 }
-            } else {
-                if (!have_set_lower_bound) {
-                    /*
-                      Self loops are a special case of transitions that can be treated more
-                      efficiently, because the variables H_alpha(s) and H_alpha(s') cancel out.
-                    */
+            }
+        } else {
+            bool have_set_lower_bound = false;
+            for (const Transition &transition : gat.transitions) {
+                if (transition.src != transition.target) {
+                    // Create constraints for state-changing transitions.
+                    int source_var = abstraction_info.get_state_cost_variable(transition.src);
+                    int target_var = abstraction_info.get_state_cost_variable(transition.target);
                     for (int label_no : gat.label_group) {
                         int label_var = abstraction_info.get_local_label_cost_variable(
                                 contiguous_label_mapping[label_no]);
-                        variables[label_var].lower_bound = 0;
+
+                        // Add constraint: H_alpha(s) <= H_alpha(s') + C_alpha(l)
+                        lp::LPConstraint constraint(0, infinity);
+                        constraint.insert(source_var, -1);
+                        constraint.insert(label_var, 1);
+                        constraint.insert(target_var, 1);
+                        constraints.push_back(constraint);
                     }
-                    have_set_lower_bound = true;
+                } else {
+                    if (!have_set_lower_bound) {
+                        /*
+                          Self loops are a special case of transitions that can be treated more
+                          efficiently, because the variables H_alpha(s) and H_alpha(s') cancel out.
+                        */
+                        for (int label_no : gat.label_group) {
+                            int label_var = abstraction_info.get_local_label_cost_variable(
+                                    contiguous_label_mapping[label_no]);
+                            variables[label_var].lower_bound = 0;
+                        }
+                        have_set_lower_bound = true;
+                    }
                 }
             }
+        }
+    }
+}
+
+void OptimalCostPartitioningFactory::create_global_constraints_efficient(
+    vector<lp::LPConstraint> &constraints,
+    const FactoredTransitionSystem &fts,
+    const vector<int> active_nontrivial_indices,
+    const vector<vector<int>> &abs_to_contiguous_label_group_mapping,
+    const vector<AbstractionInformation> &abstractions) const {
+    // Create cost partitioning constraints.
+    const Labels &labels = fts.get_labels();
+    for (int label_no = 0; label_no < labels.get_size(); ++label_no) {
+        if (labels.is_current_label(label_no)) {
+            // Add constraint: sum_alpha Cost_alpha(o) <= cost(o)
+            lp::LPConstraint constraint(0, labels.get_label_cost(label_no));
+            for (size_t i = 0; i < abstractions.size(); ++i) {
+                int index = active_nontrivial_indices[i];
+                const TransitionSystem &ts = fts.get_transition_system(index);
+                int group_id = ts.get_label_equivalence_relation().get_group_id(label_no);
+                const AbstractionInformation &abstraction_info = abstractions[i];
+                constraint.insert(abstraction_info.get_local_label_cost_variable(
+                    abs_to_contiguous_label_group_mapping[i][group_id]), 1);
+            }
+            constraints.push_back(constraint);
         }
     }
 }
@@ -182,7 +240,7 @@ void OptimalCostPartitioningFactory::create_global_constraints(
     vector<lp::LPConstraint> &constraints,
     const Labels &labels,
     const vector<int> &contiguous_label_mapping,
-    const std::vector<AbstractionInformation> &abstractions) const {
+    const vector<AbstractionInformation> &abstractions) const {
     // Create cost partitioning constraints.
     for (int label_no = 0; label_no < labels.get_size(); ++label_no) {
         if (labels.is_current_label(label_no)) {
@@ -190,7 +248,7 @@ void OptimalCostPartitioningFactory::create_global_constraints(
             lp::LPConstraint constraint(0, labels.get_label_cost(label_no));
             for (const AbstractionInformation &abstraction_info : abstractions) {
                 constraint.insert(abstraction_info.get_local_label_cost_variable(
-                        contiguous_label_mapping[label_no]), 1);
+                    contiguous_label_mapping[label_no]), 1);
             }
             constraints.push_back(constraint);
         }
@@ -228,10 +286,27 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
     int largest_label_no = labels.get_size();
     // Contiguous renumbering of labels.
     vector<int> contiguous_label_mapping(largest_label_no, -1);
+    // Used for labels or label groups depending on whether efficient_cp is set or not.
     int num_labels = 0;
-    for (int label_no = 0; label_no < largest_label_no; ++label_no) {
-        if (labels.is_current_label(label_no)) {
-            contiguous_label_mapping[label_no] = num_labels++;
+    vector<vector<int>> abs_to_contiguous_label_group_mapping;
+    if (efficient_cp) {
+        for (int index : active_nontrivial_factor_indices) {
+            const TransitionSystem &ts = fts.get_transition_system(index);
+            const LabelEquivalenceRelation &label_equiv_rel = ts.get_label_equivalence_relation();
+            int largest_group_id = label_equiv_rel.get_size();
+            vector<int> contiguous_label_group_mapping(largest_group_id, -1);
+            for (int group_id = 0; group_id < largest_group_id; ++group_id) {
+                if (!label_equiv_rel.is_empty_group(group_id)) {
+                    contiguous_label_group_mapping[group_id] = num_labels++;
+                }
+            }
+            abs_to_contiguous_label_group_mapping.push_back(move(contiguous_label_group_mapping));
+        }
+    } else {
+        for (int label_no = 0; label_no < largest_label_no; ++label_no) {
+            if (labels.is_current_label(label_no)) {
+                contiguous_label_mapping[label_no] = num_labels++;
+            }
         }
     }
 
@@ -259,11 +334,23 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
         num_abstract_states += ts.get_size();
         create_abstraction_variables(
             variables, infinity, abstraction_info, ts.get_size(), num_labels);
-        create_abstraction_constraints(
-            variables, constraints, infinity, abstraction_info, ts, contiguous_label_mapping);
+        if (efficient_cp) {
+            create_abstraction_constraints(
+                variables, constraints, infinity, abstraction_info, ts, abs_to_contiguous_label_group_mapping[i]);
+        } else {
+            create_abstraction_constraints(
+                variables, constraints, infinity, abstraction_info, ts, contiguous_label_mapping);
+        }
         abstractions.push_back(move(abstraction_info));
     }
-    create_global_constraints(constraints, labels, contiguous_label_mapping, abstractions);
+    if (efficient_cp) {
+        create_global_constraints_efficient(
+            constraints, fts, active_nontrivial_factor_indices,
+            abs_to_contiguous_label_group_mapping, abstractions);
+    } else {
+        create_global_constraints(
+            constraints, labels, contiguous_label_mapping, abstractions);
+    }
 
     if (verbosity >= utils::Verbosity::DEBUG) {
         cout << "Abstract states in abstractions: " << num_abstract_states << endl;
