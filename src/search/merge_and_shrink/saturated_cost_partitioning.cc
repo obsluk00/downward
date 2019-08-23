@@ -60,34 +60,15 @@ SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
       factor_order(static_cast<FactorOrder>(opts.get_enum("factor_order"))) {
 }
 
-SCPMSHeuristic SaturatedCostPartitioningFactory::extract_scp_heuristic(
-    FactoredTransitionSystem &fts, int index) const {
-    SCPMSHeuristic scp_ms_heuristic;
-    scp_ms_heuristic.goal_distances.reserve(1);
-    scp_ms_heuristic.mas_representations.reserve(1);
-    auto factor = fts.extract_factor(index);
-    scp_ms_heuristic.goal_distances.push_back(factor.second->get_goal_distances());
-    scp_ms_heuristic.mas_representations.push_back(move(factor.first));
-    return scp_ms_heuristic;
-}
-
 unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
-    FactoredTransitionSystem &fts,
-    utils::Verbosity verbosity,
-    int unsolvable_index) {
+    const Labels &labels,
+    vector<unique_ptr<Abstraction>> &&abstractions,
+    utils::Verbosity verbosity) {
     if (verbosity >= utils::Verbosity::DEBUG) {
         cout << "Computing SCP M&S heuristic over current FTS..." << endl;
     }
 
-    if (unsolvable_index != -1) {
-        if (verbosity >= utils::Verbosity::DEBUG) {
-            cout << "FTS is unsolvable, using single factor for CP." << endl;
-        }
-        return utils::make_unique_ptr<SaturatedCostPartitioning>(extract_scp_heuristic(fts, unsolvable_index));
-    }
-
     // Compute original label costs.
-    const Labels &labels = fts.get_labels();
     int num_labels = labels.get_size();
     vector<int> remaining_label_costs(num_labels, -1);
     for (int label_no = 0; label_no < num_labels; ++label_no) {
@@ -96,53 +77,28 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
         }
     }
 
-    vector<int> active_nontrivial_factor_indices;
-    active_nontrivial_factor_indices.reserve(fts.get_num_active_entries());
-    for (int index : fts) {
-        if (fts.is_factor_trivial(index)) {
-            if (verbosity >= utils::Verbosity::DEBUG) {
-                cout << "factor at index " << index << " is trivial" << endl;
-            }
-        } else {
-            active_nontrivial_factor_indices.push_back(index);
-        }
-    }
-    assert(!active_nontrivial_factor_indices.empty());
+    vector<size_t> abstraction_indices(abstractions.size());
+    iota(abstraction_indices.begin(), abstraction_indices.end(), 0);
     if (factor_order == FactorOrder::RANDOM) {
-        rng->shuffle(active_nontrivial_factor_indices);
+        rng->shuffle(abstraction_indices);
     }
 
     SCPMSHeuristic scp_ms_heuristic;
     bool dump_if_empty_transitions = true;
     bool dump_if_infinite_transitions = true;
-    for (size_t i = 0; i < active_nontrivial_factor_indices.size(); ++i) {
-        int index = active_nontrivial_factor_indices[i];
-        if (verbosity >= utils::Verbosity::DEBUG) {
-            cout << "Considering factor at index " << index << endl;
-        }
-
-//        const Distances &distances = fts.get_distances(index);
-//        cout << "Distances under full costs: " << distances.get_goal_distances() << endl;
+    for (size_t i = 0; i < abstraction_indices.size(); ++i) {
+        size_t index = abstraction_indices[i];
+        Abstraction &abstraction = *abstractions[index];
         if (verbosity >= utils::Verbosity::DEBUG) {
             cout << "Remaining label costs: " << remaining_label_costs << endl;
         }
-        const TransitionSystem &ts = fts.get_transition_system(index);
+        const TransitionSystem &ts = *abstraction.transition_system;
         vector<int> goal_distances = compute_goal_distances(
             ts, remaining_label_costs, verbosity);
 //        cout << "Distances under remaining costs: " << goal_distances << endl;
-        unique_ptr<MergeAndShrinkRepresentation> mas_representation = nullptr;
-        if (dynamic_cast<const MergeAndShrinkRepresentationLeaf *>(fts.get_mas_representation_raw_ptr(index))) {
-            mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationLeaf>(
-                dynamic_cast<const MergeAndShrinkRepresentationLeaf *>
-                    (fts.get_mas_representation_raw_ptr(index)));
-        } else {
-            mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
-                dynamic_cast<const MergeAndShrinkRepresentationMerge *>(
-                    fts.get_mas_representation_raw_ptr(index)));
-        }
         scp_ms_heuristic.goal_distances.push_back(goal_distances);
-        scp_ms_heuristic.mas_representations.push_back(move(mas_representation));
-        if (i == active_nontrivial_factor_indices.size() - 1) {
+        scp_ms_heuristic.mas_representations.push_back(move(abstraction.merge_and_shrink_representation));
+        if (i == abstraction_indices.size() - 1) {
             break;
         }
 

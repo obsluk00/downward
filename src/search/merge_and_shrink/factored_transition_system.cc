@@ -200,6 +200,13 @@ FactoredTransitionSystem::extract_factor(int index) {
                      move(distances[index]));
 }
 
+pair<unique_ptr<TransitionSystem>, unique_ptr<MergeAndShrinkRepresentation>>
+FactoredTransitionSystem::extract_ts_and_representation(int index) {
+    assert(is_component_valid(index));
+    return make_pair(move(transition_systems[index]),
+                     move(mas_representations[index]));
+}
+
 void FactoredTransitionSystem::statistics(int index) const {
     assert(is_component_valid(index));
     const TransitionSystem &ts = *transition_systems[index];
@@ -218,6 +225,10 @@ void FactoredTransitionSystem::dump() const {
     for (int index : *this) {
         dump(index);
     }
+}
+
+TransitionSystem *FactoredTransitionSystem::get_transition_system_raw_ptr(int index) {
+    return transition_systems[index].get();
 }
 
 const MergeAndShrinkRepresentation *FactoredTransitionSystem::get_mas_representation_raw_ptr(int index) const {

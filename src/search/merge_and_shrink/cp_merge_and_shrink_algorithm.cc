@@ -338,7 +338,8 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         if (snapshot_moment == SnapshotMoment::AFTER_LABEL_REDUCTION &&
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
-            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            cost_partitionings.push_back(cp_factory->generate(
+                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
             computed_snapshot_after_last_transformation = true;
             log_main_loop_progress("after handling main loop snapshot");
         }
@@ -371,7 +372,8 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         if (snapshot_moment == SnapshotMoment::AFTER_SHRINKING &&
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
-            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            cost_partitionings.push_back(cp_factory->generate(
+                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
             computed_snapshot_after_last_transformation = true;
             log_main_loop_progress("after handling main loop snapshot");
         }
@@ -417,7 +419,8 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         if (snapshot_moment == SnapshotMoment::AFTER_MERGING &&
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
-            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            cost_partitionings.push_back(cp_factory->generate(
+                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
             computed_snapshot_after_last_transformation = true;
             log_main_loop_progress("after handling main loop snapshot");
         }
@@ -458,7 +461,8 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
             }
             vector<unique_ptr<CostPartitioning>>().swap(cost_partitionings);
             cost_partitionings.reserve(1);
-            cost_partitionings.push_back(cp_factory->generate(fts, verbosity, merged_index));
+            cost_partitionings.push_back(cp_factory->generate(
+                fts.get_labels(), compute_abstractions_over_fts(fts, merged_index), verbosity));
             computed_snapshot_after_last_transformation = true;
             break;
         }
@@ -470,7 +474,8 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         if (snapshot_moment == SnapshotMoment::AFTER_PRUNING &&
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
-            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            cost_partitionings.push_back(cp_factory->generate(
+                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
             computed_snapshot_after_last_transformation = true;
             log_main_loop_progress("after handling main loop snapshot");
         }
@@ -497,10 +502,44 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
     return computed_snapshot_after_last_transformation;
 }
 
+vector<unique_ptr<Abstraction>> CPMergeAndShrinkAlgorithm::compute_abstractions_over_fts(
+    FactoredTransitionSystem &fts, int unsolvable_index) const {
+    vector<unique_ptr<Abstraction>> abstractions;
+    if (unsolvable_index == -1) {
+        vector<int> active_nontrivial_factor_indices;
+        active_nontrivial_factor_indices.reserve(fts.get_num_active_entries());
+        for (int index : fts) {
+            if (!fts.is_factor_trivial(index)) {
+                active_nontrivial_factor_indices.push_back(index);
+            }
+        }
+        assert(!active_nontrivial_factor_indices.empty());
+
+        for (int index : active_nontrivial_factor_indices) {
+            TransitionSystem *transition_system = fts.get_transition_system_raw_ptr(index);
+            unique_ptr<MergeAndShrinkRepresentation> mas_representation = nullptr;
+            if (dynamic_cast<const MergeAndShrinkRepresentationLeaf *>(fts.get_mas_representation_raw_ptr(index))) {
+                mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationLeaf>(
+                    dynamic_cast<const MergeAndShrinkRepresentationLeaf *>
+                        (fts.get_mas_representation_raw_ptr(index)));
+            } else {
+                mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
+                    dynamic_cast<const MergeAndShrinkRepresentationMerge *>(
+                        fts.get_mas_representation_raw_ptr(index)));
+            }
+            abstractions.push_back(utils::make_unique_ptr<Abstraction>(transition_system, move(mas_representation)));
+        }
+    } else {
+        auto factor = fts.extract_ts_and_representation(unsolvable_index);
+        abstractions.push_back(utils::make_unique_ptr<Abstraction>(factor.first.release(), move(factor.second)));
+    }
+    return abstractions;
+}
+
 vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
     const TaskProxy &task_proxy) {
     if (starting_peak_memory) {
-        cerr << "Calling build_factored_transition_system twice is not "
+        cerr << "Calling compute_ms_cps twice is not "
              << "supported!" << endl;
         utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
@@ -555,7 +594,8 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
         if (!fts.is_factor_solvable(index)) {
             cout << "Atomic FTS is unsolvable, stopping computation." << endl;
             unsolvable = true;
-            cost_partitionings.push_back(cp_factory->generate(fts, verbosity, index));
+            cost_partitionings.push_back(cp_factory->generate(
+                fts.get_labels(), compute_abstractions_over_fts(fts, index), verbosity));
             break;
         }
     }
@@ -578,7 +618,8 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
         }
 
         if (compute_atomic_snapshot) {
-            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            cost_partitionings.push_back(cp_factory->generate(
+                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
             if (verbosity >= utils::Verbosity::NORMAL) {
                 log_progress(timer, "after handling atomic snapshot");
             }
@@ -599,7 +640,8 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
 
         if ((compute_final_snapshot && !computed_snapshot_after_last_transformation) ||
             cost_partitionings.empty()) {
-            cost_partitionings.push_back(cp_factory->generate(fts, verbosity));
+            cost_partitionings.push_back(cp_factory->generate(
+                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
             log_progress(timer, "after handling final snapshot");
         }
     }

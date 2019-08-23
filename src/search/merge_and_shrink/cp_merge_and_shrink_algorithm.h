@@ -18,6 +18,7 @@ enum class Verbosity;
 }
 
 namespace merge_and_shrink {
+class Abstraction;
 class CostPartitioning;
 class CostPartitioningFactory;
 class FactoredTransitionSystem;
@@ -70,6 +71,9 @@ class CPMergeAndShrinkAlgorithm {
     void warn_on_unusual_options() const;
     bool ran_out_of_time(const utils::CountdownTimer &timer) const;
     void statistics(int maximum_intermediate_size) const;
+    std::vector<std::unique_ptr<Abstraction>> compute_abstractions_over_fts(
+        FactoredTransitionSystem &fts,
+        int unsolvable_index = -1) const;
     bool main_loop(
         FactoredTransitionSystem &fts,
         const TaskProxy &task_proxy,
@@ -77,6 +81,8 @@ class CPMergeAndShrinkAlgorithm {
 public:
     explicit CPMergeAndShrinkAlgorithm(const options::Options &opts);
     std::vector<std::unique_ptr<CostPartitioning>> compute_ms_cps(
+        const TaskProxy &task_proxy);
+    std::unique_ptr<CostPartitioning> compute_single_ms_cp(
         const TaskProxy &task_proxy);
 };
 

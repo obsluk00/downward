@@ -2,6 +2,7 @@
 #define MERGE_AND_SHRINK_COST_PARTITIONING_H
 
 #include <memory>
+#include <vector>
 
 class State;
 
@@ -10,7 +11,9 @@ enum class Verbosity;
 }
 
 namespace merge_and_shrink {
-class FactoredTransitionSystem;
+class Labels;
+class MergeAndShrinkRepresentation;
+class TransitionSystem;
 
 class CostPartitioning {
 public:
@@ -21,14 +24,24 @@ public:
     virtual void print_statistics() const {};
 };
 
+struct Abstraction {
+    TransitionSystem *transition_system;
+    std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation;
+
+    Abstraction(
+        TransitionSystem *transition_system,
+        std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation);
+    ~Abstraction();
+};
+
 class CostPartitioningFactory {
 public:
     CostPartitioningFactory() = default;
     virtual ~CostPartitioningFactory() = default;
     virtual std::unique_ptr<CostPartitioning> generate(
-        FactoredTransitionSystem &fts,
-        utils::Verbosity verbosity,
-        int unsolvable_index = -1) = 0;
+        const Labels &labels,
+        std::vector<std::unique_ptr<Abstraction>> &&abstractions,
+        utils::Verbosity verbosity) = 0;
 };
 }
 

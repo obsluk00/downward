@@ -37,17 +37,13 @@ public:
 class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
     std::shared_ptr<utils::RandomNumberGenerator> rng;
     const FactorOrder factor_order;
-
-    SCPMSHeuristic extract_scp_heuristic(
-        FactoredTransitionSystem &fts, int index) const;
 public:
     explicit SaturatedCostPartitioningFactory(const Options &opts);
     virtual ~SaturatedCostPartitioningFactory() = default;
-    // fts is non-const due to extracting unsolvable factors.
     virtual std::unique_ptr<CostPartitioning> generate(
-        FactoredTransitionSystem &fts,
-        utils::Verbosity verbosity,
-        int unsolvable_index = -1) override;
+        const Labels &labels,
+        std::vector<std::unique_ptr<Abstraction>> &&abstractions,
+        utils::Verbosity verbosity) override;
 };
 }
 

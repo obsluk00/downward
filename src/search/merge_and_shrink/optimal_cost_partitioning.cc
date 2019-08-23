@@ -34,16 +34,16 @@ int AbstractionInformation::get_state_cost_variable(int state_id) const {
 }
 
 OptimalCostPartitioning::OptimalCostPartitioning(
-    std::vector<AbstractionInformation> &&abstractions,
+    std::vector<AbstractionInformation> &&abstraction_infos,
     std::unique_ptr<lp::LPSolver> lp_solver)
     : CostPartitioning(),
-      abstractions(move(abstractions)),
+      abstraction_infos(move(abstraction_infos)),
       lp_solver(move(lp_solver)) {
 }
 
 bool OptimalCostPartitioning::set_current_state(const State &state) {
     // Change objective to maximize heuristic value of initial states in all projections.
-    for (AbstractionInformation &abstraction_info : abstractions) {
+    for (AbstractionInformation &abstraction_info : abstraction_infos) {
         // First check if the state is a dead end.
         int abstract_state = abstraction_info.abstraction_function->get_value(state);
         if (abstract_state == PRUNED_STATE) {
@@ -86,7 +86,7 @@ int OptimalCostPartitioning::compute_value(const State &state) {
 }
 
 int OptimalCostPartitioning::get_number_of_factors() const {
-    return abstractions.size();
+    return abstraction_infos.size();
 }
 
 void OptimalCostPartitioning::print_statistics() const {
@@ -238,13 +238,12 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
 
 void OptimalCostPartitioningFactory::create_global_constraints_efficient(
     vector<lp::LPConstraint> &constraints,
-    const FactoredTransitionSystem &fts,
-    const vector<int> active_nontrivial_indices,
+    const Labels &labels,
+    vector<unique_ptr<Abstraction>> &abstractions,
     const vector<vector<int>> &abs_to_contiguous_label_group_mapping,
-    const vector<AbstractionInformation> &abstractions,
+    const vector<AbstractionInformation> &abstraction_infos,
     utils::Verbosity verbosity) const {
     // Create cost partitioning constraints.
-    const Labels &labels = fts.get_labels();
     for (int label_no = 0; label_no < labels.get_size(); ++label_no) {
         if (labels.is_current_label(label_no)) {
             // Add constraint: sum_alpha Cost_alpha(o) <= cost(o)
@@ -252,11 +251,10 @@ void OptimalCostPartitioningFactory::create_global_constraints_efficient(
             if (verbosity >= utils::Verbosity::DEBUG) {
                 cout << "adding global constraint for label " << label_no << ": ";
             }
-            for (size_t i = 0; i < abstractions.size(); ++i) {
-                int index = active_nontrivial_indices[i];
-                const TransitionSystem &ts = fts.get_transition_system(index);
+            for (size_t i = 0; i < abstraction_infos.size(); ++i) {
+                const TransitionSystem &ts = *abstractions[i]->transition_system;
                 int group_id = ts.get_label_equivalence_relation().get_group_id(label_no);
-                const AbstractionInformation &abstraction_info = abstractions[i];
+                const AbstractionInformation &abstraction_info = abstraction_infos[i];
                 int group_var = abstraction_info.get_local_label_cost_variable(
                         abs_to_contiguous_label_group_mapping[i][group_id]);
                 constraint.insert(group_var, 1);
@@ -276,7 +274,7 @@ void OptimalCostPartitioningFactory::create_global_constraints(
     vector<lp::LPConstraint> &constraints,
     const Labels &labels,
     const vector<int> &contiguous_label_mapping,
-    const vector<AbstractionInformation> &abstractions,
+    const vector<AbstractionInformation> &abstraction_infos,
     utils::Verbosity verbosity) const {
     // Create cost partitioning constraints.
     for (int label_no = 0; label_no < labels.get_size(); ++label_no) {
@@ -286,7 +284,7 @@ void OptimalCostPartitioningFactory::create_global_constraints(
             if (verbosity >= utils::Verbosity::DEBUG) {
                 cout << "adding global constraint for label " << label_no << ": ";
             }
-            for (const AbstractionInformation &abstraction_info : abstractions) {
+            for (const AbstractionInformation &abstraction_info : abstraction_infos) {
                 int label_var = abstraction_info.get_local_label_cost_variable(
                         contiguous_label_mapping[label_no]);
                 constraint.insert(label_var, 1);
@@ -303,33 +301,14 @@ void OptimalCostPartitioningFactory::create_global_constraints(
 }
 
 unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
-    FactoredTransitionSystem &fts,
-    utils::Verbosity verbosity,
-    int unsolvable_index) {
+    const Labels &labels,
+    vector<unique_ptr<Abstraction>> &&abstractions,
+    utils::Verbosity verbosity) {
     if (verbosity >= utils::Verbosity::DEBUG) {
         cout << "Computing OCP M&S heuristic over current FTS..." << endl;
         cout << "LP peak memory before construct: " << utils::get_peak_memory_in_kb() << endl;
     }
 
-    vector<int> active_nontrivial_factor_indices;
-    if (unsolvable_index == -1) {
-        active_nontrivial_factor_indices.reserve(fts.get_num_active_entries());
-        for (int index : fts) {
-            if (fts.is_factor_trivial(index)) {
-                if (verbosity >= utils::Verbosity::DEBUG) {
-                    cout << "factor at index " << index << " is trivial" << endl;
-                }
-            } else {
-                active_nontrivial_factor_indices.push_back(index);
-            }
-        }
-    } else {
-        active_nontrivial_factor_indices.reserve(1);
-        active_nontrivial_factor_indices.push_back(unsolvable_index);
-    }
-    assert(!active_nontrivial_factor_indices.empty());
-
-    const Labels &labels = fts.get_labels();
     int largest_label_no = labels.get_size();
     // Contiguous renumbering of labels.
     vector<int> contiguous_label_mapping(largest_label_no, -1);
@@ -338,8 +317,8 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
     vector<vector<int>> abs_to_contiguous_label_group_mapping;
     vector<int> abs_to_num_label_groups;
     if (efficient_cp) {
-        for (int index : active_nontrivial_factor_indices) {
-            const TransitionSystem &ts = fts.get_transition_system(index);
+        for (const auto &abstraction : abstractions) {
+            const TransitionSystem &ts = *abstraction->transition_system;
             const LabelEquivalenceRelation &label_equiv_rel = ts.get_label_equivalence_relation();
             int largest_group_id = label_equiv_rel.get_size();
             vector<int> contiguous_label_group_mapping(largest_group_id, -1);
@@ -351,10 +330,6 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
             }
             abs_to_contiguous_label_group_mapping.push_back(move(contiguous_label_group_mapping));
             abs_to_num_label_groups.push_back(num_groups);
-            if (verbosity >= utils::Verbosity::DEBUG) {
-                cout << "number of label groups in factor with index "
-                     << index << ": " << num_groups << endl;
-            }
         }
     } else {
         for (int label_no = 0; label_no < largest_label_no; ++label_no) {
@@ -367,27 +342,18 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
         }
     }
 
-    std::vector<AbstractionInformation> abstractions;
+    std::vector<AbstractionInformation> abstraction_infos;
+    abstraction_infos.reserve(abstractions.size());
     std::unique_ptr<lp::LPSolver> lp_solver = utils::make_unique_ptr<lp::LPSolver>(lp_solver_type);
     vector<lp::LPVariable> variables;
     vector<lp::LPConstraint> constraints;
     double infinity = lp_solver->get_infinity();
     int num_abstract_states = 0;
-    for (size_t i = 0; i < active_nontrivial_factor_indices.size(); ++i) {
-        int index = active_nontrivial_factor_indices[i];
-        unique_ptr<MergeAndShrinkRepresentation> mas_representation = nullptr;
-        if (dynamic_cast<const MergeAndShrinkRepresentationLeaf *>(fts.get_mas_representation_raw_ptr(index))) {
-            mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationLeaf>(
-                dynamic_cast<const MergeAndShrinkRepresentationLeaf *>
-                    (fts.get_mas_representation_raw_ptr(index)));
-        } else {
-            mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
-                dynamic_cast<const MergeAndShrinkRepresentationMerge *>(
-                    fts.get_mas_representation_raw_ptr(index)));
-        }
-
+    for (size_t i = 0; i < abstraction_infos.size(); ++i) {
+        unique_ptr<MergeAndShrinkRepresentation> mas_representation =
+            move(abstractions[i]->merge_and_shrink_representation);
         AbstractionInformation abstraction_info(move(mas_representation));
-        const TransitionSystem &ts = fts.get_transition_system(index);
+        const TransitionSystem &ts = *abstractions[i]->transition_system;
         num_abstract_states += ts.get_size();
         if (efficient_cp) {
             create_abstraction_variables(
@@ -407,15 +373,15 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
                 variables, constraints, infinity, abstraction_info, ts,
                 contiguous_label_mapping, verbosity);
         }
-        abstractions.push_back(move(abstraction_info));
+        abstraction_infos.push_back(move(abstraction_info));
     }
     if (efficient_cp) {
         create_global_constraints_efficient(
-            constraints, fts, active_nontrivial_factor_indices,
-            abs_to_contiguous_label_group_mapping, abstractions, verbosity);
+            constraints, labels, abstractions, abs_to_contiguous_label_group_mapping,
+            abstraction_infos, verbosity);
     } else {
         create_global_constraints(
-            constraints, labels, contiguous_label_mapping, abstractions,
+            constraints, labels, contiguous_label_mapping, abstraction_infos,
             verbosity);
     }
 
@@ -431,7 +397,7 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
         cout << "LP peak memory after load: " << utils::get_peak_memory_in_kb() << endl;
     }
 
-    return utils::make_unique_ptr<OptimalCostPartitioning>(move(abstractions), move(lp_solver));
+    return utils::make_unique_ptr<OptimalCostPartitioning>(move(abstraction_infos), move(lp_solver));
 }
 
 static shared_ptr<OptimalCostPartitioningFactory>_parse(OptionParser &parser) {

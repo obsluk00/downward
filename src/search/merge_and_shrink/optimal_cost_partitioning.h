@@ -35,13 +35,13 @@ struct AbstractionInformation {
 };
 
 class OptimalCostPartitioning : public CostPartitioning {
-    std::vector<AbstractionInformation> abstractions;
+    std::vector<AbstractionInformation> abstraction_infos;
     std::unique_ptr<lp::LPSolver> lp_solver;
 
     bool set_current_state(const State &state);
 public:
     OptimalCostPartitioning(
-        std::vector<AbstractionInformation> &&abstractions,
+        std::vector<AbstractionInformation> &&abstraction_infos,
         std::unique_ptr<lp::LPSolver> lp_solver);
     virtual ~OptimalCostPartitioning() = default;
     virtual int compute_value(const State &state) override;
@@ -70,24 +70,24 @@ class OptimalCostPartitioningFactory : public CostPartitioningFactory {
         utils::Verbosity verbosity) const;
     void create_global_constraints_efficient(
         std::vector<lp::LPConstraint> &constraints,
-        const FactoredTransitionSystem &fts,
-        const std::vector<int> active_nontrivial_indices,
+        const Labels &labels,
+        std::vector<std::unique_ptr<Abstraction>> &abstractions,
         const std::vector<std::vector<int>> &abs_to_contiguous_label_group_mapping,
-        const std::vector<AbstractionInformation> &abstractions,
+        const std::vector<AbstractionInformation> &abstraction_infos,
         utils::Verbosity verbosity) const;
     void create_global_constraints(
         std::vector<lp::LPConstraint> &constraints,
         const Labels &labels,
         const std::vector<int> &contiguous_label_mapping,
-        const std::vector<AbstractionInformation> &abstractions,
+        const std::vector<AbstractionInformation> &abstraction_infos,
         utils::Verbosity verbosity) const;
 public:
     explicit OptimalCostPartitioningFactory(const Options &opts);
     virtual ~OptimalCostPartitioningFactory() = default;
     virtual std::unique_ptr<CostPartitioning> generate(
-        FactoredTransitionSystem &fts,
-        utils::Verbosity verbosity,
-        int unsolvable_index = -1) override;
+        const Labels &labels,
+        std::vector<std::unique_ptr<Abstraction>> &&abstractions,
+        utils::Verbosity verbosity) override;
 };
 }
 
