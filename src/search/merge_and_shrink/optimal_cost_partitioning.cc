@@ -246,7 +246,7 @@ void OptimalCostPartitioningFactory::create_global_constraints_efficient(
     // Create cost partitioning constraints.
     for (int label_no = 0; label_no < labels.get_size(); ++label_no) {
         if (labels.is_current_label(label_no)) {
-            // Add constraint: sum_alpha Cost_alpha(o) <= cost(o)
+            // Add constraint: sum_alpha Cost_alpha(l) <= cost(l)
             lp::LPConstraint constraint(0, labels.get_label_cost(label_no));
             if (verbosity >= utils::Verbosity::DEBUG) {
                 cout << "adding global constraint for label " << label_no << ": ";
@@ -305,7 +305,7 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
     vector<unique_ptr<Abstraction>> &&abstractions,
     utils::Verbosity verbosity) {
     if (verbosity >= utils::Verbosity::DEBUG) {
-        cout << "Computing OCP M&S heuristic over current FTS..." << endl;
+        cout << "Computing OCP over M&S abstractions..." << endl;
         cout << "LP peak memory before construct: " << utils::get_peak_memory_in_kb() << endl;
     }
 
@@ -330,6 +330,9 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
             }
             abs_to_contiguous_label_group_mapping.push_back(move(contiguous_label_group_mapping));
             abs_to_num_label_groups.push_back(num_groups);
+            if (verbosity >= utils::Verbosity::DEBUG) {
+                cout << "number of label groups in abstraction: " << num_groups << endl;
+            }
         }
     } else {
         for (int label_no = 0; label_no < largest_label_no; ++label_no) {
@@ -349,7 +352,7 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
     vector<lp::LPConstraint> constraints;
     double infinity = lp_solver->get_infinity();
     int num_abstract_states = 0;
-    for (size_t i = 0; i < abstraction_infos.size(); ++i) {
+    for (size_t i = 0; i < abstractions.size(); ++i) {
         unique_ptr<MergeAndShrinkRepresentation> mas_representation =
             move(abstractions[i]->merge_and_shrink_representation);
         AbstractionInformation abstraction_info(move(mas_representation));
