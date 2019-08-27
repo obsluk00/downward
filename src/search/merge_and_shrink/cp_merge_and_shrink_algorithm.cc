@@ -18,6 +18,7 @@
 #include "../options/option_parser.h"
 #include "../options/options.h"
 
+#include "../tasks/root_task.h"
 #include "../task_utils/task_properties.h"
 
 #include "../utils/countdown_timer.h"
@@ -527,7 +528,12 @@ vector<unique_ptr<Abstraction>> CPMergeAndShrinkAlgorithm::compute_abstractions_
                     dynamic_cast<const MergeAndShrinkRepresentationMerge *>(
                         fts.get_mas_representation_raw_ptr(index)));
             }
+            const vector<int> &vars = transition_system->get_incorporated_variables();
+            assert(vars.size() == 1);
+            int var_id = vars.back();
+            string name = tasks::g_root_task->get_variable_name(var_id);
             abstractions.push_back(utils::make_unique_ptr<Abstraction>(transition_system, move(mas_representation)));
+            abstractions.back()->name = name;
         }
     } else {
         auto factor = fts.extract_ts_and_representation(unsolvable_index);

@@ -55,12 +55,14 @@ class OptimalCostPartitioningFactory : public CostPartitioningFactory {
     const bool efficient_cp;
 
     void create_abstraction_variables(
+        std::string name,
         std::vector<lp::LPVariable> &variables,
         double infinity,
         AbstractionInformation &abstraction_info,
         int num_states,
         int num_labels);
     void create_abstraction_constraints(
+        std::string name,
         std::vector<lp::LPVariable> &variables,
         std::vector<lp::LPConstraint> &constraints,
         double infinity,

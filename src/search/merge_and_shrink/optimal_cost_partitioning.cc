@@ -12,6 +12,8 @@
 #include "../option_parser.h"
 #include "../plugin.h"
 
+#include "../tasks/root_task.h"
+
 #include "../utils/logging.h"
 #include "../utils/memory.h"
 #include "../utils/rng.h"
@@ -102,6 +104,7 @@ OptimalCostPartitioningFactory::OptimalCostPartitioningFactory(
 }
 
 void OptimalCostPartitioningFactory::create_abstraction_variables(
+    string name,
     vector<lp::LPVariable> &variables,
     double infinity,
     AbstractionInformation &abstraction_info,
@@ -110,12 +113,14 @@ void OptimalCostPartitioningFactory::create_abstraction_variables(
 
     // Create variables for local label cost.
     abstraction_info.local_label_cost_offset = variables.size();
+    assert(num_labels == tasks::g_root_task->get_num_operators());
     for (int label_no = 0; label_no < num_labels; ++label_no) {
         double lower_bound = 0;
         if (allow_negative_costs) {
             lower_bound = -infinity;
         }
         variables.emplace_back(lower_bound, infinity, 0);
+        variables.back().name = tasks::g_root_task->get_operator_name(label_no, false);
     }
 
     // Create variables for abstract state heuristic values.
@@ -124,10 +129,12 @@ void OptimalCostPartitioningFactory::create_abstraction_variables(
     abstraction_info.variable_in_objective = abstraction_info.state_cost_offset;
     for (int i = 0; i < num_states; ++i) {
         variables.emplace_back(-infinity, infinity, 0);
+        variables.back().name = name + "x" + to_string(i);
     }
 }
 
 void OptimalCostPartitioningFactory::create_abstraction_constraints(
+    string name,
     vector<lp::LPVariable> &variables,
     vector<lp::LPConstraint> &constraints,
     double infinity,
@@ -171,6 +178,14 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
                     constraint.insert(source_var, -1);
                     constraint.insert(group_var, 1);
                     constraint.insert(target_var, 1);
+                    string label_names = "";
+                    for (int label_no : gat.label_group) {
+                        label_names += tasks::g_root_task->get_operator_name(label_no, false);
+                        label_names += "x";
+                    }
+                    constraint.set_name(
+                        "TRANS" + name + name + "x" + to_string(source_var) + "x"
+                        + label_names + "x" + to_string(target_var));
                     constraints.push_back(constraint);
                     if (verbosity >= utils::Verbosity::DEBUG) {
                         cout << "adding transition constraint: " << source_var
@@ -207,6 +222,10 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
                         constraint.insert(source_var, -1);
                         constraint.insert(label_var, 1);
                         constraint.insert(target_var, 1);
+                        constraint.set_name(
+                            "TRANS" + name + "x" + to_string(source_var) + "x"
+                            + tasks::g_root_task->get_operator_name(label_no, false)
+                            + "x" + to_string(target_var));
                         constraints.push_back(constraint);
                         if (verbosity >= utils::Verbosity::DEBUG) {
                             cout << "adding transition constraint: " << source_var
@@ -262,6 +281,7 @@ void OptimalCostPartitioningFactory::create_global_constraints_efficient(
                     cout << group_var << " + ";
                 }
             }
+            constraint.set_name("OCPx" + tasks::g_root_task->get_operator_name(label_no, false));
             constraints.push_back(constraint);
             if (verbosity >= utils::Verbosity::DEBUG) {
                 cout << " <= " << labels.get_label_cost(label_no) << endl;
@@ -292,6 +312,7 @@ void OptimalCostPartitioningFactory::create_global_constraints(
                     cout << label_var << " + ";
                 }
             }
+            constraint.set_name("OCPx" + tasks::g_root_task->get_operator_name(label_no, false));
             constraints.push_back(constraint);
             if (verbosity >= utils::Verbosity::DEBUG) {
                 cout << " <= " << labels.get_label_cost(label_no) << endl;
@@ -360,20 +381,20 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
         num_abstract_states += ts.get_size();
         if (efficient_cp) {
             create_abstraction_variables(
-                variables, infinity, abstraction_info, ts.get_size(),
+                abstractions[i]->name, variables, infinity, abstraction_info, ts.get_size(),
                 abs_to_num_label_groups[i]);
         } else {
             create_abstraction_variables(
-                variables, infinity, abstraction_info, ts.get_size(),
+                abstractions[i]->name, variables, infinity, abstraction_info, ts.get_size(),
                 num_labels);
         }
         if (efficient_cp) {
             create_abstraction_constraints(
-                variables, constraints, infinity, abstraction_info, ts,
+                abstractions[i]->name, variables, constraints, infinity, abstraction_info, ts,
                 abs_to_contiguous_label_group_mapping[i], verbosity);
         } else {
             create_abstraction_constraints(
-                variables, constraints, infinity, abstraction_info, ts,
+                abstractions[i]->name, variables, constraints, infinity, abstraction_info, ts,
                 contiguous_label_mapping, verbosity);
         }
         abstraction_infos.push_back(move(abstraction_info));

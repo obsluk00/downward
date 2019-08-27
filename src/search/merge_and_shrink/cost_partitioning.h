@@ -27,6 +27,7 @@ public:
 struct Abstraction {
     TransitionSystem *transition_system;
     std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation;
+    std::string name;
 
     Abstraction(
         TransitionSystem *transition_system,

@@ -46,6 +46,7 @@ class LPConstraint {
     std::vector<double> coefficients;
     double lower_bound;
     double upper_bound;
+    std::string name;
 public:
     LPConstraint(double lower_bound, double upper_bound);
 
@@ -56,6 +57,8 @@ public:
     void set_lower_bound(double lb) {lower_bound = lb;}
     double get_upper_bound() const {return upper_bound;}
     void set_upper_bound(double ub) {upper_bound = ub;}
+    std::string get_name() const {return name;}
+    void set_name(std::string n) {name = n;}
 
     void clear();
     bool empty() const;
@@ -67,6 +70,7 @@ struct LPVariable {
     double lower_bound;
     double upper_bound;
     double objective_coefficient;
+    std::string name;
 
     LPVariable(double lower_bound,
                double upper_bound,
