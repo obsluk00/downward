@@ -63,6 +63,7 @@ class CPMergeAndShrinkAlgorithm {
         AFTER_PRUNING
     };
     const SnapshotMoment snapshot_moment;
+    const bool filter_trivial_factors;
 
     long starting_peak_memory;
 

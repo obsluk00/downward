@@ -62,6 +62,7 @@ CPMergeAndShrinkAlgorithm::CPMergeAndShrinkAlgorithm(const Options &opts) :
     main_loop_target_num_snapshots(opts.get<int>("main_loop_target_num_snapshots")),
     main_loop_snapshot_each_iteration(opts.get<int>("main_loop_snapshot_each_iteration")),
     snapshot_moment(static_cast<SnapshotMoment>(opts.get_enum("snapshot_moment"))),
+    filter_trivial_factors(opts.get<bool>("filter_trivial_factors")),
     starting_peak_memory(0) {
     assert(max_states_before_merge > 0);
     assert(max_states >= max_states_before_merge);
@@ -509,7 +510,7 @@ vector<unique_ptr<Abstraction>> CPMergeAndShrinkAlgorithm::compute_abstractions_
         vector<int> active_nontrivial_factor_indices;
         active_nontrivial_factor_indices.reserve(fts.get_num_active_entries());
         for (int index : fts) {
-            if (!fts.is_factor_trivial(index)) {
+            if (!filter_trivial_factors || !fts.is_factor_trivial(index)) {
                 active_nontrivial_factor_indices.push_back(index);
             }
         }
@@ -703,6 +704,11 @@ void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
         "the point in one iteration at which a snapshot should be computed",
         "after_label_reduction",
         snapshot_moment_doc);
+
+    parser.add_option<bool>(
+        "filter_trivial_factors",
+        "If true, do not consider trivial factors for computing CPs. Should "
+        "be set to true when computing SCPs.");
 }
 
 void handle_cp_merge_and_shrink_algorithm_options(Options &opts) {
