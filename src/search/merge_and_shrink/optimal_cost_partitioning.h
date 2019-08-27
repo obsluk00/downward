@@ -69,6 +69,7 @@ class OptimalCostPartitioningFactory : public CostPartitioningFactory {
         const std::vector<int> &contiguous_label_mapping,
         utils::Verbosity verbosity) const;
     void create_global_constraints_efficient(
+        double infinity,
         std::vector<lp::LPConstraint> &constraints,
         const Labels &labels,
         std::vector<std::unique_ptr<Abstraction>> &abstractions,
@@ -76,6 +77,7 @@ class OptimalCostPartitioningFactory : public CostPartitioningFactory {
         const std::vector<AbstractionInformation> &abstraction_infos,
         utils::Verbosity verbosity) const;
     void create_global_constraints(
+        double infinity,
         std::vector<lp::LPConstraint> &constraints,
         const Labels &labels,
         const std::vector<int> &contiguous_label_mapping,

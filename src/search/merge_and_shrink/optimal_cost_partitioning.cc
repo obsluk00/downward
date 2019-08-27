@@ -237,6 +237,7 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
 }
 
 void OptimalCostPartitioningFactory::create_global_constraints_efficient(
+    double infinity,
     vector<lp::LPConstraint> &constraints,
     const Labels &labels,
     vector<unique_ptr<Abstraction>> &abstractions,
@@ -247,7 +248,7 @@ void OptimalCostPartitioningFactory::create_global_constraints_efficient(
     for (int label_no = 0; label_no < labels.get_size(); ++label_no) {
         if (labels.is_current_label(label_no)) {
             // Add constraint: sum_alpha Cost_alpha(l) <= cost(l)
-            lp::LPConstraint constraint(0, labels.get_label_cost(label_no));
+            lp::LPConstraint constraint(-infinity, labels.get_label_cost(label_no));
             if (verbosity >= utils::Verbosity::DEBUG) {
                 cout << "adding global constraint for label " << label_no << ": ";
             }
@@ -271,6 +272,7 @@ void OptimalCostPartitioningFactory::create_global_constraints_efficient(
 }
 
 void OptimalCostPartitioningFactory::create_global_constraints(
+    double infinity,
     vector<lp::LPConstraint> &constraints,
     const Labels &labels,
     const vector<int> &contiguous_label_mapping,
@@ -280,7 +282,7 @@ void OptimalCostPartitioningFactory::create_global_constraints(
     for (int label_no = 0; label_no < labels.get_size(); ++label_no) {
         if (labels.is_current_label(label_no)) {
             // Add constraint: sum_alpha Cost_alpha(o) <= cost(o)
-            lp::LPConstraint constraint(0, labels.get_label_cost(label_no));
+            lp::LPConstraint constraint(-infinity, labels.get_label_cost(label_no));
             if (verbosity >= utils::Verbosity::DEBUG) {
                 cout << "adding global constraint for label " << label_no << ": ";
             }
@@ -380,12 +382,12 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
     }
     if (efficient_cp) {
         create_global_constraints_efficient(
-            constraints, labels, abstractions, abs_to_contiguous_label_group_mapping,
-            abstraction_infos, verbosity);
+            infinity, constraints, labels, abstractions,
+            abs_to_contiguous_label_group_mapping, abstraction_infos, verbosity);
     } else {
         create_global_constraints(
-            constraints, labels, contiguous_label_mapping, abstraction_infos,
-            verbosity);
+            infinity, constraints, labels, contiguous_label_mapping,
+            abstraction_infos, verbosity);
     }
 
     if (verbosity >= utils::Verbosity::DEBUG) {
