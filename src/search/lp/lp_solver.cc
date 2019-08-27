@@ -152,25 +152,6 @@ void LPSolver::load_problem(LPObjectiveSense sense,
                                objective.data(),
                                row_lb.data(),
                                row_ub.data());
-
-        lp_solver->setIntParam(OsiNameDiscipline, 2);
-        for (size_t i = 0; i < constraints.size(); ++i) {
-//            cout << constraints[i].get_name() << endl;
-//            lp_solver->setRowName(i, constraints[i].get_name());
-            lp_solver->setRowName(i, "y" + to_string(i));
-        }
-
-        for (size_t i = 0; i < variables.size(); ++i) {
-//            cout << variables[i].name << endl;
-//            lp_solver->setColName(i, variables[i].name);
-            lp_solver->setColName(i, "z" + to_string(i));
-        }
-
-        const auto &name_vec = lp_solver->getColNames();
-        for (const auto &name : name_vec) {
-            cout << name << endl;
-        }
-
         /*
           We set the objective sense after loading because the OSI
           interface for SoPlex ignores it when it is set earlier.
@@ -181,8 +162,6 @@ void LPSolver::load_problem(LPObjectiveSense sense,
         } else {
             lp_solver->setObjSense(-1);
         }
-        lp_solver->writeLp("ocp");
-        lp_solver->writeMps("ocp");
     } catch (CoinError &error) {
         handle_coin_error(error);
     }
@@ -318,8 +297,6 @@ void LPSolver::solve() {
                  << "Reasons include \"numerical difficulties\" and running out of memory." << endl;
             utils::exit_with(ExitCode::SEARCH_CRITICAL_ERROR);
         }
-//        lp_solver->writeLp("ocp");
-//        lp_solver->writeMps("ocp");
         is_solved = true;
     } catch (CoinError &error) {
         handle_coin_error(error);

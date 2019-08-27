@@ -44,8 +44,6 @@ int MaxCPMSHeuristic::compute_heuristic(const GlobalState &global_state) {
         }
         max_h = max(max_h, h_val);
     }
-    cout << "h-value: " << max_h << endl;
-    exit(0);
     return max_h;
 }
 
