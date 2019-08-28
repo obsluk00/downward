@@ -150,7 +150,7 @@ public:
         return *transition_systems[index];
     }
 
-    TransitionSystem *get_transition_system_raw_ptr(int index);
+    const TransitionSystem *get_transition_system_raw_ptr(int index) const;
     const MergeAndShrinkRepresentation *get_mas_representation_raw_ptr(int index) const;
 
     const Distances &get_distances(int index) const {

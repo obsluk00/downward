@@ -72,9 +72,10 @@ class CPMergeAndShrinkAlgorithm {
     void warn_on_unusual_options() const;
     bool ran_out_of_time(const utils::CountdownTimer &timer) const;
     void statistics(int maximum_intermediate_size) const;
+    std::vector<std::unique_ptr<Abstraction>> extract_unsolvable_abstraction(
+        FactoredTransitionSystem &fts, int unsolvable_index) const;
     std::vector<std::unique_ptr<Abstraction>> compute_abstractions_over_fts(
-        FactoredTransitionSystem &fts,
-        int unsolvable_index = -1) const;
+        const FactoredTransitionSystem &fts) const;
     bool main_loop(
         FactoredTransitionSystem &fts,
         const TaskProxy &task_proxy,

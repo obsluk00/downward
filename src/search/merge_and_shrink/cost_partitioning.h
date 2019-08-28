@@ -25,11 +25,11 @@ public:
 };
 
 struct Abstraction {
-    TransitionSystem *transition_system;
+    const TransitionSystem *transition_system;
     std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation;
 
     Abstraction(
-        TransitionSystem *transition_system,
+        const TransitionSystem *transition_system,
         std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation);
     ~Abstraction();
 };

@@ -227,7 +227,7 @@ void FactoredTransitionSystem::dump() const {
     }
 }
 
-TransitionSystem *FactoredTransitionSystem::get_transition_system_raw_ptr(int index) {
+const TransitionSystem *FactoredTransitionSystem::get_transition_system_raw_ptr(int index) const {
     return transition_systems[index].get();
 }
 
