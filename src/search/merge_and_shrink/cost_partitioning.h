@@ -38,8 +38,14 @@ class CostPartitioningFactory {
 public:
     CostPartitioningFactory() = default;
     virtual ~CostPartitioningFactory() = default;
-    virtual std::unique_ptr<CostPartitioning> generate(
+    virtual std::unique_ptr<CostPartitioning> generate_simple(
         const Labels &labels,
+        std::vector<std::unique_ptr<Abstraction>> &&abstractions,
+        utils::Verbosity verbosity) = 0;
+    virtual std::unique_ptr<CostPartitioning> generate_over_different_labels(
+        std::vector<int> &&original_labels,
+        std::vector<int> &&label_costs,
+        std::vector<std::vector<int>> &&label_mapping,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
         utils::Verbosity verbosity) = 0;
 };

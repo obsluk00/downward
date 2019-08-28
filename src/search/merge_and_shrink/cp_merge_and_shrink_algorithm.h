@@ -64,6 +64,7 @@ class CPMergeAndShrinkAlgorithm {
     };
     const SnapshotMoment snapshot_moment;
     const bool filter_trivial_factors;
+    const bool single_cp;
 
     long starting_peak_memory;
 
@@ -79,7 +80,8 @@ class CPMergeAndShrinkAlgorithm {
     bool main_loop(
         FactoredTransitionSystem &fts,
         const TaskProxy &task_proxy,
-        std::vector<std::unique_ptr<CostPartitioning>> &cost_partitionings);
+        std::vector<std::unique_ptr<CostPartitioning>> *cost_partitionings = nullptr,
+        std::vector<std::unique_ptr<Abstraction>> *abstractions = nullptr);
 public:
     explicit CPMergeAndShrinkAlgorithm(const options::Options &opts);
     std::vector<std::unique_ptr<CostPartitioning>> compute_ms_cps(

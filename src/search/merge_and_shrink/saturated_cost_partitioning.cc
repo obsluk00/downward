@@ -60,7 +60,7 @@ SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
       factor_order(static_cast<FactorOrder>(opts.get_enum("factor_order"))) {
 }
 
-unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
+unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
     const Labels &labels,
     vector<unique_ptr<Abstraction>> &&abstractions,
     utils::Verbosity verbosity) {

@@ -63,6 +63,7 @@ CPMergeAndShrinkAlgorithm::CPMergeAndShrinkAlgorithm(const Options &opts) :
     main_loop_snapshot_each_iteration(opts.get<int>("main_loop_snapshot_each_iteration")),
     snapshot_moment(static_cast<SnapshotMoment>(opts.get_enum("snapshot_moment"))),
     filter_trivial_factors(opts.get<bool>("filter_trivial_factors")),
+    single_cp(opts.get<bool>("single_cp")),
     starting_peak_memory(0) {
     assert(max_states_before_merge > 0);
     assert(max_states >= max_states_before_merge);
@@ -262,7 +263,8 @@ public:
 bool CPMergeAndShrinkAlgorithm::main_loop(
     FactoredTransitionSystem &fts,
     const TaskProxy &task_proxy,
-    vector<unique_ptr<CostPartitioning>> &cost_partitionings) {
+    vector<unique_ptr<CostPartitioning>> *cost_partitionings,
+    vector<unique_ptr<Abstraction>> *abstractions) {
     utils::CountdownTimer timer(main_loop_max_time);
     if (verbosity >= utils::Verbosity::NORMAL) {
         cout << "Starting main loop ";
@@ -301,6 +303,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         verbosity);
     }
     bool computed_snapshot_after_last_transformation = false;
+    set<int> factors_modified_since_last_snapshot; // excluding label reduction
     while (fts.get_num_active_entries() > 1) {
         ++iteration_counter;
         // Choose next transition systems to merge
@@ -339,8 +342,13 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         if (snapshot_moment == SnapshotMoment::AFTER_LABEL_REDUCTION &&
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
-            cost_partitionings.push_back(cp_factory->generate(
-                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            if (single_cp) {
+                // TODO
+                factors_modified_since_last_snapshot.clear();
+            } else {
+                cost_partitionings->push_back(cp_factory->generate_simple(
+                    fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            }
             computed_snapshot_after_last_transformation = true;
             log_main_loop_progress("after handling main loop snapshot");
         }
@@ -373,8 +381,13 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         if (snapshot_moment == SnapshotMoment::AFTER_SHRINKING &&
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
-            cost_partitionings.push_back(cp_factory->generate(
-                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            if (single_cp) {
+                // TODO
+                factors_modified_since_last_snapshot.clear();
+            } else {
+                cost_partitionings->push_back(cp_factory->generate_simple(
+                    fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            }
             computed_snapshot_after_last_transformation = true;
             log_main_loop_progress("after handling main loop snapshot");
         }
@@ -420,8 +433,13 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         if (snapshot_moment == SnapshotMoment::AFTER_MERGING &&
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
-            cost_partitionings.push_back(cp_factory->generate(
-                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            if (single_cp) {
+                // TODO
+                factors_modified_since_last_snapshot.clear();
+            } else {
+                cost_partitionings->push_back(cp_factory->generate_simple(
+                    fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            }
             computed_snapshot_after_last_transformation = true;
             log_main_loop_progress("after handling main loop snapshot");
         }
@@ -460,9 +478,9 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
                 cout << "Abstract problem is unsolvable, stopping "
                     "computation. " << endl << endl;
             }
-            vector<unique_ptr<CostPartitioning>>().swap(cost_partitionings);
-            cost_partitionings.reserve(1);
-            cost_partitionings.push_back(cp_factory->generate(
+            vector<unique_ptr<CostPartitioning>>().swap(*cost_partitionings);
+            cost_partitionings->reserve(1);
+            cost_partitionings->push_back(cp_factory->generate_simple(
                 fts.get_labels(), extract_unsolvable_abstraction(fts, merged_index), verbosity));
             computed_snapshot_after_last_transformation = true;
             break;
@@ -475,8 +493,13 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         if (snapshot_moment == SnapshotMoment::AFTER_PRUNING &&
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
-            cost_partitionings.push_back(cp_factory->generate(
-                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            if (single_cp) {
+                // TODO
+                factors_modified_since_last_snapshot.clear();
+            } else {
+                cost_partitionings->push_back(cp_factory->generate_simple(
+                    fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            }
             computed_snapshot_after_last_transformation = true;
             log_main_loop_progress("after handling main loop snapshot");
         }
@@ -545,8 +568,7 @@ vector<unique_ptr<Abstraction>> CPMergeAndShrinkAlgorithm::compute_abstractions_
 vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
     const TaskProxy &task_proxy) {
     if (starting_peak_memory) {
-        cerr << "Calling compute_ms_cps twice is not "
-             << "supported!" << endl;
+        cerr << "Using this factory twice is not supported!" << endl;
         utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
     starting_peak_memory = utils::get_peak_memory_in_kb();
@@ -600,7 +622,7 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
         if (!fts.is_factor_solvable(index)) {
             cout << "Atomic FTS is unsolvable, stopping computation." << endl;
             unsolvable = true;
-            cost_partitionings.push_back(cp_factory->generate(
+            cost_partitionings.push_back(cp_factory->generate_simple(
                 fts.get_labels(), extract_unsolvable_abstraction(fts, index), verbosity));
             break;
         }
@@ -624,7 +646,7 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
         }
 
         if (compute_atomic_snapshot) {
-            cost_partitionings.push_back(cp_factory->generate(
+            cost_partitionings.push_back(cp_factory->generate_simple(
                 fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
             if (verbosity >= utils::Verbosity::NORMAL) {
                 log_progress(timer, "after handling atomic snapshot");
@@ -637,7 +659,7 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
 
         bool computed_snapshot_after_last_transformation = false;
         if (main_loop_max_time > 0) {
-            computed_snapshot_after_last_transformation = main_loop(fts, task_proxy, cost_partitionings);
+            computed_snapshot_after_last_transformation = main_loop(fts, task_proxy, &cost_partitionings, nullptr);
         }
 
         if (computed_snapshot_after_last_transformation) {
@@ -646,7 +668,7 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
 
         if ((compute_final_snapshot && !computed_snapshot_after_last_transformation) ||
             cost_partitionings.empty()) {
-            cost_partitionings.push_back(cp_factory->generate(
+            cost_partitionings.push_back(cp_factory->generate_simple(
                 fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
             log_progress(timer, "after handling final snapshot");
         }
@@ -661,6 +683,146 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
     cout << "Merge-and-shrink algorithm runtime: " << timer << endl;
     cout << endl;
     return cost_partitionings;
+}
+
+unique_ptr<CostPartitioning> CPMergeAndShrinkAlgorithm::compute_single_ms_cp(
+    const TaskProxy &task_proxy) {
+    if (starting_peak_memory) {
+        cerr << "Using this factory twice is not supported!" << endl;
+        utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+    }
+    starting_peak_memory = utils::get_peak_memory_in_kb();
+
+    utils::Timer timer;
+    cout << "Running merge-and-shrink algorithm..." << endl;
+    task_properties::verify_no_axioms(task_proxy);
+    dump_options();
+    warn_on_unusual_options();
+    cout << endl;
+
+    const bool compute_init_distances =
+        shrink_strategy->requires_init_distances() ||
+        merge_strategy_factory->requires_init_distances() ||
+        prune_unreachable_states;
+    const bool compute_goal_distances =
+        shrink_strategy->requires_goal_distances() ||
+        merge_strategy_factory->requires_goal_distances() ||
+        prune_irrelevant_states;
+    FactoredTransitionSystem fts =
+        create_factored_transition_system(
+            task_proxy,
+            compute_init_distances,
+            compute_goal_distances,
+            verbosity);
+    if (verbosity >= utils::Verbosity::NORMAL) {
+        log_progress(timer, "after computation of atomic factors");
+    }
+
+    vector<unique_ptr<Abstraction>> abstractions;
+
+    /*
+      Prune all atomic factors according to the chosen options. Stop early if
+      one factor is unsolvable.
+
+      TODO: think about if we can prune already while creating the atomic FTS.
+    */
+    bool pruned = false;
+    bool unsolvable = false;
+    for (int index = 0; index < fts.get_size(); ++index) {
+        assert(fts.is_active(index));
+        if (prune_unreachable_states || prune_irrelevant_states) {
+            bool pruned_factor = prune_step(
+                fts,
+                index,
+                prune_unreachable_states,
+                prune_irrelevant_states,
+                verbosity);
+            pruned = pruned || pruned_factor;
+        }
+        if (!fts.is_factor_solvable(index)) {
+            cout << "Atomic FTS is unsolvable, stopping computation." << endl;
+            unsolvable = true;
+            vector<unique_ptr<Abstraction>> abstraction = extract_unsolvable_abstraction(fts, index);
+            assert(abstraction.size() == 1);
+            abstractions.push_back(move(abstraction).front());
+            break;
+        }
+    }
+    if (verbosity >= utils::Verbosity::NORMAL) {
+        if (pruned) {
+            log_progress(timer, "after pruning atomic factors");
+        }
+    }
+
+    vector<int> original_labels;
+    vector<int> label_costs;
+    vector<vector<int>> label_mappings;
+    // TODO: fill these vectors
+
+    if (!unsolvable) {
+        if (label_reduction) {
+            label_reduction->initialize(task_proxy);
+        }
+
+        if (label_reduction && atomic_label_reduction) {
+            bool reduced = label_reduction->reduce(pair<int, int>(-1, -1), fts, verbosity);
+            if (verbosity >= utils::Verbosity::NORMAL && reduced) {
+                log_progress(timer, "after label reduction on atomic FTS");
+            }
+        }
+
+        if (compute_atomic_snapshot) {
+            auto new_abstractions = compute_abstractions_over_fts(fts);
+            abstractions.insert(
+                abstractions.end(),
+                make_move_iterator(new_abstractions.begin()),
+                make_move_iterator(new_abstractions.end()));
+            if (verbosity >= utils::Verbosity::NORMAL) {
+                log_progress(timer, "after handling atomic snapshot");
+            }
+        }
+
+        if (verbosity >= utils::Verbosity::NORMAL) {
+            cout << endl;
+        }
+
+        bool computed_snapshot_after_last_transformation = false;
+        if (main_loop_max_time > 0) {
+            computed_snapshot_after_last_transformation = main_loop(fts, task_proxy, nullptr, &abstractions);
+        }
+
+        if (computed_snapshot_after_last_transformation) {
+            assert(!abstractions.empty());
+        }
+
+        if ((compute_final_snapshot && !computed_snapshot_after_last_transformation) ||
+            abstractions.empty()) {
+            auto new_abstractions = compute_abstractions_over_fts(fts);
+            abstractions.insert(
+                abstractions.end(),
+                make_move_iterator(new_abstractions.begin()),
+                make_move_iterator(new_abstractions.end()));
+            log_progress(timer, "after handling final snapshot");
+        }
+    }
+
+    unique_ptr<CostPartitioning> cost_partitioning = nullptr;
+    if (abstractions.size() == 1) {
+        cost_partitioning = cp_factory->generate_simple(
+            fts.get_labels(), move(abstractions), verbosity);
+    } else {
+        cost_partitioning = cp_factory->generate_over_different_labels(
+            move(original_labels),
+            move(label_costs),
+            move(label_mappings),
+            move(abstractions), verbosity);
+    }
+
+    const bool final = true;
+    report_peak_memory_delta(final);
+    cout << "Merge-and-shrink algorithm runtime: " << timer << endl;
+    cout << endl;
+    return cost_partitioning;
 }
 
 void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
@@ -714,6 +876,11 @@ void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
         "filter_trivial_factors",
         "If true, do not consider trivial factors for computing CPs. Should "
         "be set to true when computing SCPs.");
+    parser.add_option<bool>(
+        "single_cp",
+        "If true, compute a single CP over all abstractions collected through "
+        "different snapshots. If false, compute a CP for each snapshot.",
+        "false");
 }
 
 void handle_cp_merge_and_shrink_algorithm_options(Options &opts) {
