@@ -236,10 +236,11 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
     }
 }
 
-void OptimalCostPartitioningFactory::create_global_constraints_efficient(
+void OptimalCostPartitioningFactory::create_global_constraints(
     double infinity,
     vector<lp::LPConstraint> &constraints,
     const Labels &labels,
+    const vector<int> &contiguous_label_mapping,
     vector<unique_ptr<Abstraction>> &abstractions,
     const vector<vector<int>> &abs_to_contiguous_label_group_mapping,
     const vector<AbstractionInformation> &abstraction_infos,
@@ -252,46 +253,28 @@ void OptimalCostPartitioningFactory::create_global_constraints_efficient(
             if (verbosity >= utils::Verbosity::DEBUG) {
                 cout << "adding global constraint for label " << label_no << ": ";
             }
-            for (size_t i = 0; i < abstraction_infos.size(); ++i) {
-                const TransitionSystem &ts = *abstractions[i]->transition_system;
-                int group_id = ts.get_label_equivalence_relation().get_group_id(label_no);
-                const AbstractionInformation &abstraction_info = abstraction_infos[i];
-                int group_var = abstraction_info.get_local_label_cost_variable(
-                        abs_to_contiguous_label_group_mapping[i][group_id]);
-                constraint.insert(group_var, 1);
-                if (verbosity >= utils::Verbosity::DEBUG) {
-                    cout << group_var << " + ";
+            if (efficient_cp) {
+                assert(abs_to_contiguous_label_group_mapping.size());
+                for (size_t i = 0; i < abstraction_infos.size(); ++i) {
+                    const TransitionSystem &ts = *abstractions[i]->transition_system;
+                    int group_id = ts.get_label_equivalence_relation().get_group_id(label_no);
+                    const AbstractionInformation &abstraction_info = abstraction_infos[i];
+                    int group_var = abstraction_info.get_local_label_cost_variable(
+                            abs_to_contiguous_label_group_mapping[i][group_id]);
+                    constraint.insert(group_var, 1);
+                    if (verbosity >= utils::Verbosity::DEBUG) {
+                        cout << group_var << " + ";
+                    }
                 }
-            }
-            constraints.push_back(constraint);
-            if (verbosity >= utils::Verbosity::DEBUG) {
-                cout << " <= " << labels.get_label_cost(label_no) << endl;
-            }
-        }
-    }
-}
-
-void OptimalCostPartitioningFactory::create_global_constraints(
-    double infinity,
-    vector<lp::LPConstraint> &constraints,
-    const Labels &labels,
-    const vector<int> &contiguous_label_mapping,
-    const vector<AbstractionInformation> &abstraction_infos,
-    utils::Verbosity verbosity) const {
-    // Create cost partitioning constraints.
-    for (int label_no = 0; label_no < labels.get_size(); ++label_no) {
-        if (labels.is_current_label(label_no)) {
-            // Add constraint: sum_alpha Cost_alpha(o) <= cost(o)
-            lp::LPConstraint constraint(-infinity, labels.get_label_cost(label_no));
-            if (verbosity >= utils::Verbosity::DEBUG) {
-                cout << "adding global constraint for label " << label_no << ": ";
-            }
-            for (const AbstractionInformation &abstraction_info : abstraction_infos) {
-                int label_var = abstraction_info.get_local_label_cost_variable(
-                        contiguous_label_mapping[label_no]);
-                constraint.insert(label_var, 1);
-                if (verbosity >= utils::Verbosity::DEBUG) {
-                    cout << label_var << " + ";
+            } else {
+                assert(contiguous_label_mapping.size());
+                for (const AbstractionInformation &abstraction_info : abstraction_infos) {
+                    int label_var = abstraction_info.get_local_label_cost_variable(
+                            contiguous_label_mapping[label_no]);
+                    constraint.insert(label_var, 1);
+                    if (verbosity >= utils::Verbosity::DEBUG) {
+                        cout << label_var << " + ";
+                    }
                 }
             }
             constraints.push_back(constraint);
@@ -380,15 +363,10 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
         }
         abstraction_infos.push_back(move(abstraction_info));
     }
-    if (efficient_cp) {
-        create_global_constraints_efficient(
-            infinity, constraints, labels, abstractions,
-            abs_to_contiguous_label_group_mapping, abstraction_infos, verbosity);
-    } else {
-        create_global_constraints(
-            infinity, constraints, labels, contiguous_label_mapping,
-            abstraction_infos, verbosity);
-    }
+    create_global_constraints(
+        infinity, constraints, labels, contiguous_label_mapping,
+        abstractions, abs_to_contiguous_label_group_mapping,
+        abstraction_infos, verbosity);
 
     if (verbosity >= utils::Verbosity::DEBUG) {
         cout << "Abstract states in abstractions: " << num_abstract_states << endl;
