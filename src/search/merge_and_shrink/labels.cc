@@ -7,6 +7,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <numeric>
 
 using namespace std;
 
@@ -17,6 +18,8 @@ Labels::Labels(vector<unique_ptr<Label>> &&labels)
     if (!this->labels.empty()) {
         max_size = this->labels.size() * 2 - 1;
     }
+    original_to_current_labels.resize(this->labels.size());
+    iota(original_to_current_labels.begin(), original_to_current_labels.end(), 0);
 }
 
 void Labels::reduce_labels(const vector<int> &old_label_nos) {
@@ -35,7 +38,16 @@ void Labels::reduce_labels(const vector<int> &old_label_nos) {
         }
         labels[old_label_no] = nullptr;
     }
+    int new_label_no = labels.size();
     labels.push_back(utils::make_unique_ptr<Label>(new_label_cost));
+    for (int old_label_no : old_label_nos) {
+        for (size_t i = 0; i < original_to_current_labels.size(); ++i) {
+            if (original_to_current_labels[i] == old_label_no) {
+                original_to_current_labels[i] = new_label_no;
+                break;
+            }
+        }
+    }
 }
 
 bool Labels::is_current_label(int label_no) const {

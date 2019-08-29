@@ -2,6 +2,8 @@
 
 #include "labels.h"
 
+#include "../utils/collections.h"
+
 #include <cassert>
 
 using namespace std;
@@ -130,5 +132,20 @@ int LabelEquivalenceRelation::add_label_group(const vector<int> &new_labels) {
         add_label_to_group(new_group_id, label_no);
     }
     return new_group_id;
+}
+
+bool LabelEquivalenceRelation::is_empty_group(int group_id) const {
+    assert(utils::in_bounds(group_id, grouped_labels));
+    return grouped_labels[group_id].empty();
+}
+
+int LabelEquivalenceRelation::get_group_id(int label_no) const {
+    assert(utils::in_bounds(label_no, label_to_positions));
+    return label_to_positions[label_no].first;
+}
+
+const LabelGroup &LabelEquivalenceRelation::get_group(int group_id) const {
+    assert(utils::in_bounds(group_id, grouped_labels));
+    return grouped_labels.at(group_id);
 }
 }

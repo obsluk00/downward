@@ -101,21 +101,14 @@ public:
     void move_group_into_group(int from_group_id, int to_group_id);
     int add_label_group(const std::vector<int> &new_labels);
 
-    bool is_empty_group(int group_id) const {
-        return grouped_labels[group_id].empty();
-    }
-
-    int get_group_id(int label_no) const {
-        return label_to_positions[label_no].first;
-    }
+    bool is_empty_group(int group_id) const;
+    int get_group_id(int label_no) const;
 
     int get_size() const {
         return grouped_labels.size();
     }
 
-    const LabelGroup &get_group(int group_id) const {
-        return grouped_labels.at(group_id);
-    }
+    const LabelGroup &get_group(int group_id) const;
 };
 }
 

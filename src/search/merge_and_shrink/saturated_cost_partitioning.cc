@@ -160,6 +160,15 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
     return utils::make_unique_ptr<SaturatedCostPartitioning>(move(scp_ms_heuristic));
 }
 
+unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_different_labels(
+    vector<int> &&original_labels,
+    vector<int> &&label_costs,
+    vector<vector<int>> &&label_mappings,
+    vector<unique_ptr<Abstraction>> &&abstractions,
+    utils::Verbosity verbosity) {
+    // TODO
+}
+
 static shared_ptr<SaturatedCostPartitioningFactory>_parse(OptionParser &parser) {
     utils::add_rng_options(parser);
     vector<string> factor_order;

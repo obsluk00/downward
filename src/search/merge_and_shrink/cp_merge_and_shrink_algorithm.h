@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <memory>
+#include <set>
 #include <vector>
 
 class TaskProxy;
@@ -64,7 +65,6 @@ class CPMergeAndShrinkAlgorithm {
     };
     const SnapshotMoment snapshot_moment;
     const bool filter_trivial_factors;
-    const bool single_cp;
 
     long starting_peak_memory;
 
@@ -72,7 +72,6 @@ class CPMergeAndShrinkAlgorithm {
     void dump_options() const;
     void warn_on_unusual_options() const;
     bool ran_out_of_time(const utils::CountdownTimer &timer) const;
-    void statistics(int maximum_intermediate_size) const;
     std::vector<std::unique_ptr<Abstraction>> extract_unsolvable_abstraction(
         FactoredTransitionSystem &fts, int unsolvable_index) const;
     std::vector<std::unique_ptr<Abstraction>> compute_abstractions_over_fts(
@@ -80,8 +79,16 @@ class CPMergeAndShrinkAlgorithm {
     bool main_loop(
         FactoredTransitionSystem &fts,
         const TaskProxy &task_proxy,
-        std::vector<std::unique_ptr<CostPartitioning>> *cost_partitionings = nullptr,
-        std::vector<std::unique_ptr<Abstraction>> *abstractions = nullptr);
+        std::vector<std::unique_ptr<CostPartitioning>> &cost_partitionings);
+    std::vector<std::unique_ptr<Abstraction>> compute_abstractions_over_fts_single_cp(
+        const FactoredTransitionSystem &fts,
+        const std::set<int> &indices) const;
+    bool main_loop_single_cp(
+        FactoredTransitionSystem &fts,
+        const TaskProxy &task_proxy,
+        std::vector<std::unique_ptr<Abstraction>> &abstractions,
+        std::set<int> &factors_modified_since_last_snapshot,
+        std::vector<std::vector<int>> &label_mappings);
 public:
     explicit CPMergeAndShrinkAlgorithm(const options::Options &opts);
     std::vector<std::unique_ptr<CostPartitioning>> compute_ms_cps(

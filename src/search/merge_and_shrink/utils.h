@@ -46,7 +46,7 @@ extern std::pair<int, int> compute_shrink_sizes(
   within the factored transition system. Return true iff at least one of the
   factors was shrunk.
 */
-extern bool shrink_before_merge_step(
+extern std::pair<bool, bool> shrink_before_merge_step(
     FactoredTransitionSystem &fts,
     int index1,
     int index2,
