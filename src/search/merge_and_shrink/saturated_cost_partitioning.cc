@@ -65,7 +65,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
     vector<unique_ptr<Abstraction>> &&abstractions,
     utils::Verbosity verbosity) {
     if (verbosity >= utils::Verbosity::DEBUG) {
-        cout << "Computing SCP M&S heuristic over current FTS..." << endl;
+        cout << "Computing SCP M&S heuristic over current abstractions..." << endl;
     }
 
     // Compute original label costs.
@@ -104,7 +104,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
 
         // Compute saturated cost of all labels.
         vector<int> saturated_label_costs(remaining_label_costs.size(), -1);
-        for (const GroupAndTransitions &gat : ts) {
+        for (GroupAndTransitions gat : ts) {
             const LabelGroup &label_group = gat.label_group;
             const vector<Transition> &transitions = gat.transitions;
             int group_saturated_cost = MINUSINF;
