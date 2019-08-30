@@ -181,13 +181,14 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
     for (size_t i = 0; i < abstraction_indices.size(); ++i) {
         size_t index = abstraction_indices[i];
         Abstraction &abstraction = *abstractions[index];
+        const vector<int> &label_mapping = label_mappings[index];
         if (verbosity >= utils::Verbosity::DEBUG) {
             cout << endl;
             cout << "Abstraction index " << index << endl;
 //            abstraction.transition_system->dump_labels_and_transitions();
+            cout << "Label mapping: " << label_mapping << endl;
             cout << "Remaining label costs: " << remaining_label_costs << endl;
         }
-        const vector<int> &label_mapping = label_mappings[index];
         vector<int> abs_label_costs(num_original_labels * 2, -1);
 //        set<int> abs_labels;
         for (int label_no = 0; label_no < num_original_labels; ++label_no) {
@@ -201,9 +202,6 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
             }
 //            abs_labels.insert(abs_label_no);
         }
-//        for (int abs_label : abs_labels) {
-//            assert(abs_label_costs[abs_label] != -1);
-//        }
         if (verbosity >= utils::Verbosity::DEBUG) {
 //            cout << "Abs labels: " << vector<int>(abs_labels.begin(), abs_labels.end()) << endl;
             cout << "Remaining label costs in abs: " << abs_label_costs << endl;
@@ -211,7 +209,9 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
         const TransitionSystem &ts = *abstraction.transition_system;
         vector<int> goal_distances = compute_goal_distances(
             ts, abs_label_costs, verbosity);
-//        cout << "Distances under remaining costs: " << goal_distances << endl;
+        if (verbosity >= utils::Verbosity::DEBUG) {
+            cout << "Distances under remaining costs: " << goal_distances << endl;
+        }
         scp_ms_heuristic.goal_distances.push_back(goal_distances);
         scp_ms_heuristic.mas_representations.push_back(move(abstraction.merge_and_shrink_representation));
         if (i == abstraction_indices.size() - 1) {
@@ -234,18 +234,15 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
                     int target = transition.target;
                     int h_src = goal_distances[src];
                     int h_target = goal_distances[target];
-                    if (h_src != INF && h_target != INF) {
-                        if (h_src == INF) {
-                            cout << src << "->" << target << " is an infinity transition" << endl;
-                            ts.dump_labels_and_transitions();
-                            exit(1);
-                        }
+                    if (h_target != INF) {
                         assert(h_src != INF);
                         int diff = h_src - h_target;
                         group_saturated_cost = max(group_saturated_cost, diff);
                     }
                 }
-                if (verbosity >= utils::Verbosity::VERBOSE && dump_if_infinite_transitions && group_saturated_cost == MINUSINF) {
+                if (verbosity >= utils::Verbosity::VERBOSE
+                    && dump_if_infinite_transitions
+                    && group_saturated_cost == MINUSINF) {
                     dump_if_infinite_transitions = false;
                     cout << "label group does not lead to any state with finite heuristic value" << endl;
                 }
@@ -255,14 +252,17 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
                 for (int original_label_no : reduced_to_original_labels.at(abs_label_no)) {
 //                    assert(!mapped_labels.count(original_label_no));
 //                    mapped_labels.insert(original_label_no);
-                    assert(saturated_label_costs[original_label_no] == -1);
+                    assert(group_saturated_cost >= 0);
+                    assert(group_saturated_cost <= remaining_label_costs[original_label_no]);
                     saturated_label_costs[original_label_no] = group_saturated_cost;
+
                 }
             }
         }
 //        cout << "num original labels in abs: " << mapped_labels.size() << endl;
 //        assert(static_cast<int>(mapped_labels.size()) == num_original_labels);
-//        cout << "original labels from abs: " << vector<int>(mapped_labels.begin(), mapped_labels.end()) << endl;
+//        cout << "original labels from abs: "
+//             << vector<int>(mapped_labels.begin(), mapped_labels.end()) << endl;
 //        assert(original_labels == vector<int>(mapped_labels.begin(), mapped_labels.end()));
         if (verbosity >= utils::Verbosity::DEBUG) {
             cout << "Saturated label costs: " << saturated_label_costs << endl;
