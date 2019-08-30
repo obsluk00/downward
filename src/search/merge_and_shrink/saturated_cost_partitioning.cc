@@ -252,7 +252,6 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
                 for (int original_label_no : reduced_to_original_labels.at(abs_label_no)) {
 //                    assert(!mapped_labels.count(original_label_no));
 //                    mapped_labels.insert(original_label_no);
-                    assert(group_saturated_cost >= 0);
                     assert(group_saturated_cost <= remaining_label_costs[original_label_no]);
                     saturated_label_costs[original_label_no] = group_saturated_cost;
 
