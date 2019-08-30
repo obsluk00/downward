@@ -1197,6 +1197,7 @@ unique_ptr<CostPartitioning> CPMergeAndShrinkAlgorithm::compute_single_ms_cp(
             move(original_labels),
             move(label_costs),
             move(label_mappings),
+            labels.get_reduced_to_original_labels(),
             move(abstractions),
             verbosity);
     }

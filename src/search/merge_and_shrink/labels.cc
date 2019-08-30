@@ -20,6 +20,9 @@ Labels::Labels(vector<unique_ptr<Label>> &&labels)
     }
     original_to_current_labels.resize(this->labels.size());
     iota(original_to_current_labels.begin(), original_to_current_labels.end(), 0);
+    for (int label_no = 0; label_no < static_cast<int>(this->labels.size()); ++label_no) {
+        reduced_to_original_labels[label_no] = {label_no};
+    }
 }
 
 void Labels::reduce_labels(const vector<int> &old_label_nos) {
@@ -40,6 +43,7 @@ void Labels::reduce_labels(const vector<int> &old_label_nos) {
     }
     int new_label_no = labels.size();
     labels.push_back(utils::make_unique_ptr<Label>(new_label_cost));
+    vector<int> new_original_labels;
     for (int old_label_no : old_label_nos) {
         for (size_t i = 0; i < original_to_current_labels.size(); ++i) {
             if (original_to_current_labels[i] == old_label_no) {
@@ -47,7 +51,14 @@ void Labels::reduce_labels(const vector<int> &old_label_nos) {
                 break;
             }
         }
+        // Keep the mapping for all intermediate reduced labels alive.
+        const vector<int> &original_labels = reduced_to_original_labels[old_label_no];
+        new_original_labels.insert(
+            new_original_labels.end(),
+            original_labels.begin(),
+            original_labels.end());
     }
+    reduced_to_original_labels[new_label_no] = move(new_original_labels);
 }
 
 bool Labels::is_current_label(int label_no) const {

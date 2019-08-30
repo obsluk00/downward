@@ -443,6 +443,7 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate_over_diffe
     vector<int> &&original_labels,
     vector<int> &&label_costs,
     vector<vector<int>> &&label_mappings,
+    const std::unordered_map<int, std::vector<int>> &,
     vector<unique_ptr<Abstraction>> &&abstractions,
     utils::Verbosity verbosity) {
     assert(label_mappings.size() == abstractions.size());
