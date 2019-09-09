@@ -63,7 +63,9 @@ void LabelReduction::compute_label_mapping(
     const equivalence_relation::EquivalenceRelation *relation,
     const FactoredTransitionSystem &fts,
     vector<pair<int, vector<int>>> &label_mapping,
-    utils::Verbosity verbosity) const {
+    utils::Verbosity verbosity,
+    vector<int> *original_to_current_labels,
+    vector<vector<int>> *reduced_to_original_labels) const {
     const Labels &labels = fts.get_labels();
     int next_new_label_no = labels.get_size();
     int num_labels = 0;
@@ -88,6 +90,43 @@ void LabelReduction::compute_label_mapping(
             const vector<int> &label_nos = it->second;
             if (label_nos.size() > 1) {
                 label_mapping.push_back(make_pair(next_new_label_no, label_nos));
+
+                if (verbosity >= utils::Verbosity::DEBUG) {
+                    cout << "Reducing labels " << label_nos << " to " << next_new_label_no << endl;
+                }
+
+                if (original_to_current_labels) {
+                    // Update original_to_current_labels and reduced_to_original_labels
+                    assert(reduced_to_original_labels);
+                    vector<int> new_original_labels;
+                    for (int old_label_no : label_nos) {
+                        for (size_t orig_label_no = 0; orig_label_no < original_to_current_labels->size(); ++orig_label_no) {
+                            if (original_to_current_labels->at(orig_label_no) == old_label_no) {
+                                original_to_current_labels->at(orig_label_no) = next_new_label_no;
+                            }
+                        }
+                        // Keep the mapping for all intermediate reduced labels alive.
+                        const vector<int> &original_labels = reduced_to_original_labels->at(old_label_no);
+                        new_original_labels.insert(
+                            new_original_labels.end(),
+                            original_labels.begin(),
+                            original_labels.end());
+                    }
+                    assert(static_cast<int>(reduced_to_original_labels->size()) == next_new_label_no);
+                    reduced_to_original_labels->push_back(move(new_original_labels));
+
+                    for (size_t label_no = 0; label_no < original_to_current_labels->size(); ++label_no) {
+                        int abs_label = original_to_current_labels->at(label_no);
+                        const vector<int> &orig_labels = reduced_to_original_labels->at(abs_label);
+//                        cout << "label " << label_no << " is mapped to abs label "
+//                             << abs_label << " which has original labels: " << orig_labels << endl;
+                        assert(find(orig_labels.begin(), orig_labels.end(), label_no) != orig_labels.end());
+                        for (int orig_label : orig_labels) {
+                            assert(original_to_current_labels->at(orig_label) == abs_label);
+                        }
+                    }
+                }
+
                 ++next_new_label_no;
             }
             if (!label_nos.empty()) {
@@ -143,7 +182,9 @@ equivalence_relation::EquivalenceRelation
 bool LabelReduction::reduce(
     const pair<int, int> &next_merge,
     FactoredTransitionSystem &fts,
-    utils::Verbosity verbosity) const {
+    utils::Verbosity verbosity,
+    vector<int> *original_to_current_labels,
+    vector<vector<int>> *reduced_to_original_labels) const {
     assert(initialized());
     assert(reduce_before_shrinking() || reduce_before_merging());
     int num_transition_systems = fts.get_size();
@@ -164,7 +205,9 @@ bool LabelReduction::reduce(
         equivalence_relation::EquivalenceRelation *relation =
             compute_combinable_equivalence_relation(next_merge.first, fts);
         vector<pair<int, vector<int>>> label_mapping;
-        compute_label_mapping(relation, fts, label_mapping, verbosity);
+        compute_label_mapping(
+            relation, fts, label_mapping, verbosity,
+            original_to_current_labels, reduced_to_original_labels);
         if (!label_mapping.empty()) {
             fts.apply_label_mapping(label_mapping, next_merge.first);
             reduced = true;
@@ -176,7 +219,9 @@ bool LabelReduction::reduce(
         relation = compute_combinable_equivalence_relation(
             next_merge.second,
             fts);
-        compute_label_mapping(relation, fts, label_mapping, verbosity);
+        compute_label_mapping(
+            relation, fts, label_mapping, verbosity,
+            original_to_current_labels, reduced_to_original_labels);
         if (!label_mapping.empty()) {
             fts.apply_label_mapping(label_mapping, next_merge.second);
             reduced = true;
@@ -224,7 +269,9 @@ bool LabelReduction::reduce(
         if (fts.is_active(ts_index)) {
             equivalence_relation::EquivalenceRelation *relation =
                 compute_combinable_equivalence_relation(ts_index, fts);
-            compute_label_mapping(relation, fts, label_mapping, verbosity);
+            compute_label_mapping(
+                relation, fts, label_mapping, verbosity,
+                original_to_current_labels, reduced_to_original_labels);
             delete relation;
         }
 

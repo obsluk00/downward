@@ -160,7 +160,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
     vector<int> &&original_labels,
     vector<int> &&label_costs,
     vector<vector<int>> &&label_mappings,
-    const std::unordered_map<int, std::vector<int>> &reduced_to_original_labels,
+    vector<vector<int>> &&reduced_to_original_labels,
     vector<unique_ptr<Abstraction>> &&abstractions,
     utils::Verbosity verbosity) {
     if (verbosity >= utils::Verbosity::DEBUG) {

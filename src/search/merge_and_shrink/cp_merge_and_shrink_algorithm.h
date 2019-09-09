@@ -88,7 +88,9 @@ class CPMergeAndShrinkAlgorithm {
         const TaskProxy &task_proxy,
         std::vector<std::unique_ptr<Abstraction>> &abstractions,
         std::set<int> &factors_modified_since_last_snapshot,
-        std::vector<std::vector<int>> &label_mappings);
+        std::vector<std::vector<int>> &label_mappings,
+        std::vector<int> &original_to_current_labels,
+        std::vector<std::vector<int>> &reduced_to_original_labels);
 public:
     explicit CPMergeAndShrinkAlgorithm(const options::Options &opts);
     std::vector<std::unique_ptr<CostPartitioning>> compute_ms_cps(

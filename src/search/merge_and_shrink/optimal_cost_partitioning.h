@@ -97,8 +97,8 @@ public:
     virtual std::unique_ptr<CostPartitioning> generate_over_different_labels(
         std::vector<int> &&original_labels,
         std::vector<int> &&label_costs,
-        std::vector<std::vector<int>> &&label_mapping,
-        const std::unordered_map<int, std::vector<int>> &reduced_to_original_labels,
+        std::vector<std::vector<int>> &&label_mappings,
+        std::vector<std::vector<int>> &&reduced_to_original_labels,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
         utils::Verbosity verbosity) override;
 };

@@ -272,7 +272,7 @@ vector<unique_ptr<Abstraction>> CPMergeAndShrinkAlgorithm::extract_unsolvable_ab
 bool CPMergeAndShrinkAlgorithm::main_loop(
     FactoredTransitionSystem &fts,
     const TaskProxy &task_proxy,
-    std::vector<std::unique_ptr<CostPartitioning>> &cost_partitionings) {
+    vector<unique_ptr<CostPartitioning>> &cost_partitionings) {
     utils::CountdownTimer timer(main_loop_max_time);
     if (verbosity >= utils::Verbosity::NORMAL) {
         cout << "Starting main loop ";
@@ -677,9 +677,11 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
 bool CPMergeAndShrinkAlgorithm::main_loop_single_cp(
     FactoredTransitionSystem &fts,
     const TaskProxy &task_proxy,
-    std::vector<std::unique_ptr<Abstraction>> &abstractions,
-    std::set<int> &factors_modified_since_last_snapshot,
-    std::vector<std::vector<int>> &label_mappings) {
+    vector<unique_ptr<Abstraction>> &abstractions,
+    set<int> &factors_modified_since_last_snapshot,
+    vector<vector<int>> &label_mappings,
+    vector<int> &original_to_current_labels,
+    vector<vector<int>> &reduced_to_original_labels) {
     utils::CountdownTimer timer(main_loop_max_time);
     if (verbosity >= utils::Verbosity::NORMAL) {
         cout << "Starting main loop ";
@@ -740,7 +742,8 @@ bool CPMergeAndShrinkAlgorithm::main_loop_single_cp(
 
         // Label reduction (before shrinking)
         if (label_reduction && label_reduction->reduce_before_shrinking()) {
-            bool reduced = label_reduction->reduce(merge_indices, fts, verbosity);
+            bool reduced = label_reduction->reduce(
+                merge_indices, fts, verbosity, &original_to_current_labels, &reduced_to_original_labels);
             if (reduced) {
                 computed_snapshot_after_last_transformation = false;
             }
@@ -764,7 +767,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop_single_cp(
                     make_move_iterator(new_abstractions.begin()),
                     make_move_iterator(new_abstractions.end()));
                 for (size_t new_abs = 0; new_abs < factors_modified_since_last_snapshot.size(); ++new_abs) {
-                    label_mappings.push_back(fts.get_labels().get_original_to_current_labels());
+                    label_mappings.push_back(original_to_current_labels);
                 }
                 factors_modified_since_last_snapshot.clear();
                 computed_snapshot_after_last_transformation = true;
@@ -818,7 +821,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop_single_cp(
                     make_move_iterator(new_abstractions.begin()),
                     make_move_iterator(new_abstractions.end()));
                 for (size_t new_abs = 0; new_abs < factors_modified_since_last_snapshot.size(); ++new_abs) {
-                    label_mappings.push_back(fts.get_labels().get_original_to_current_labels());
+                    label_mappings.push_back(original_to_current_labels);
                 }
                 factors_modified_since_last_snapshot.clear();
                 computed_snapshot_after_last_transformation = true;
@@ -837,7 +840,8 @@ bool CPMergeAndShrinkAlgorithm::main_loop_single_cp(
 
         // Label reduction (before merging)
         if (label_reduction && label_reduction->reduce_before_merging()) {
-            bool reduced = label_reduction->reduce(merge_indices, fts, verbosity);
+            bool reduced = label_reduction->reduce(
+                merge_indices, fts, verbosity, &original_to_current_labels, &reduced_to_original_labels);
             if (reduced) {
                 computed_snapshot_after_last_transformation = false;
             }
@@ -883,7 +887,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop_single_cp(
                     make_move_iterator(new_abstractions.begin()),
                     make_move_iterator(new_abstractions.end()));
                 for (size_t new_abs = 0; new_abs < factors_modified_since_last_snapshot.size(); ++new_abs) {
-                    label_mappings.push_back(fts.get_labels().get_original_to_current_labels());
+                    label_mappings.push_back(original_to_current_labels);
                 }
                 factors_modified_since_last_snapshot.clear();
                 computed_snapshot_after_last_transformation = true;
@@ -957,7 +961,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop_single_cp(
                     make_move_iterator(new_abstractions.begin()),
                     make_move_iterator(new_abstractions.end()));
                 for (size_t new_abs = 0; new_abs < factors_modified_since_last_snapshot.size(); ++new_abs) {
-                    label_mappings.push_back(fts.get_labels().get_original_to_current_labels());
+                    label_mappings.push_back(original_to_current_labels);
                 }
             }
             factors_modified_since_last_snapshot.clear();
@@ -1100,9 +1104,19 @@ unique_ptr<CostPartitioning> CPMergeAndShrinkAlgorithm::compute_single_ms_cp(
 
     /*
       For each abstraction, this contains the mapping from original labels to
-      the labels known in th eabstraction.
+      the labels known in the abstraction.
     */
     vector<vector<int>> label_mappings;
+    // Global label mapping (both ways).
+    vector<int> original_to_current_labels;
+    vector<vector<int>> reduced_to_original_labels;
+    original_to_current_labels.resize(labels.get_size());
+    reduced_to_original_labels.resize(labels.get_size());
+    reduced_to_original_labels.reserve(labels.get_max_size());
+    iota(original_to_current_labels.begin(), original_to_current_labels.end(), 0);
+    for (int label_no = 0; label_no < labels.get_size(); ++label_no) {
+        reduced_to_original_labels[label_no] = {label_no};
+    }
     if (!unsolvable) {
         if (label_reduction) {
             label_reduction->initialize(task_proxy);
@@ -1110,7 +1124,9 @@ unique_ptr<CostPartitioning> CPMergeAndShrinkAlgorithm::compute_single_ms_cp(
 
         bool computed_snapshot_after_last_transformation = false;
         if (label_reduction && atomic_label_reduction) {
-            bool reduced = label_reduction->reduce(pair<int, int>(-1, -1), fts, verbosity);
+            bool reduced = label_reduction->reduce(
+                pair<int, int>(-1, -1), fts, verbosity,
+                &original_to_current_labels, &reduced_to_original_labels);
             if (verbosity >= utils::Verbosity::NORMAL && reduced) {
                 log_progress(timer, "after label reduction on atomic FTS");
             }
@@ -1124,7 +1140,7 @@ unique_ptr<CostPartitioning> CPMergeAndShrinkAlgorithm::compute_single_ms_cp(
             vector<unique_ptr<Abstraction>> new_abstractions =
                 compute_abstractions_over_fts_single_cp(fts, factors_modified_since_last_snapshot);
             for (size_t i = 0; i < new_abstractions.size(); ++i) {
-                label_mappings.push_back(labels.get_original_to_current_labels());
+                label_mappings.push_back(original_to_current_labels);
             }
             abstractions.insert(
                 abstractions.end(),
@@ -1146,8 +1162,10 @@ unique_ptr<CostPartitioning> CPMergeAndShrinkAlgorithm::compute_single_ms_cp(
         }
 
         if (main_loop_max_time > 0) {
-            computed_snapshot_after_last_transformation =
-                main_loop_single_cp(fts, task_proxy, abstractions, factors_modified_since_last_snapshot, label_mappings);
+            computed_snapshot_after_last_transformation = main_loop_single_cp(
+                fts, task_proxy, abstractions,
+                factors_modified_since_last_snapshot, label_mappings,
+                original_to_current_labels, reduced_to_original_labels);
         }
 
         if (computed_snapshot_after_last_transformation) {
@@ -1176,7 +1194,7 @@ unique_ptr<CostPartitioning> CPMergeAndShrinkAlgorithm::compute_single_ms_cp(
                 make_move_iterator(new_abstractions.begin()),
                 make_move_iterator(new_abstractions.end()));
             for (size_t new_abs = 0; new_abs < factors_modified_since_last_snapshot.size(); ++new_abs) {
-                label_mappings.push_back(fts.get_labels().get_original_to_current_labels());
+                label_mappings.push_back(original_to_current_labels);
             }
             if (verbosity >= utils::Verbosity::NORMAL) {
                 log_progress(timer, "after handling final snapshot");
@@ -1197,7 +1215,7 @@ unique_ptr<CostPartitioning> CPMergeAndShrinkAlgorithm::compute_single_ms_cp(
             move(original_labels),
             move(label_costs),
             move(label_mappings),
-            labels.get_reduced_to_original_labels(),
+            move(reduced_to_original_labels),
             move(abstractions),
             verbosity);
     }

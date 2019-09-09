@@ -2,7 +2,6 @@
 #define MERGE_AND_SHRINK_LABELS_H
 
 #include <memory>
-#include <unordered_map>
 #include <vector>
 
 namespace merge_and_shrink {
@@ -29,8 +28,6 @@ public:
 class Labels {
     std::vector<std::unique_ptr<Label>> labels;
     int max_size; // the maximum number of labels that can be created
-    std::vector<int> original_to_current_labels;
-    std::unordered_map<int, std::vector<int>> reduced_to_original_labels;
 public:
     explicit Labels(std::vector<std::unique_ptr<Label>> &&labels);
     void reduce_labels(const std::vector<int> &old_label_nos);
@@ -42,12 +39,6 @@ public:
     }
     int get_max_size() const {
         return max_size;
-    }
-    const std::vector<int> &get_original_to_current_labels() const {
-        return original_to_current_labels;
-    }
-    const std::unordered_map<int, std::vector<int>> &get_reduced_to_original_labels() const {
-        return reduced_to_original_labels;
     }
 };
 }
