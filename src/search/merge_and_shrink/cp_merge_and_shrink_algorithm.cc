@@ -223,7 +223,7 @@ public:
         assert(!main_loop_target_num_snapshots || !main_loop_snapshot_each_iteration);
         compute_next_snapshot_time(0);
         compute_next_snapshot_iteration(0);
-        if (verbosity == utils::Verbosity::DEBUG) {
+        if (verbosity >= utils::Verbosity::DEBUG) {
             cout << "Snapshot collector: next time: " << next_time_to_compute_snapshot
                  << ", next iteration: " << next_iteration_to_compute_snapshot
                  << endl;
@@ -234,7 +234,7 @@ public:
         if (!main_loop_target_num_snapshots && !main_loop_snapshot_each_iteration) {
             return false;
         }
-        if (verbosity == utils::Verbosity::DEBUG) {
+        if (verbosity >= utils::Verbosity::DEBUG) {
             cout << "Snapshot collector: compute next snapshot? current time: " << current_time
                  << ", current iteration: " << current_iteration
                  << ", num existing heuristics: " << num_main_loop_snapshots
@@ -248,7 +248,7 @@ public:
         if (compute) {
             compute_next_snapshot_time(current_time);
             compute_next_snapshot_iteration(current_iteration);
-            if (verbosity == utils::Verbosity::DEBUG) {
+            if (verbosity >= utils::Verbosity::DEBUG) {
                 cout << "Compute snapshot now" << endl;
                 cout << "Next snapshot: next time: " << next_time_to_compute_snapshot
                      << ", next iteration: " << next_iteration_to_compute_snapshot

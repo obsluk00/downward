@@ -439,12 +439,12 @@ vector<int> compute_goal_distances(
 
     vector<int> distances(num_states, INF);
     if (unit_cost) {
-        if (verbosity == utils::Verbosity::DEBUG) {
+        if (verbosity >= utils::Verbosity::DEBUG) {
             cout << "Computing distances using unit cost" << endl;
         }
         compute_goal_distances_unit_cost(transition_system, distances);
     } else {
-        if (verbosity == utils::Verbosity::DEBUG) {
+        if (verbosity >= utils::Verbosity::DEBUG) {
             cout << "Computing distances using general cost" << endl;
         }
         compute_goal_distances_general_cost(transition_system, label_costs, distances);
