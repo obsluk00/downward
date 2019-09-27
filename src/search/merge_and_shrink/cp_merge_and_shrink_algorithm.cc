@@ -171,9 +171,9 @@ private:
     int num_main_loop_snapshots;
 
     void compute_next_snapshot_time(double current_time) {
-        int num_remaining_scp_heuristics = main_loop_target_num_snapshots - num_main_loop_snapshots;
-        // safeguard against having aimed_num_scp_heuristics = 0
-        if (num_remaining_scp_heuristics <= 0) {
+        int num_remaining_snapshots = main_loop_target_num_snapshots - num_main_loop_snapshots;
+        // safeguard against having num_remaining_snapshots = 0
+        if (num_remaining_snapshots <= 0) {
             next_time_to_compute_snapshot = max_time + 1.0;
             return;
         }
@@ -182,24 +182,24 @@ private:
             next_time_to_compute_snapshot = current_time;
             return;
         }
-        double time_offset = remaining_time / static_cast<double>(num_remaining_scp_heuristics);
+        double time_offset = remaining_time / static_cast<double>(num_remaining_snapshots);
         next_time_to_compute_snapshot = current_time + time_offset;
     }
 
     void compute_next_snapshot_iteration(int current_iteration) {
         if (main_loop_target_num_snapshots) {
-            int num_remaining_scp_heuristics = main_loop_target_num_snapshots - num_main_loop_snapshots;
-            // safeguard against having aimed_num_scp_heuristics = 0
-            if (num_remaining_scp_heuristics <= 0) {
+            int num_remaining_snapshots = main_loop_target_num_snapshots - num_main_loop_snapshots;
+            // safeguard against having num_remaining_snapshots = 0
+            if (num_remaining_snapshots <= 0) {
                 next_iteration_to_compute_snapshot = max_iterations + 1;
                 return;
             }
             int num_remaining_iterations = max_iterations - current_iteration;
-            if (!num_remaining_iterations || num_remaining_scp_heuristics >= num_remaining_iterations) {
+            if (!num_remaining_iterations || num_remaining_snapshots >= num_remaining_iterations) {
                 next_iteration_to_compute_snapshot = current_iteration + 1;
                 return;
             }
-            double iteration_offset = num_remaining_iterations / static_cast<double>(num_remaining_scp_heuristics);
+            double iteration_offset = num_remaining_iterations / static_cast<double>(num_remaining_snapshots);
             assert(iteration_offset >= 1.0);
             next_iteration_to_compute_snapshot = current_iteration + static_cast<int>(iteration_offset);
         } else {
@@ -207,6 +207,9 @@ private:
         }
     }
 public:
+    /*
+      Counting of iterations is 1-based in this class.
+    */
     NextSnapshot(
         double max_time,
         int max_iterations,
@@ -237,7 +240,7 @@ public:
         if (verbosity >= utils::Verbosity::DEBUG) {
             cout << "Snapshot collector: compute next snapshot? current time: " << current_time
                  << ", current iteration: " << current_iteration
-                 << ", num existing heuristics: " << num_main_loop_snapshots
+                 << ", num existing snapshots: " << num_main_loop_snapshots
                  << endl;
         }
         bool compute = false;
@@ -246,6 +249,7 @@ public:
             compute = true;
         }
         if (compute) {
+            ++num_main_loop_snapshots; // Assume that we already computed the next snapshot.
             compute_next_snapshot_time(current_time);
             compute_next_snapshot_iteration(current_iteration);
             if (verbosity >= utils::Verbosity::DEBUG) {
@@ -254,7 +258,6 @@ public:
                      << ", next iteration: " << next_iteration_to_compute_snapshot
                      << endl;
             }
-            ++num_main_loop_snapshots;
         }
         return compute;
     }
@@ -348,7 +351,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
 
         if (snapshot_moment == SnapshotMoment::AFTER_LABEL_REDUCTION &&
             next_snapshot &&
-            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
             cost_partitionings.push_back(cp_factory->generate_simple(
                 fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
             computed_snapshot_after_last_transformation = true;
@@ -384,7 +387,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
 
         if (snapshot_moment == SnapshotMoment::AFTER_SHRINKING &&
             next_snapshot &&
-            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
             cost_partitionings.push_back(cp_factory->generate_simple(
                 fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
             computed_snapshot_after_last_transformation = true;
@@ -433,7 +436,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
 
         if (snapshot_moment == SnapshotMoment::AFTER_MERGING &&
             next_snapshot &&
-            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
             cost_partitionings.push_back(cp_factory->generate_simple(
                 fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
             computed_snapshot_after_last_transformation = true;
@@ -490,7 +493,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
 
         if (snapshot_moment == SnapshotMoment::AFTER_PRUNING &&
             next_snapshot &&
-            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
             cost_partitionings.push_back(cp_factory->generate_simple(
                 fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
             computed_snapshot_after_last_transformation = true;
@@ -758,7 +761,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop_single_cp(
 
         if (snapshot_moment == SnapshotMoment::AFTER_LABEL_REDUCTION &&
             next_snapshot &&
-            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
             if (!factors_modified_since_last_snapshot.empty()) {
                 vector<unique_ptr<Abstraction>> new_abstractions =
                     compute_abstractions_over_fts_single_cp(fts, factors_modified_since_last_snapshot);
@@ -812,7 +815,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop_single_cp(
 
         if (snapshot_moment == SnapshotMoment::AFTER_SHRINKING &&
             next_snapshot &&
-            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
             if (!factors_modified_since_last_snapshot.empty()) {
                 vector<unique_ptr<Abstraction>> new_abstractions =
                     compute_abstractions_over_fts_single_cp(fts, factors_modified_since_last_snapshot);
@@ -878,7 +881,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop_single_cp(
 
         if (snapshot_moment == SnapshotMoment::AFTER_MERGING &&
             next_snapshot &&
-            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
             if (!factors_modified_since_last_snapshot.empty()) {
                 vector<unique_ptr<Abstraction>> new_abstractions =
                     compute_abstractions_over_fts_single_cp(fts, factors_modified_since_last_snapshot);
@@ -952,7 +955,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop_single_cp(
 
         if (snapshot_moment == SnapshotMoment::AFTER_PRUNING &&
             next_snapshot &&
-            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter + 1)) {
+            next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
             if (!factors_modified_since_last_snapshot.empty()) {
                 vector<unique_ptr<Abstraction>> new_abstractions =
                     compute_abstractions_over_fts_single_cp(fts, factors_modified_since_last_snapshot);
