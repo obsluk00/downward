@@ -335,9 +335,8 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate_simple(
             cout << endl;
             cout << "Building LP for abstraction " << i << endl;
         }
-        unique_ptr<MergeAndShrinkRepresentation> mas_representation =
-            move(abstractions[i]->merge_and_shrink_representation);
-        AbstractionInformation abstraction_info(move(mas_representation));
+        AbstractionInformation abstraction_info(
+            move(abstractions[i]->merge_and_shrink_representation));
         const TransitionSystem &ts = *abstractions[i]->transition_system;
         num_abstract_states += ts.get_size();
         if (verbosity >= utils::Verbosity::DEBUG) {
