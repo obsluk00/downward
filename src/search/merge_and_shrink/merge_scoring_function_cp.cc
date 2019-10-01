@@ -58,8 +58,14 @@ vector<unique_ptr<Abstraction>> MergeScoringFunctionCP::compute_abstractions_ove
 vector<double> MergeScoringFunctionCP::compute_scores(
     const FactoredTransitionSystem &fts,
     const vector<pair<int, int>> &merge_candidates) {
-    // score: h^prod(init) - h^OCP(ts1, ts2)
-    // -> 0 worst, biggest difference (with negative sign) best
+    /*
+      Score: h^CP(ts1, ts2) - h^prod(init)
+      From CP(ts1, ts2) <= CP(prod), this difference is never larger than 0.
+      If it is 0, "merging is not useful" because CP already captures the same
+      information. Otherwise, the lower it is, the better it is to compute the
+      product instead of leaving it to the CP because the CP is not good on the
+      product.
+    */
     vector<double> scores;
     scores.reserve(merge_candidates.size());
     vector<int> trivial_factors(fts.get_size(), -1);
@@ -95,7 +101,7 @@ vector<double> MergeScoringFunctionCP::compute_scores(
         const bool compute_goal_distances = true;
         utils::Verbosity verbosity = utils::Verbosity::SILENT;
         distances->compute_distances(compute_init_distances, compute_goal_distances, verbosity);
-        int product_init_h = distances->get_init_distance(product->get_init_state());
+        int product_init_h = distances->get_goal_distance(product->get_init_state());
 
         // Compute the CP over the product.
         unique_ptr<CostPartitioning> cp = cp_factory->generate_simple(
@@ -109,7 +115,7 @@ vector<double> MergeScoringFunctionCP::compute_scores(
         int cp_init_h = cp->compute_value(
             State(*tasks::g_root_task, tasks::g_root_task->get_initial_state_values()));
 
-        double score = product_init_h - cp_init_h;
+        double score = cp_init_h - product_init_h;
         assert(score <= 0);
         scores.push_back(score);
     }
