@@ -107,7 +107,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
         for (GroupAndTransitions gat : ts) {
             const LabelGroup &label_group = gat.label_group;
             const vector<Transition> &transitions = gat.transitions;
-            int group_saturated_cost = MINUSINF;
+            int group_saturated_cost = -INF;
             if (verbosity >= utils::Verbosity::VERBOSE && dump_if_empty_transitions && transitions.empty()) {
                 dump_if_empty_transitions = false;
                 cout << "found dead label group" << endl;
@@ -122,7 +122,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
                         group_saturated_cost = max(group_saturated_cost, diff);
                     }
                 }
-                if (verbosity >= utils::Verbosity::VERBOSE && dump_if_infinite_transitions && group_saturated_cost == MINUSINF) {
+                if (verbosity >= utils::Verbosity::VERBOSE && dump_if_infinite_transitions && group_saturated_cost == -INF) {
                     dump_if_infinite_transitions = false;
                     cout << "label group does not lead to any state with finite heuristic value" << endl;
                 }
@@ -140,7 +140,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
             if (remaining_label_costs[label_no] == -1) { // skip reduced labels
                 assert(saturated_label_costs[label_no] == -1);
             } else {
-                if (saturated_label_costs[label_no] == MINUSINF) {
+                if (saturated_label_costs[label_no] == -INF) {
                     remaining_label_costs[label_no] = INF;
                 } else if (remaining_label_costs[label_no] != INF) { // inf remains inf
                     remaining_label_costs[label_no] =
@@ -186,6 +186,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
             cout << endl;
             cout << "Abstraction index " << index << endl;
 //            abstraction.transition_system->dump_labels_and_transitions();
+            cout << abstraction.transition_system->tag() << endl;
             cout << "Label mapping: " << label_mapping << endl;
             cout << "Remaining label costs: " << remaining_label_costs << endl;
         }
@@ -224,7 +225,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
         for (GroupAndTransitions gat : ts) {
             const LabelGroup &label_group = gat.label_group;
             const vector<Transition> &transitions = gat.transitions;
-            int group_saturated_cost = MINUSINF;
+            int group_saturated_cost = -INF;
             if (verbosity >= utils::Verbosity::VERBOSE && dump_if_empty_transitions && transitions.empty()) {
                 dump_if_empty_transitions = false;
                 cout << "found dead label group" << endl;
@@ -243,7 +244,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
                 }
                 if (verbosity >= utils::Verbosity::VERBOSE
                     && dump_if_infinite_transitions
-                    && group_saturated_cost == MINUSINF) {
+                    && group_saturated_cost == -INF) {
                     dump_if_infinite_transitions = false;
                     cout << "label group does not lead to any state with finite heuristic value" << endl;
                 }
@@ -271,7 +272,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
         // Update remaining label costs.
         for (int label_no = 0; label_no < num_original_labels; ++label_no) {
             assert(remaining_label_costs[label_no] != -1);
-            if (saturated_label_costs[label_no] == MINUSINF) {
+            if (saturated_label_costs[label_no] == -INF) {
                 remaining_label_costs[label_no] = INF;
             } else if (remaining_label_costs[label_no] != INF) { // inf remains inf
                 remaining_label_costs[label_no] =
