@@ -235,7 +235,8 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
                     int h_src = goal_distances[src];
                     int h_target = goal_distances[target];
                     if (h_target != INF) {
-                        assert(h_src != INF);
+                        // h_src = INF is possible for transitions with labels
+                        // that all have infinite costs.
                         int diff = h_src - h_target;
                         group_saturated_cost = max(group_saturated_cost, diff);
                     }
