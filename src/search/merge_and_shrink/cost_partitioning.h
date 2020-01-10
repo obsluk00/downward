@@ -5,6 +5,7 @@
 #include <vector>
 
 class State;
+class TaskProxy;
 
 namespace utils {
 enum class Verbosity;
@@ -27,10 +28,12 @@ public:
 struct Abstraction {
     const TransitionSystem *transition_system;
     std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation;
+    int fts_index;
 
     Abstraction(
         const TransitionSystem *transition_system,
-        std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation);
+        std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation,
+        int fts_index);
     ~Abstraction();
 };
 
@@ -38,6 +41,7 @@ class CostPartitioningFactory {
 public:
     CostPartitioningFactory() = default;
     virtual ~CostPartitioningFactory() = default;
+    virtual void initialize(const TaskProxy &) {}
     virtual std::unique_ptr<CostPartitioning> generate_simple(
         const Labels &labels,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,

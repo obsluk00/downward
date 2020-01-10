@@ -11,6 +11,7 @@
 
 #include "../option_parser.h"
 #include "../plugin.h"
+#include "../task_proxy.h"
 
 #include "../utils/logging.h"
 #include "../utils/memory.h"
@@ -57,7 +58,90 @@ SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
     const Options &opts)
     : CostPartitioningFactory(),
       rng(utils::parse_rng_from_options(opts)),
-      factor_order(static_cast<FactorOrder>(opts.get_enum("factor_order"))) {
+      order(Order(opts.get_enum("order"))),
+      atomic_ts_order(AtomicTSOrder(opts.get_enum("atomic_ts_order"))),
+      product_ts_order(ProductTSOrder(opts.get_enum("product_ts_order"))),
+      atomic_before_product(opts.get<bool>("atomic_before_product")) {
+}
+
+void SaturatedCostPartitioningFactory::initialize(const TaskProxy &task_proxy) {
+    if (order == Order::ALL_RANDOM) {
+        return;
+    }
+
+    int num_variables = task_proxy.get_variables().size();
+    int max_transition_system_count = num_variables * 2 - 1;
+    factor_order.reserve(max_transition_system_count);
+
+    if (order == Order::FIXED_RANDOM) {
+        factor_order.resize(max_transition_system_count);
+        iota(factor_order.begin(), factor_order.end(), 0);
+        rng->shuffle(factor_order);
+        return;
+    }
+
+    assert(order == Order::FIXED);
+
+    // Compute the order in which atomic transition systems are considered
+    vector<int> atomic_tso(num_variables);
+    iota(atomic_tso.begin(), atomic_tso.end(), 0);
+    if (atomic_ts_order == AtomicTSOrder::LEVEL) {
+        reverse(atomic_tso.begin(), atomic_tso.end());
+    } else if (atomic_ts_order == AtomicTSOrder::RANDOM) {
+        rng->shuffle(atomic_tso);
+    }
+
+    // Compute the order in which product transition systems are considered
+    vector<int> product_tso(max_transition_system_count - num_variables);
+    iota(product_tso.begin(), product_tso.end(), num_variables);
+    if (product_ts_order == ProductTSOrder::NEW_TO_OLD) {
+        reverse(product_tso.begin(), product_tso.end());
+    } else if (product_ts_order == ProductTSOrder::RANDOM) {
+        rng->shuffle(product_tso);
+    }
+
+    // Put the orders in the correct order
+    if (atomic_before_product) {
+        factor_order.insert(
+            factor_order.end(), atomic_tso.begin(), atomic_tso.end());
+        factor_order.insert(
+            factor_order.end(), product_tso.begin(), product_tso.end());
+    } else {
+        factor_order.insert(
+            factor_order.end(), product_tso.begin(), product_tso.end());
+        factor_order.insert(
+            factor_order.end(), atomic_tso.begin(), atomic_tso.end());
+    }
+
+    cout << "Computed factor order: " << factor_order << endl;
+}
+
+vector<int> SaturatedCostPartitioningFactory::compute_abstraction_order(
+    const vector<unique_ptr<Abstraction>> &abstractions) const {
+    vector<int> abstraction_order;
+    abstraction_order.reserve(abstractions.size());
+
+    if (factor_order.empty()) {
+        assert(order == Order::ALL_RANDOM);
+        abstraction_order.resize(abstractions.size());
+        iota(abstraction_order.begin(), abstraction_order.end(), 0);
+        rng->shuffle(abstraction_order);
+    } else {
+        for (int abs_id : factor_order) {
+            int index = -1;
+            for (size_t i = 0; i < abstractions.size(); ++i) {
+                if (abs_id == abstractions[i]->fts_index) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index != -1) {
+                abstraction_order.push_back(index);
+            }
+        }
+    }
+    assert(abstraction_order.size() == abstractions.size());
+    return abstraction_order;
 }
 
 unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
@@ -77,17 +161,13 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
         }
     }
 
-    vector<size_t> abstraction_indices(abstractions.size());
-    iota(abstraction_indices.begin(), abstraction_indices.end(), 0);
-    if (factor_order == FactorOrder::RANDOM) {
-        rng->shuffle(abstraction_indices);
-    }
+    vector<int> abstraction_order = compute_abstraction_order(abstractions);
 
     SCPMSHeuristic scp_ms_heuristic;
     bool dump_if_empty_transitions = true;
     bool dump_if_infinite_transitions = true;
-    for (size_t i = 0; i < abstraction_indices.size(); ++i) {
-        size_t index = abstraction_indices[i];
+    for (size_t i = 0; i < abstraction_order.size(); ++i) {
+        int index = abstraction_order[i];
         Abstraction &abstraction = *abstractions[index];
         if (verbosity >= utils::Verbosity::DEBUG) {
             cout << "Remaining label costs: " << remaining_label_costs << endl;
@@ -98,7 +178,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
 //        cout << "Distances under remaining costs: " << goal_distances << endl;
         scp_ms_heuristic.goal_distances.push_back(goal_distances);
         scp_ms_heuristic.mas_representations.push_back(move(abstraction.merge_and_shrink_representation));
-        if (i == abstraction_indices.size() - 1) {
+        if (i == abstraction_order.size() - 1) {
             break;
         }
 
@@ -167,19 +247,15 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
         cout << "Computing SCP M&S heuristic over current abstractions..." << endl;
     }
 
-    vector<size_t> abstraction_indices(abstractions.size());
-    iota(abstraction_indices.begin(), abstraction_indices.end(), 0);
-    if (factor_order == FactorOrder::RANDOM) {
-        rng->shuffle(abstraction_indices);
-    }
+    vector<int> abstraction_order = compute_abstraction_order(abstractions);
 
     SCPMSHeuristic scp_ms_heuristic;
     bool dump_if_empty_transitions = true;
     bool dump_if_infinite_transitions = true;
     int num_original_labels = original_labels.size();
     vector<int> remaining_label_costs(move(label_costs));
-    for (size_t i = 0; i < abstraction_indices.size(); ++i) {
-        size_t index = abstraction_indices[i];
+    for (size_t i = 0; i < abstraction_order.size(); ++i) {
+        size_t index = abstraction_order[i];
         Abstraction &abstraction = *abstractions[index];
         const vector<int> &label_mapping = label_mappings[index];
         if (verbosity >= utils::Verbosity::DEBUG) {
@@ -215,7 +291,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
         }
         scp_ms_heuristic.goal_distances.push_back(goal_distances);
         scp_ms_heuristic.mas_representations.push_back(move(abstraction.merge_and_shrink_representation));
-        if (i == abstraction_indices.size() - 1) {
+        if (i == abstraction_order.size() - 1) {
             break;
         }
 
@@ -294,21 +370,64 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
 
 static shared_ptr<SaturatedCostPartitioningFactory>_parse(OptionParser &parser) {
     utils::add_rng_options(parser);
-    vector<string> factor_order;
-    vector<string> factor_order_docs;
-    factor_order.push_back("given");
-    factor_order_docs.push_back(
-        "given: the order of factors as in the FTS");
-    factor_order.push_back("random");
-    factor_order_docs.push_back(
-        "random: random order of factors");
+
+    vector<string> order;
+    vector<string> order_documentation;
+    order.push_back("fixed");
+    order_documentation.push_back(
+        "fixed order according to the other options");
+    order.push_back("fixed_random");
+    order_documentation.push_back(
+        "fixed random order");
+    order.push_back("all_random");
+    order_documentation.push_back(
+        "new random order for each snapsho");
     parser.add_enum_option(
-        "factor_order",
-        factor_order,
-        "Option to specify the order in which factors of the FTS are "
-        "considered for computing the SCP.",
-        "random",
-        factor_order_docs);
+        "order",
+        order,
+        "Option for the order in which factors are considered for each snapshot.",
+        "all_random",
+        order_documentation);
+
+    vector<string> atomic_ts_order;
+    vector<string> atomic_ts_order_documentation;
+    atomic_ts_order.push_back("reverse_level");
+    atomic_ts_order_documentation.push_back(
+        "the variable order of Fast Downward");
+    atomic_ts_order.push_back("level");
+    atomic_ts_order_documentation.push_back("opposite of reverse_level");
+    atomic_ts_order.push_back("random");
+    atomic_ts_order_documentation.push_back("a randomized order");
+    parser.add_enum_option(
+        "atomic_ts_order",
+        atomic_ts_order,
+        "The order in which atomic transition systems are considered when "
+        "considering pairs of potential merges.",
+        "reverse_level",
+        atomic_ts_order_documentation);
+
+    vector<string> product_ts_order;
+    vector<string> product_ts_order_documentation;
+    product_ts_order.push_back("old_to_new");
+    product_ts_order_documentation.push_back(
+        "consider composite transition systems from most recent to oldest, "
+        "that is in decreasing index order");
+    product_ts_order.push_back("new_to_old");
+    product_ts_order_documentation.push_back("opposite of old_to_new");
+    product_ts_order.push_back("random");
+    product_ts_order_documentation.push_back("a randomized order");
+    parser.add_enum_option(
+        "product_ts_order",
+        product_ts_order,
+        "The order in which product transition systems are considered when "
+        "considering pairs of potential merges.",
+        "new_to_old",
+        product_ts_order_documentation);
+
+    parser.add_option<bool>(
+        "atomic_before_product",
+        "Consider atomic transition systems before composite ones iff true.",
+        "false");
 
     Options opts = parser.parse();
     if (parser.help_mode()) {

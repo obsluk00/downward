@@ -15,11 +15,6 @@ namespace merge_and_shrink {
 class FactoredTransitionSystem;
 class MergeAndShrinkRepresentation;
 
-enum class FactorOrder {
-    GIVEN,
-    RANDOM
-};
-
 struct SCPMSHeuristic {
     std::vector<std::vector<int>> goal_distances;
     std::vector<std::unique_ptr<MergeAndShrinkRepresentation>> mas_representations;
@@ -36,10 +31,32 @@ public:
 
 class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
     std::shared_ptr<utils::RandomNumberGenerator> rng;
-    const FactorOrder factor_order;
+    enum class Order {
+        FIXED, // compute a fixed order with below options
+        FIXED_RANDOM, // compute one fixed order a priori
+        ALL_RANDOM // compute a new random factor order for each snapshot
+    };
+    const Order order;
+    enum class AtomicTSOrder {
+        REVERSE_LEVEL, // regular FD variable order
+        LEVEL, // reverse of above
+        RANDOM
+    };
+    const AtomicTSOrder atomic_ts_order;
+    enum class ProductTSOrder {
+        OLD_TO_NEW,
+        NEW_TO_OLD,
+        RANDOM
+    };
+    const ProductTSOrder product_ts_order;
+    const bool atomic_before_product;
+    std::vector<int> factor_order;
+    std::vector<int> compute_abstraction_order(
+        const std::vector<std::unique_ptr<Abstraction>> &abstractions) const;
 public:
     explicit SaturatedCostPartitioningFactory(const Options &opts);
     virtual ~SaturatedCostPartitioningFactory() = default;
+    virtual void initialize(const TaskProxy &task_proxy) override;
     virtual std::unique_ptr<CostPartitioning> generate_simple(
         const Labels &labels,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,

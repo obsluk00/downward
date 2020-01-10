@@ -268,7 +268,7 @@ vector<unique_ptr<Abstraction>> CPMergeAndShrinkAlgorithm::extract_unsolvable_ab
     vector<unique_ptr<Abstraction>> abstractions;
     abstractions.reserve(1);
     auto factor = fts.extract_ts_and_representation(unsolvable_index);
-    abstractions.push_back(utils::make_unique_ptr<Abstraction>(factor.first.release(), move(factor.second)));
+    abstractions.push_back(utils::make_unique_ptr<Abstraction>(factor.first.release(), move(factor.second), unsolvable_index));
     return abstractions;
 }
 
@@ -549,7 +549,7 @@ vector<unique_ptr<Abstraction>> CPMergeAndShrinkAlgorithm::compute_abstractions_
                 dynamic_cast<const MergeAndShrinkRepresentationMerge *>(
                     fts.get_mas_representation_raw_ptr(index)));
         }
-        abstractions.push_back(utils::make_unique_ptr<Abstraction>(transition_system, move(mas_representation)));
+        abstractions.push_back(utils::make_unique_ptr<Abstraction>(transition_system, move(mas_representation), index));
     }
     return abstractions;
 }
@@ -568,6 +568,8 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
     dump_options();
     warn_on_unusual_options();
     cout << endl;
+
+    cp_factory->initialize(task_proxy);
 
     const bool compute_init_distances =
         shrink_strategy->requires_init_distances() ||
@@ -1037,7 +1039,7 @@ vector<unique_ptr<Abstraction>> CPMergeAndShrinkAlgorithm::compute_abstractions_
                 dynamic_cast<const MergeAndShrinkRepresentationMerge *>(
                     fts.get_mas_representation_raw_ptr(index)));
         }
-        abstractions.push_back(utils::make_unique_ptr<Abstraction>(transition_system, move(mas_representation)));
+        abstractions.push_back(utils::make_unique_ptr<Abstraction>(transition_system, move(mas_representation), index));
     }
     return abstractions;
 }
@@ -1056,6 +1058,8 @@ unique_ptr<CostPartitioning> CPMergeAndShrinkAlgorithm::compute_single_ms_cp(
     dump_options();
     warn_on_unusual_options();
     cout << endl;
+
+    cp_factory->initialize(task_proxy);
 
     const bool compute_init_distances =
         shrink_strategy->requires_init_distances() ||

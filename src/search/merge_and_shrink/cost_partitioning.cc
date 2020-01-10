@@ -9,9 +9,11 @@ using namespace std;
 namespace merge_and_shrink {
 Abstraction::Abstraction(
     const TransitionSystem *transition_system,
-    std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation)
+    std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation,
+    int fts_index)
     : transition_system(transition_system),
-      merge_and_shrink_representation(move(merge_and_shrink_representation)) {
+      merge_and_shrink_representation(move(merge_and_shrink_representation)),
+      fts_index(fts_index) {
 }
 
 Abstraction::~Abstraction() {

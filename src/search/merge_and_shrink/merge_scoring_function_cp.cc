@@ -50,7 +50,7 @@ vector<unique_ptr<Abstraction>> MergeScoringFunctionCP::compute_abstractions_ove
                 dynamic_cast<const MergeAndShrinkRepresentationMerge *>(
                     fts.get_mas_representation_raw_ptr(index)));
         }
-        abstractions.push_back(utils::make_unique_ptr<Abstraction>(transition_system, move(mas_representation)));
+        abstractions.push_back(utils::make_unique_ptr<Abstraction>(transition_system, move(mas_representation), index));
     }
     return abstractions;
 }
