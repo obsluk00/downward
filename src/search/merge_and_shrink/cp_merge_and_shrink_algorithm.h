@@ -65,6 +65,7 @@ class CPMergeAndShrinkAlgorithm {
     };
     const SnapshotMoment snapshot_moment;
     const bool filter_trivial_factors;
+    const bool statistics_only;
 
     long starting_peak_memory;
 
@@ -72,6 +73,8 @@ class CPMergeAndShrinkAlgorithm {
     void dump_options() const;
     void warn_on_unusual_options() const;
     bool ran_out_of_time(const utils::CountdownTimer &timer) const;
+    void compute_cp_and_print_statistics(
+        const FactoredTransitionSystem &fts, int iteration) const;
     std::vector<std::unique_ptr<Abstraction>> extract_unsolvable_abstraction(
         FactoredTransitionSystem &fts, int unsolvable_index) const;
     std::vector<std::unique_ptr<Abstraction>> compute_abstractions_over_fts(

@@ -18,6 +18,7 @@
 #include "../options/option_parser.h"
 #include "../options/options.h"
 
+#include "../tasks/root_task.h"
 #include "../task_utils/task_properties.h"
 
 #include "../utils/countdown_timer.h"
@@ -64,6 +65,7 @@ CPMergeAndShrinkAlgorithm::CPMergeAndShrinkAlgorithm(const Options &opts) :
     main_loop_snapshot_each_iteration(opts.get<int>("main_loop_snapshot_each_iteration")),
     snapshot_moment(static_cast<SnapshotMoment>(opts.get_enum("snapshot_moment"))),
     filter_trivial_factors(opts.get<bool>("filter_trivial_factors")),
+    statistics_only(opts.get<bool>("statistics_only")),
     starting_peak_memory(0) {
     assert(max_states_before_merge > 0);
     assert(max_states >= max_states_before_merge);
@@ -156,6 +158,24 @@ bool CPMergeAndShrinkAlgorithm::ran_out_of_time(
         return true;
     }
     return false;
+}
+
+void CPMergeAndShrinkAlgorithm::compute_cp_and_print_statistics(
+    const FactoredTransitionSystem &fts, int iteration) const {
+    std::unique_ptr<CostPartitioning> cp = cp_factory->generate_simple(
+        fts.get_labels(), compute_abstractions_over_fts(fts), verbosity);
+    cout << "CP value in iteration " << iteration << ": "
+         << cp->compute_value(
+            State(*tasks::g_root_task,
+                  tasks::g_root_task->get_initial_state_values()))
+         << endl;
+    int max_h = 0;
+    for (int index : fts) {
+        int h = fts.get_distances(index).get_goal_distance(
+            fts.get_transition_system(index).get_init_state());
+        max_h = max(max_h, h);
+    }
+    cout << "Max value in iteration " << iteration << ": " << max_h << endl;
 }
 
 class NextSnapshot {
@@ -314,6 +334,7 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         verbosity);
     }
     bool computed_snapshot_after_last_transformation = false;
+    int number_of_applied_transformations = 1;
     while (fts.get_num_active_entries() > 1) {
         ++iteration_counter;
         // Choose next transition systems to merge
@@ -342,6 +363,10 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
             }
             if (verbosity >= utils::Verbosity::NORMAL && reduced) {
                 log_main_loop_progress("after label reduction");
+            }
+            if (statistics_only && reduced) {
+                compute_cp_and_print_statistics(fts, number_of_applied_transformations);
+                ++number_of_applied_transformations;
             }
         }
 
@@ -379,6 +404,10 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
         }
         if (verbosity >= utils::Verbosity::NORMAL && (shrunk.first || shrunk.second)) {
             log_main_loop_progress("after shrinking");
+        }
+        if (statistics_only && (shrunk.first || shrunk.second)) {
+            compute_cp_and_print_statistics(fts, number_of_applied_transformations);
+            ++number_of_applied_transformations;
         }
 
         if (ran_out_of_time(timer)) {
@@ -485,6 +514,11 @@ bool CPMergeAndShrinkAlgorithm::main_loop(
                 fts.get_labels(), extract_unsolvable_abstraction(fts, merged_index), verbosity));
             computed_snapshot_after_last_transformation = true;
             break;
+        }
+
+        if (statistics_only) {
+            compute_cp_and_print_statistics(fts, number_of_applied_transformations);
+            ++number_of_applied_transformations;
         }
 
         if (ran_out_of_time(timer)) {
@@ -623,6 +657,8 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
             log_progress(timer, "after pruning atomic factors");
         }
     }
+
+    compute_cp_and_print_statistics(fts, 0);
 
     if (!unsolvable) {
         if (label_reduction) {
@@ -1302,6 +1338,13 @@ void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
         "filter_trivial_factors",
         "If true, do not consider trivial factors for computing CPs. Should "
         "be set to true when computing SCPs.");
+
+    parser.add_option<bool>(
+        "statistics_only",
+        "If true, compute an OCP, an SCP, and the maximum over all factors "
+        "after each transformation. Normalize values with the value of the "
+        "atomic CP.",
+        "false");
 }
 
 void handle_cp_merge_and_shrink_algorithm_options(Options &opts) {
