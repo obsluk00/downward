@@ -659,7 +659,9 @@ vector<unique_ptr<CostPartitioning>> CPMergeAndShrinkAlgorithm::compute_ms_cps(
     }
 
     if (!unsolvable) {
-        compute_cp_and_print_statistics(fts, 0);
+        if (statistics_only) {
+            compute_cp_and_print_statistics(fts, 0);
+        }
 
         if (label_reduction) {
             label_reduction->initialize(task_proxy);
