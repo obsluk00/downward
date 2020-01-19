@@ -294,11 +294,11 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
     for (size_t i = 0; i < abstractions.size(); ++i) {
         const Abstraction &abs = *abstractions[i];
         const TransitionSystem &ts = *abs.transition_system;
-        vector<int> goal_distances = compute_goal_distances_different_labels(
-            ts, num_original_labels, remaining_label_costs, label_mappings[i], verbosity);
-        vector<int> saturated_label_costs = compute_saturated_costs_different_labels(
-            ts, goal_distances, num_original_labels, reduced_to_original_labels,
-            remaining_label_costs, verbosity);
+        goal_distances_by_abstraction.push_back(compute_goal_distances_different_labels(
+            ts, num_original_labels, remaining_label_costs, label_mappings[i], verbosity));
+        saturated_cost_by_abstraction.push_back(compute_saturated_costs_different_labels(
+            ts, goal_distances_by_abstraction.back(), num_original_labels, reduced_to_original_labels,
+            remaining_label_costs, verbosity));
     }
     vector<int> abstraction_order = order_generator->compute_order_for_state(
         abstractions, remaining_label_costs, goal_distances_by_abstraction, saturated_cost_by_abstraction, true);
