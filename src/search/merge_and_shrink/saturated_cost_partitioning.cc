@@ -112,8 +112,6 @@ void SaturatedCostPartitioningFactory::initialize(const TaskProxy &task_proxy) {
         factor_order.insert(
             factor_order.end(), atomic_tso.begin(), atomic_tso.end());
     }
-
-    cout << "Computed factor order: " << factor_order << endl;
 }
 
 vector<int> SaturatedCostPartitioningFactory::compute_abstraction_order(
