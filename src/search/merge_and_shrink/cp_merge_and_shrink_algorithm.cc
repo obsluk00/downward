@@ -106,6 +106,9 @@ void CPMergeAndShrinkAlgorithm::dump_options() const {
             cout << "Label reduction disabled" << endl;
         }
         cout << endl;
+
+        cout << "Main loop max time in seconds: " << main_loop_max_time << endl;
+        cout << endl;
     }
 }
 
