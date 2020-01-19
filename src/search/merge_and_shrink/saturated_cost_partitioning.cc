@@ -6,6 +6,7 @@
 #include "labels.h"
 #include "merge_and_shrink_algorithm.h"
 #include "merge_and_shrink_representation.h"
+#include "order_generator.h"
 #include "transition_system.h"
 #include "types.h"
 
@@ -57,89 +58,53 @@ int SaturatedCostPartitioning::get_number_of_factors() const {
 SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
     const Options &opts)
     : CostPartitioningFactory(),
-      rng(utils::parse_rng_from_options(opts)),
-      order(Order(opts.get_enum("order"))),
-      atomic_ts_order(AtomicTSOrder(opts.get_enum("atomic_ts_order"))),
-      product_ts_order(ProductTSOrder(opts.get_enum("product_ts_order"))),
-      atomic_before_product(opts.get<bool>("atomic_before_product")) {
+      order_generator(opts.get<shared_ptr<MASOrderGenerator>>("order_generator")) {
 }
 
 void SaturatedCostPartitioningFactory::initialize(const TaskProxy &task_proxy) {
-    if (order == Order::ALL_RANDOM) {
-        return;
-    }
-
-    int num_variables = task_proxy.get_variables().size();
-    int max_transition_system_count = num_variables * 2 - 1;
-    factor_order.reserve(max_transition_system_count);
-
-    if (order == Order::FIXED_RANDOM) {
-        factor_order.resize(max_transition_system_count);
-        iota(factor_order.begin(), factor_order.end(), 0);
-        rng->shuffle(factor_order);
-        return;
-    }
-
-    assert(order == Order::FIXED);
-
-    // Compute the order in which atomic transition systems are considered
-    vector<int> atomic_tso(num_variables);
-    iota(atomic_tso.begin(), atomic_tso.end(), 0);
-    if (atomic_ts_order == AtomicTSOrder::LEVEL) {
-        reverse(atomic_tso.begin(), atomic_tso.end());
-    } else if (atomic_ts_order == AtomicTSOrder::RANDOM) {
-        rng->shuffle(atomic_tso);
-    }
-
-    // Compute the order in which product transition systems are considered
-    vector<int> product_tso(max_transition_system_count - num_variables);
-    iota(product_tso.begin(), product_tso.end(), num_variables);
-    if (product_ts_order == ProductTSOrder::NEW_TO_OLD) {
-        reverse(product_tso.begin(), product_tso.end());
-    } else if (product_ts_order == ProductTSOrder::RANDOM) {
-        rng->shuffle(product_tso);
-    }
-
-    // Put the orders in the correct order
-    if (atomic_before_product) {
-        factor_order.insert(
-            factor_order.end(), atomic_tso.begin(), atomic_tso.end());
-        factor_order.insert(
-            factor_order.end(), product_tso.begin(), product_tso.end());
-    } else {
-        factor_order.insert(
-            factor_order.end(), product_tso.begin(), product_tso.end());
-        factor_order.insert(
-            factor_order.end(), atomic_tso.begin(), atomic_tso.end());
-    }
+    order_generator->initialize(task_proxy);
 }
 
-vector<int> SaturatedCostPartitioningFactory::compute_abstraction_order(
-    const vector<unique_ptr<Abstraction>> &abstractions) const {
-    vector<int> abstraction_order;
-    abstraction_order.reserve(abstractions.size());
-
-    if (factor_order.empty()) {
-        assert(order == Order::ALL_RANDOM);
-        abstraction_order.resize(abstractions.size());
-        iota(abstraction_order.begin(), abstraction_order.end(), 0);
-        rng->shuffle(abstraction_order);
-    } else {
-        for (int abs_id : factor_order) {
-            int index = -1;
-            for (size_t i = 0; i < abstractions.size(); ++i) {
-                if (abs_id == abstractions[i]->fts_index) {
-                    index = i;
-                    break;
+vector<int> SaturatedCostPartitioningFactory::compute_saturated_costs_simple(
+    const TransitionSystem &ts,
+    const vector<int> &goal_distances,
+    int num_labels,
+    utils::Verbosity verbosity) const {
+    static bool dump_if_empty_transitions = true;
+    static bool dump_if_infinite_transitions = true;
+    // Compute saturated cost of all labels.
+    vector<int> saturated_label_costs(num_labels, -1);
+    for (GroupAndTransitions gat : ts) {
+        const LabelGroup &label_group = gat.label_group;
+        const vector<Transition> &transitions = gat.transitions;
+        int group_saturated_cost = -INF;
+        if (verbosity >= utils::Verbosity::VERBOSE && dump_if_empty_transitions && transitions.empty()) {
+            dump_if_empty_transitions = false;
+            cout << "found dead label group" << endl;
+        } else {
+            for (const Transition &transition : transitions) {
+                int src = transition.src;
+                int target = transition.target;
+                int h_src = goal_distances[src];
+                int h_target = goal_distances[target];
+                if (h_target != INF) {
+                    int diff = h_src - h_target;
+                    group_saturated_cost = max(group_saturated_cost, diff);
                 }
             }
-            if (index != -1) {
-                abstraction_order.push_back(index);
+            if (verbosity >= utils::Verbosity::VERBOSE && dump_if_infinite_transitions && group_saturated_cost == -INF) {
+                dump_if_infinite_transitions = false;
+                cout << "label group does not lead to any state with finite heuristic value" << endl;
             }
         }
+        for (int label_no : label_group) {
+            saturated_label_costs[label_no] = group_saturated_cost;
+        }
     }
-    assert(abstraction_order.size() == abstractions.size());
-    return abstraction_order;
+    if (verbosity >= utils::Verbosity::DEBUG) {
+        cout << "Saturated label costs: " << saturated_label_costs << endl;
+    }
+    return saturated_label_costs;
 }
 
 unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
@@ -159,11 +124,24 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
         }
     }
 
-    vector<int> abstraction_order = compute_abstraction_order(abstractions);
+    vector<vector<int>> goal_distances_by_abstraction;
+    vector<vector<int>> saturated_cost_by_abstraction;
+    goal_distances_by_abstraction.reserve(abstractions.size());
+    saturated_cost_by_abstraction.reserve(abstractions.size());
+    for (const unique_ptr<Abstraction> &abs : abstractions) {
+        const TransitionSystem &ts = *abs->transition_system;
+        goal_distances_by_abstraction.push_back(
+            compute_goal_distances(
+                ts, remaining_label_costs, verbosity));
+        saturated_cost_by_abstraction.push_back(
+            compute_saturated_costs_simple(
+                ts, goal_distances_by_abstraction.back(), num_labels, verbosity));
+    }
+    vector<int> abstraction_order = order_generator->compute_order_for_state(
+        abstractions, remaining_label_costs, goal_distances_by_abstraction, saturated_cost_by_abstraction, true);
 
     SCPMSHeuristic scp_ms_heuristic;
-    bool dump_if_empty_transitions = true;
-    bool dump_if_infinite_transitions = true;
+
     for (size_t i = 0; i < abstraction_order.size(); ++i) {
         int index = abstraction_order[i];
         Abstraction &abstraction = *abstractions[index];
@@ -181,37 +159,8 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
         }
 
         // Compute saturated cost of all labels.
-        vector<int> saturated_label_costs(remaining_label_costs.size(), -1);
-        for (GroupAndTransitions gat : ts) {
-            const LabelGroup &label_group = gat.label_group;
-            const vector<Transition> &transitions = gat.transitions;
-            int group_saturated_cost = -INF;
-            if (verbosity >= utils::Verbosity::VERBOSE && dump_if_empty_transitions && transitions.empty()) {
-                dump_if_empty_transitions = false;
-                cout << "found dead label group" << endl;
-            } else {
-                for (const Transition &transition : transitions) {
-                    int src = transition.src;
-                    int target = transition.target;
-                    int h_src = goal_distances[src];
-                    int h_target = goal_distances[target];
-                    if (h_target != INF) {
-                        int diff = h_src - h_target;
-                        group_saturated_cost = max(group_saturated_cost, diff);
-                    }
-                }
-                if (verbosity >= utils::Verbosity::VERBOSE && dump_if_infinite_transitions && group_saturated_cost == -INF) {
-                    dump_if_infinite_transitions = false;
-                    cout << "label group does not lead to any state with finite heuristic value" << endl;
-                }
-            }
-            for (int label_no : label_group) {
-                saturated_label_costs[label_no] = group_saturated_cost;
-            }
-        }
-        if (verbosity >= utils::Verbosity::DEBUG) {
-            cout << "Saturated label costs: " << saturated_label_costs << endl;
-        }
+        vector<int> saturated_label_costs = compute_saturated_costs_simple(
+            ts, goal_distances, num_labels, verbosity);
 
         // Update remaining label costs.
         for (size_t label_no = 0; label_no < remaining_label_costs.size(); ++label_no) {
@@ -234,6 +183,96 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_simple(
     return utils::make_unique_ptr<SaturatedCostPartitioning>(move(scp_ms_heuristic));
 }
 
+vector<int> SaturatedCostPartitioningFactory::compute_goal_distances_different_labels(
+    const TransitionSystem &ts,
+    int num_original_labels,
+    const vector<int> &remaining_label_costs,
+    const vector<int> &label_mapping,
+    utils::Verbosity verbosity) const {
+    vector<int> abs_label_costs(num_original_labels * 2, -1);
+//        set<int> abs_labels;
+    for (int label_no = 0; label_no < num_original_labels; ++label_no) {
+        int label_cost = remaining_label_costs[label_no];
+        assert(label_cost >= 0);
+        int abs_label_no = label_mapping[label_no];
+        if (abs_label_costs[abs_label_no] != -1) {
+            abs_label_costs[abs_label_no] = min(abs_label_costs[abs_label_no], label_cost);
+        } else {
+            abs_label_costs[abs_label_no] = label_cost;
+        }
+//            abs_labels.insert(abs_label_no);
+    }
+    if (verbosity >= utils::Verbosity::DEBUG) {
+//            cout << "Abs labels: " << vector<int>(abs_labels.begin(), abs_labels.end()) << endl;
+        cout << "Remaining label costs in abs: " << abs_label_costs << endl;
+    }
+
+    vector<int> goal_distances = compute_goal_distances(
+        ts, abs_label_costs, verbosity);
+    return goal_distances;
+}
+
+vector<int> SaturatedCostPartitioningFactory::compute_saturated_costs_different_labels(
+    const TransitionSystem &ts,
+    const vector<int> &goal_distances,
+    int num_original_labels,
+    const vector<vector<int>> &reduced_to_original_labels,
+    const vector<int> &remaining_label_costs,
+    utils::Verbosity verbosity) const {
+    static bool dump_if_empty_transitions = true;
+    static bool dump_if_infinite_transitions = true;
+    // Compute saturated cost of all labels.
+    vector<int> saturated_label_costs(num_original_labels, -1);
+//        set<int> mapped_labels;
+    for (GroupAndTransitions gat : ts) {
+        const LabelGroup &label_group = gat.label_group;
+        const vector<Transition> &transitions = gat.transitions;
+        int group_saturated_cost = -INF;
+        if (verbosity >= utils::Verbosity::VERBOSE && dump_if_empty_transitions && transitions.empty()) {
+            dump_if_empty_transitions = false;
+            cout << "found dead label group" << endl;
+        } else {
+            for (const Transition &transition : transitions) {
+                int src = transition.src;
+                int target = transition.target;
+                int h_src = goal_distances[src];
+                int h_target = goal_distances[target];
+                if (h_target != INF) {
+                    // h_src = INF is possible for transitions with labels
+                    // that all have infinite costs.
+                    int diff = h_src - h_target;
+                    group_saturated_cost = max(group_saturated_cost, diff);
+                }
+            }
+            if (verbosity >= utils::Verbosity::VERBOSE
+                && dump_if_infinite_transitions
+                && group_saturated_cost == -INF) {
+                dump_if_infinite_transitions = false;
+                cout << "label group does not lead to any state with finite heuristic value" << endl;
+            }
+        }
+        for (int abs_label_no : label_group) {
+//                assert(abs_labels.count(abs_label_no));
+            for (int original_label_no : reduced_to_original_labels.at(abs_label_no)) {
+//                    assert(!mapped_labels.count(original_label_no));
+//                    mapped_labels.insert(original_label_no);
+                assert(group_saturated_cost <= remaining_label_costs[original_label_no]);
+                saturated_label_costs[original_label_no] = group_saturated_cost;
+
+            }
+        }
+    }
+//        cout << "num original labels in abs: " << mapped_labels.size() << endl;
+//        assert(static_cast<int>(mapped_labels.size()) == num_original_labels);
+//        cout << "original labels from abs: "
+//             << vector<int>(mapped_labels.begin(), mapped_labels.end()) << endl;
+//        assert(original_labels == vector<int>(mapped_labels.begin(), mapped_labels.end()));
+    if (verbosity >= utils::Verbosity::DEBUG) {
+        cout << "Saturated label costs: " << saturated_label_costs << endl;
+    }
+    return saturated_label_costs;
+}
+
 unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_different_labels(
     vector<int> &&original_labels,
     vector<int> &&label_costs,
@@ -245,45 +284,42 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
         cout << "Computing SCP M&S heuristic over current abstractions..." << endl;
     }
 
-    vector<int> abstraction_order = compute_abstraction_order(abstractions);
-
-    SCPMSHeuristic scp_ms_heuristic;
-    bool dump_if_empty_transitions = true;
-    bool dump_if_infinite_transitions = true;
     int num_original_labels = original_labels.size();
     vector<int> remaining_label_costs(move(label_costs));
+
+    vector<vector<int>> goal_distances_by_abstraction;
+    vector<vector<int>> saturated_cost_by_abstraction;
+    goal_distances_by_abstraction.reserve(abstractions.size());
+    saturated_cost_by_abstraction.reserve(abstractions.size());
+    for (size_t i = 0; i < abstractions.size(); ++i) {
+        const Abstraction &abs = *abstractions[i];
+        const TransitionSystem &ts = *abs.transition_system;
+        vector<int> goal_distances = compute_goal_distances_different_labels(
+            ts, num_original_labels, remaining_label_costs, label_mappings[i], verbosity);
+        vector<int> saturated_label_costs = compute_saturated_costs_different_labels(
+            ts, goal_distances, num_original_labels, reduced_to_original_labels,
+            remaining_label_costs, verbosity);
+    }
+    vector<int> abstraction_order = order_generator->compute_order_for_state(
+        abstractions, remaining_label_costs, goal_distances_by_abstraction, saturated_cost_by_abstraction, true);
+
+    SCPMSHeuristic scp_ms_heuristic;
     for (size_t i = 0; i < abstraction_order.size(); ++i) {
         size_t index = abstraction_order[i];
         Abstraction &abstraction = *abstractions[index];
+        const TransitionSystem &ts = *abstraction.transition_system;
+
         const vector<int> &label_mapping = label_mappings[index];
         if (verbosity >= utils::Verbosity::DEBUG) {
             cout << endl;
             cout << "Abstraction index " << index << endl;
-//            abstraction.transition_system->dump_labels_and_transitions();
-            cout << abstraction.transition_system->tag() << endl;
+//            ts.dump_labels_and_transitions();
+            cout << ts.tag() << endl;
             cout << "Label mapping: " << label_mapping << endl;
             cout << "Remaining label costs: " << remaining_label_costs << endl;
         }
-        vector<int> abs_label_costs(num_original_labels * 2, -1);
-//        set<int> abs_labels;
-        for (int label_no = 0; label_no < num_original_labels; ++label_no) {
-            int label_cost = remaining_label_costs[label_no];
-            assert(label_cost >= 0);
-            int abs_label_no = label_mapping[label_no];
-            if (abs_label_costs[abs_label_no] != -1) {
-                abs_label_costs[abs_label_no] = min(abs_label_costs[abs_label_no], label_cost);
-            } else {
-                abs_label_costs[abs_label_no] = label_cost;
-            }
-//            abs_labels.insert(abs_label_no);
-        }
-        if (verbosity >= utils::Verbosity::DEBUG) {
-//            cout << "Abs labels: " << vector<int>(abs_labels.begin(), abs_labels.end()) << endl;
-            cout << "Remaining label costs in abs: " << abs_label_costs << endl;
-        }
-        const TransitionSystem &ts = *abstraction.transition_system;
-        vector<int> goal_distances = compute_goal_distances(
-            ts, abs_label_costs, verbosity);
+        vector<int> goal_distances = compute_goal_distances_different_labels(
+            ts, num_original_labels, remaining_label_costs, label_mapping, verbosity);
         if (verbosity >= utils::Verbosity::DEBUG) {
             cout << "Distances under remaining costs: " << goal_distances << endl;
         }
@@ -293,55 +329,9 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
             break;
         }
 
-        // Compute saturated cost of all labels.
-        vector<int> saturated_label_costs(num_original_labels, -1);
-//        set<int> mapped_labels;
-        for (GroupAndTransitions gat : ts) {
-            const LabelGroup &label_group = gat.label_group;
-            const vector<Transition> &transitions = gat.transitions;
-            int group_saturated_cost = -INF;
-            if (verbosity >= utils::Verbosity::VERBOSE && dump_if_empty_transitions && transitions.empty()) {
-                dump_if_empty_transitions = false;
-                cout << "found dead label group" << endl;
-            } else {
-                for (const Transition &transition : transitions) {
-                    int src = transition.src;
-                    int target = transition.target;
-                    int h_src = goal_distances[src];
-                    int h_target = goal_distances[target];
-                    if (h_target != INF) {
-                        // h_src = INF is possible for transitions with labels
-                        // that all have infinite costs.
-                        int diff = h_src - h_target;
-                        group_saturated_cost = max(group_saturated_cost, diff);
-                    }
-                }
-                if (verbosity >= utils::Verbosity::VERBOSE
-                    && dump_if_infinite_transitions
-                    && group_saturated_cost == -INF) {
-                    dump_if_infinite_transitions = false;
-                    cout << "label group does not lead to any state with finite heuristic value" << endl;
-                }
-            }
-            for (int abs_label_no : label_group) {
-//                assert(abs_labels.count(abs_label_no));
-                for (int original_label_no : reduced_to_original_labels.at(abs_label_no)) {
-//                    assert(!mapped_labels.count(original_label_no));
-//                    mapped_labels.insert(original_label_no);
-                    assert(group_saturated_cost <= remaining_label_costs[original_label_no]);
-                    saturated_label_costs[original_label_no] = group_saturated_cost;
-
-                }
-            }
-        }
-//        cout << "num original labels in abs: " << mapped_labels.size() << endl;
-//        assert(static_cast<int>(mapped_labels.size()) == num_original_labels);
-//        cout << "original labels from abs: "
-//             << vector<int>(mapped_labels.begin(), mapped_labels.end()) << endl;
-//        assert(original_labels == vector<int>(mapped_labels.begin(), mapped_labels.end()));
-        if (verbosity >= utils::Verbosity::DEBUG) {
-            cout << "Saturated label costs: " << saturated_label_costs << endl;
-        }
+        vector<int> saturated_label_costs = compute_saturated_costs_different_labels(
+            ts, goal_distances, num_original_labels, reduced_to_original_labels,
+            remaining_label_costs, verbosity);
 
         // Update remaining label costs.
         for (int label_no = 0; label_no < num_original_labels; ++label_no) {
@@ -367,65 +357,10 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
 }
 
 static shared_ptr<SaturatedCostPartitioningFactory>_parse(OptionParser &parser) {
-    utils::add_rng_options(parser);
-
-    vector<string> order;
-    vector<string> order_documentation;
-    order.push_back("fixed");
-    order_documentation.push_back(
-        "fixed order according to the other options");
-    order.push_back("fixed_random");
-    order_documentation.push_back(
-        "fixed random order");
-    order.push_back("all_random");
-    order_documentation.push_back(
-        "new random order for each snapsho");
-    parser.add_enum_option(
-        "order",
-        order,
-        "Option for the order in which factors are considered for each snapshot.",
-        "all_random",
-        order_documentation);
-
-    vector<string> atomic_ts_order;
-    vector<string> atomic_ts_order_documentation;
-    atomic_ts_order.push_back("reverse_level");
-    atomic_ts_order_documentation.push_back(
-        "the variable order of Fast Downward");
-    atomic_ts_order.push_back("level");
-    atomic_ts_order_documentation.push_back("opposite of reverse_level");
-    atomic_ts_order.push_back("random");
-    atomic_ts_order_documentation.push_back("a randomized order");
-    parser.add_enum_option(
-        "atomic_ts_order",
-        atomic_ts_order,
-        "The order in which atomic transition systems are considered when "
-        "considering pairs of potential merges.",
-        "reverse_level",
-        atomic_ts_order_documentation);
-
-    vector<string> product_ts_order;
-    vector<string> product_ts_order_documentation;
-    product_ts_order.push_back("old_to_new");
-    product_ts_order_documentation.push_back(
-        "consider composite transition systems from most recent to oldest, "
-        "that is in decreasing index order");
-    product_ts_order.push_back("new_to_old");
-    product_ts_order_documentation.push_back("opposite of old_to_new");
-    product_ts_order.push_back("random");
-    product_ts_order_documentation.push_back("a randomized order");
-    parser.add_enum_option(
-        "product_ts_order",
-        product_ts_order,
-        "The order in which product transition systems are considered when "
-        "considering pairs of potential merges.",
-        "new_to_old",
-        product_ts_order_documentation);
-
-    parser.add_option<bool>(
-        "atomic_before_product",
-        "Consider atomic transition systems before composite ones iff true.",
-        "false");
+    parser.add_option<shared_ptr<MASOrderGenerator>>(
+        "order_generator",
+        "order generator",
+        "mas_orders()");
 
     Options opts = parser.parse();
     if (parser.help_mode()) {

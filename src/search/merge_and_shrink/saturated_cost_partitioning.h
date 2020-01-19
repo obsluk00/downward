@@ -7,13 +7,10 @@
 
 #include <vector>
 
-namespace utils {
-class RandomNumberGenerator;
-}
-
 namespace merge_and_shrink {
 class FactoredTransitionSystem;
 class MergeAndShrinkRepresentation;
+class MASOrderGenerator;
 
 struct SCPMSHeuristic {
     std::vector<std::vector<int>> goal_distances;
@@ -30,29 +27,25 @@ public:
 };
 
 class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
-    std::shared_ptr<utils::RandomNumberGenerator> rng;
-    enum class Order {
-        FIXED, // compute a fixed order with below options
-        FIXED_RANDOM, // compute one fixed order a priori
-        ALL_RANDOM // compute a new random factor order for each snapshot
-    };
-    const Order order;
-    enum class AtomicTSOrder {
-        REVERSE_LEVEL, // regular FD variable order
-        LEVEL, // reverse of above
-        RANDOM
-    };
-    const AtomicTSOrder atomic_ts_order;
-    enum class ProductTSOrder {
-        OLD_TO_NEW,
-        NEW_TO_OLD,
-        RANDOM
-    };
-    const ProductTSOrder product_ts_order;
-    const bool atomic_before_product;
-    std::vector<int> factor_order;
-    std::vector<int> compute_abstraction_order(
-        const std::vector<std::unique_ptr<Abstraction>> &abstractions) const;
+    std::shared_ptr<MASOrderGenerator> order_generator;
+    std::vector<int> compute_saturated_costs_simple(
+        const TransitionSystem &ts,
+        const std::vector<int> &goal_distances,
+        int num_labels,
+        utils::Verbosity verbosity) const;
+    std::vector<int> compute_goal_distances_different_labels(
+        const TransitionSystem &ts,
+        int num_original_labels,
+        const std::vector<int> &remaining_label_costs,
+        const std::vector<int> &label_mapping,
+        utils::Verbosity verbosity) const;
+    std::vector<int> compute_saturated_costs_different_labels(
+        const TransitionSystem &ts,
+        const std::vector<int> &goal_distances,
+        int num_original_labels,
+        const std::vector<std::vector<int>> &reduced_to_original_labels,
+        const std::vector<int> &remaining_label_costs,
+        utils::Verbosity verbosity) const;
 public:
     explicit SaturatedCostPartitioningFactory(const Options &opts);
     virtual ~SaturatedCostPartitioningFactory() = default;
