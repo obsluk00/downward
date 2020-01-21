@@ -59,7 +59,7 @@ Order MASOrderGeneratorGreedy::compute_order_for_state(
     utils::Log() << "Compute stolen costs" << endl;
     int num_abstractions = abstractions.size();
     vector<int> stolen_costs_by_abstraction;
-    stolen_costs_by_abstraction.resize(num_abstractions);
+    stolen_costs_by_abstraction.reserve(num_abstractions);
     for (int abs = 0; abs < num_abstractions; ++abs) {
         int sum_stolen_costs = compute_costs_stolen_by_heuristic(
             saturated_costs_by_abstraction[abs], surplus_costs);
