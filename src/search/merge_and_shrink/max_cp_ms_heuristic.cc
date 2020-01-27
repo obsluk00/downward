@@ -1,6 +1,7 @@
 #include "max_cp_ms_heuristic.h"
 
-#include "cp_merge_and_shrink_algorithm.h"
+#include "cp_mas_interleaved.h"
+#include "cp_mas_offline.h"
 #include "cost_partitioning.h"
 #include "types.h"
 
@@ -17,10 +18,11 @@ namespace merge_and_shrink {
 MaxCPMSHeuristic::MaxCPMSHeuristic(const options::Options &opts)
     : Heuristic(opts),
       single_cp(opts.get<bool>("single_cp")) {
-    CPMergeAndShrinkAlgorithm algorithm(opts);
     if (single_cp) {
+        CPMASOffline algorithm(opts);
         cost_partitionings.push_back(algorithm.compute_single_ms_cp(task_proxy));
     } else {
+        CPMASInterleaved algorithm(opts);
         cost_partitionings = algorithm.compute_ms_cps(task_proxy);
     }
     int num_cps = cost_partitionings.size();

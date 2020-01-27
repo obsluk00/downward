@@ -1,12 +1,8 @@
-#ifndef MERGE_AND_SHRINK_CP_MERGE_AND_SHRINK_ALGORITHM_H
-#define MERGE_AND_SHRINK_CP_MERGE_AND_SHRINK_ALGORITHM_H
+#ifndef MERGE_AND_SHRINK_CP_MAS_H
+#define MERGE_AND_SHRINK_CP_MAS_H
 
-#include <functional>
 #include <memory>
-#include <set>
 #include <vector>
-
-class TaskProxy;
 
 namespace options {
 class OptionParser;
@@ -15,19 +11,20 @@ class Options;
 
 namespace utils {
 class CountdownTimer;
+class Timer;
 enum class Verbosity;
 }
 
 namespace merge_and_shrink {
 class Abstraction;
-class CostPartitioning;
 class CostPartitioningFactory;
 class FactoredTransitionSystem;
 class LabelReduction;
 class MergeStrategyFactory;
 class ShrinkStrategy;
 
-class CPMergeAndShrinkAlgorithm {
+class CPMAS {
+protected:
     // TODO: when the option parser supports it, the following should become
     // unique pointers.
     std::shared_ptr<MergeStrategyFactory> merge_strategy_factory;
@@ -69,37 +66,43 @@ class CPMergeAndShrinkAlgorithm {
 
     long starting_peak_memory;
 
+    class NextSnapshot {
+    private:
+        const double max_time;
+        const int max_iterations;
+        const int main_loop_target_num_snapshots;
+        const int main_loop_snapshot_each_iteration;
+        const utils::Verbosity verbosity;
+
+        double next_time_to_compute_snapshot;
+        int next_iteration_to_compute_snapshot;
+        int num_main_loop_snapshots;
+
+        void compute_next_snapshot_time(double current_time);
+        void compute_next_snapshot_iteration(int current_iteration);
+    public:
+        /*
+          Counting of iterations is 1-based in this class.
+        */
+        NextSnapshot(
+            double max_time,
+            int max_iterations,
+            int main_loop_target_num_snapshots,
+            int main_loop_snapshot_each_iteration,
+            utils::Verbosity verbosity);
+
+        bool compute_next_snapshot(double current_time, int current_iteration);
+    };
+
+    void log_progress(const utils::Timer &timer, std::string msg) const;
     void report_peak_memory_delta(bool final = false) const;
     void dump_options() const;
     void warn_on_unusual_options() const;
     bool ran_out_of_time(const utils::CountdownTimer &timer) const;
-    void compute_cp_and_print_statistics(
-        const FactoredTransitionSystem &fts, int iteration) const;
     std::vector<std::unique_ptr<Abstraction>> extract_unsolvable_abstraction(
         FactoredTransitionSystem &fts, int unsolvable_index) const;
-    std::vector<std::unique_ptr<Abstraction>> compute_abstractions_over_fts(
-        const FactoredTransitionSystem &fts) const;
-    bool main_loop(
-        FactoredTransitionSystem &fts,
-        const TaskProxy &task_proxy,
-        std::vector<std::unique_ptr<CostPartitioning>> &cost_partitionings);
-    std::vector<std::unique_ptr<Abstraction>> compute_abstractions_over_fts_single_cp(
-        const FactoredTransitionSystem &fts,
-        const std::set<int> &indices) const;
-    bool main_loop_single_cp(
-        FactoredTransitionSystem &fts,
-        const TaskProxy &task_proxy,
-        std::vector<std::unique_ptr<Abstraction>> &abstractions,
-        std::set<int> &factors_modified_since_last_snapshot,
-        std::vector<std::vector<int>> &label_mappings,
-        std::vector<int> &original_to_current_labels,
-        std::vector<std::vector<int>> &reduced_to_original_labels);
 public:
-    explicit CPMergeAndShrinkAlgorithm(const options::Options &opts);
-    std::vector<std::unique_ptr<CostPartitioning>> compute_ms_cps(
-        const TaskProxy &task_proxy);
-    std::unique_ptr<CostPartitioning> compute_single_ms_cp(
-        const TaskProxy &task_proxy);
+    explicit CPMAS(const options::Options &opts);
 };
 
 extern void add_cp_merge_and_shrink_algorithm_options_to_parser(options::OptionParser &parser);
