@@ -37,7 +37,6 @@ CPMAS::CPMAS(const Options &opts) :
     merge_strategy_factory(opts.get<shared_ptr<MergeStrategyFactory>>("merge_strategy")),
     shrink_strategy(opts.get<shared_ptr<ShrinkStrategy>>("shrink_strategy")),
     label_reduction(opts.get<shared_ptr<LabelReduction>>("label_reduction", nullptr)),
-    cp_factory(opts.get<shared_ptr<CostPartitioningFactory>>("cost_partitioning", nullptr)),
     max_states(opts.get<int>("max_states")),
     max_states_before_merge(opts.get<int>("max_states_before_merge")),
     shrink_threshold_before_merge(opts.get<int>("threshold_before_merge")),
@@ -256,10 +255,6 @@ void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
     add_merge_and_shrink_algorithm_options_to_parser(parser);
 
     // Cost partitioning options
-    parser.add_option<shared_ptr<CostPartitioningFactory>>(
-        "cost_partitioning",
-        "A method for computing cost partitionings over intermediate "
-        "'snapshots' of the factored transition system.");
     parser.add_option<bool>(
         "compute_atomic_snapshot",
         "Include a snapshot over the atomic FTS.",

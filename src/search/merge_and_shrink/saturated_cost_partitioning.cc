@@ -57,7 +57,7 @@ int SaturatedCostPartitioning::get_number_of_factors() const {
 
 SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
     const Options &opts)
-    : CostPartitioningFactory(),
+    : CostPartitioningFactory(opts),
       order_generator(opts.get<shared_ptr<MASOrderGenerator>>("order_generator")) {
 }
 
@@ -357,6 +357,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_over_dif
 }
 
 static shared_ptr<SaturatedCostPartitioningFactory>_parse(OptionParser &parser) {
+    add_cp_options_to_parser(parser);
     parser.add_option<shared_ptr<MASOrderGenerator>>(
         "order_generator",
         "order generator",

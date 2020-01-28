@@ -95,7 +95,7 @@ void OptimalCostPartitioning::print_statistics() const {
 
 OptimalCostPartitioningFactory::OptimalCostPartitioningFactory(
     const Options &opts)
-    : CostPartitioningFactory(),
+    : CostPartitioningFactory(opts),
       lp_solver_type(lp::LPSolverType(opts.get_enum("lpsolver"))),
       allow_negative_costs(opts.get<bool>("allow_negative_costs")),
       efficient_cp(opts.get<bool>("efficient_cp")) {
@@ -541,6 +541,7 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate_over_diffe
 }
 
 static shared_ptr<OptimalCostPartitioningFactory>_parse(OptionParser &parser) {
+    add_cp_options_to_parser(parser);
     lp::add_lp_solver_option_to_parser(parser);
     parser.add_option<bool>(
         "allow_negative_costs",

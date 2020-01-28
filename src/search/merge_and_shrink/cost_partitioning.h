@@ -7,6 +7,11 @@
 class State;
 class TaskProxy;
 
+namespace options {
+class OptionParser;
+class Options;
+}
+
 namespace utils {
 enum class Verbosity;
 }
@@ -38,8 +43,10 @@ struct Abstraction {
 };
 
 class CostPartitioningFactory {
+protected:
+    const bool single_cp;
 public:
-    CostPartitioningFactory() = default;
+    explicit CostPartitioningFactory(const options::Options &opts);
     virtual ~CostPartitioningFactory() = default;
     virtual void initialize(const TaskProxy &) {}
     virtual std::unique_ptr<CostPartitioning> generate_simple(
@@ -53,7 +60,11 @@ public:
         std::vector<std::vector<int>> &&reduced_to_original_labels,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
         utils::Verbosity verbosity) = 0;
+    std::vector<std::unique_ptr<CostPartitioning>> generate(
+        const options::Options &opts, const TaskProxy &task_proxy);
 };
+
+extern void add_cp_options_to_parser(options::OptionParser &parser);
 }
 
 #endif

@@ -412,7 +412,7 @@ bool CPMASOffline::main_loop_single_cp(
 }
 
 unique_ptr<CostPartitioning> CPMASOffline::compute_single_ms_cp(
-    const TaskProxy &task_proxy) {
+    const TaskProxy &task_proxy, CostPartitioningFactory &cp_factory) {
     if (starting_peak_memory) {
         cerr << "Using this factory twice is not supported!" << endl;
         utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
@@ -425,8 +425,6 @@ unique_ptr<CostPartitioning> CPMASOffline::compute_single_ms_cp(
     dump_options();
     warn_on_unusual_options();
     cout << endl;
-
-    cp_factory->initialize(task_proxy);
 
     const bool compute_init_distances =
         shrink_strategy->requires_init_distances() ||
@@ -602,7 +600,7 @@ unique_ptr<CostPartitioning> CPMASOffline::compute_single_ms_cp(
     // the one of the current FTS, therefore we still use generate_over_
     // different_labels.
     assert(abstractions.size() == label_mappings.size());
-    unique_ptr<CostPartitioning> cost_partitioning = cp_factory->generate_over_different_labels(
+    unique_ptr<CostPartitioning> cost_partitioning = cp_factory.generate_over_different_labels(
         move(original_labels),
         move(label_costs),
         move(label_mappings),

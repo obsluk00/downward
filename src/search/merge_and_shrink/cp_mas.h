@@ -17,7 +17,6 @@ enum class Verbosity;
 
 namespace merge_and_shrink {
 class Abstraction;
-class CostPartitioningFactory;
 class FactoredTransitionSystem;
 class LabelReduction;
 class MergeStrategyFactory;
@@ -30,7 +29,6 @@ protected:
     std::shared_ptr<MergeStrategyFactory> merge_strategy_factory;
     std::shared_ptr<ShrinkStrategy> shrink_strategy;
     std::shared_ptr<LabelReduction> label_reduction;
-    std::shared_ptr<CostPartitioningFactory> cp_factory;
 
     // Options for shrinking
     // Hard limit: the maximum size of a transition system at any point.

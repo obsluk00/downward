@@ -9,6 +9,7 @@ class TaskProxy;
 
 namespace merge_and_shrink {
 class CostPartitioning;
+class CostPartitioningFactory;
 
 class CPMASOffline : public CPMAS {
     std::vector<std::unique_ptr<Abstraction>> compute_abstractions_over_fts_single_cp(
@@ -25,7 +26,7 @@ class CPMASOffline : public CPMAS {
 public:
     explicit CPMASOffline(const options::Options &opts);
     std::unique_ptr<CostPartitioning> compute_single_ms_cp(
-        const TaskProxy &task_proxy);
+        const TaskProxy &task_proxy, CostPartitioningFactory &cp_factory);
 };
 }
 
