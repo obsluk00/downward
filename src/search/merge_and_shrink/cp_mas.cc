@@ -3,6 +3,7 @@
 #include "cost_partitioning.h"
 #include "factored_transition_system.h"
 #include "label_reduction.h"
+#include "labels.h"
 #include "merge_and_shrink_algorithm.h"
 #include "merge_and_shrink_representation.h"
 #include "merge_strategy_factory.h"
@@ -240,6 +241,18 @@ bool CPMAS::NextSnapshot::compute_next_snapshot(double current_time, int current
         }
     }
     return compute;
+}
+
+vector<int> CPMAS::compute_label_costs(
+    const Labels &labels) const {
+    int num_labels = labels.get_size();
+    vector<int> label_costs(num_labels, -1);
+    for (int label_no = 0; label_no < num_labels; ++label_no) {
+        if (labels.is_current_label(label_no)) {
+            label_costs[label_no] = labels.get_label_cost(label_no);
+        }
+    }
+    return label_costs;
 }
 
 vector<unique_ptr<Abstraction>> CPMAS::extract_unsolvable_abstraction(

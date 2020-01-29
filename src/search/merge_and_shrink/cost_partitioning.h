@@ -34,34 +34,24 @@ struct Abstraction {
     const TransitionSystem *transition_system;
     std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation;
     int fts_index;
+    const std::vector<int> label_mapping;
 
     Abstraction(
         const TransitionSystem *transition_system,
         std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation,
-        int fts_index);
+        int fts_index,
+        const std::vector<int> &label_mapping = std::vector<int>());
     ~Abstraction();
 };
 
 class CostPartitioningFactory {
-protected:
-    const bool single_cp;
 public:
-    explicit CostPartitioningFactory(const options::Options &opts);
     virtual ~CostPartitioningFactory() = default;
     virtual void initialize(const TaskProxy &) {}
-    virtual std::unique_ptr<CostPartitioning> generate_simple(
-        const Labels &labels,
-        std::vector<std::unique_ptr<Abstraction>> &&abstractions,
-        utils::Verbosity verbosity) = 0;
-    virtual std::unique_ptr<CostPartitioning> generate_over_different_labels(
-        std::vector<int> &&original_labels,
+    virtual std::unique_ptr<CostPartitioning> generate(
         std::vector<int> &&label_costs,
-        std::vector<std::vector<int>> &&label_mappings,
-        std::vector<std::vector<int>> &&reduced_to_original_labels,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
         utils::Verbosity verbosity) = 0;
-    std::vector<std::unique_ptr<CostPartitioning>> generate(
-        const options::Options &opts, const TaskProxy &task_proxy);
 };
 
 extern void add_cp_options_to_parser(options::OptionParser &parser);

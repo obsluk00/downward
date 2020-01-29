@@ -3,6 +3,7 @@
 #include "cost_partitioning.h"
 #include "distances.h"
 #include "factored_transition_system.h"
+#include "labels.h"
 #include "merge_and_shrink_algorithm.h"
 #include "merge_and_shrink_representation.h"
 #include "shrink_strategy.h"
@@ -31,6 +32,18 @@ MergeScoringFunctionCP::MergeScoringFunctionCP(
       shrink_threshold_before_merge(options.get<int>("threshold_before_merge")),
       cp_factory(options.get<shared_ptr<CostPartitioningFactory>>("cost_partitioning")),
       filter_trivial_factors(options.get<bool>("filter_trivial_factors")) {
+}
+
+vector<int> compute_label_costs(
+    const Labels &labels) {
+    int num_labels = labels.get_size();
+    vector<int> label_costs(num_labels, -1);
+    for (int label_no = 0; label_no < num_labels; ++label_no) {
+        if (labels.is_current_label(label_no)) {
+            label_costs[label_no] = labels.get_label_cost(label_no);
+        }
+    }
+    return label_costs;
 }
 
 vector<unique_ptr<Abstraction>> MergeScoringFunctionCP::compute_abstractions_over_fts(
@@ -104,8 +117,8 @@ vector<double> MergeScoringFunctionCP::compute_scores(
         int product_init_h = distances->get_goal_distance(product->get_init_state());
 
         // Compute the CP over the product.
-        unique_ptr<CostPartitioning> cp = cp_factory->generate_simple(
-            fts.get_labels(),
+        unique_ptr<CostPartitioning> cp = cp_factory->generate(
+            compute_label_costs(fts.get_labels()),
             compute_abstractions_over_fts(fts, {index1, index2}),
             verbosity);
         // TODO: this is a hack that we could avoid by being able to have a

@@ -95,7 +95,7 @@ void OptimalCostPartitioning::print_statistics() const {
 
 OptimalCostPartitioningFactory::OptimalCostPartitioningFactory(
     const Options &opts)
-    : CostPartitioningFactory(opts),
+    : CostPartitioningFactory(),
       lp_solver_type(lp::LPSolverType(opts.get_enum("lpsolver"))),
       allow_negative_costs(opts.get<bool>("allow_negative_costs")),
       efficient_cp(opts.get<bool>("efficient_cp")) {
@@ -239,17 +239,17 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
 void OptimalCostPartitioningFactory::create_global_constraints(
     double infinity,
     vector<lp::LPConstraint> &constraints,
-    const Labels &labels,
+    const vector<int> &label_costs,
     const vector<int> &contiguous_label_mapping,
     vector<unique_ptr<Abstraction>> &abstractions,
     const vector<vector<int>> &abs_to_contiguous_label_group_mapping,
     const vector<AbstractionInformation> &abstraction_infos,
     utils::Verbosity verbosity) const {
     // Create cost partitioning constraints.
-    for (int label_no = 0; label_no < labels.get_size(); ++label_no) {
-        if (labels.is_current_label(label_no)) {
+    for (size_t label_no = 0; label_no < label_costs.size(); ++label_no) {
+        if (label_costs[label_no] != -1) {
             // Add constraint: sum_alpha Cost_alpha(l) <= cost(l)
-            lp::LPConstraint constraint(-infinity, labels.get_label_cost(label_no));
+            lp::LPConstraint constraint(-infinity, label_costs[label_no]);
             if (verbosity >= utils::Verbosity::DEBUG) {
                 cout << "adding global constraint for label " << label_no << ": ";
             }
@@ -278,14 +278,14 @@ void OptimalCostPartitioningFactory::create_global_constraints(
             }
             constraints.push_back(constraint);
             if (verbosity >= utils::Verbosity::DEBUG) {
-                cout << " <= " << labels.get_label_cost(label_no) << endl;
+                cout << " <= " << label_costs[label_no] << endl;
             }
         }
     }
 }
 
 unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate_simple(
-    const Labels &labels,
+    std::vector<int> &&label_costs,
     vector<unique_ptr<Abstraction>> &&abstractions,
     utils::Verbosity verbosity) {
     if (verbosity >= utils::Verbosity::DEBUG) {
@@ -293,7 +293,7 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate_simple(
         cout << "LP peak memory before construct: " << utils::get_peak_memory_in_kb() << endl;
     }
 
-    int largest_label_no = labels.get_size();
+    int largest_label_no = label_costs.size();
     // Contiguous renumbering of labels.
     vector<int> contiguous_label_mapping(largest_label_no, -1);
     // Used for labels or label groups depending on whether efficient_cp is set or not.
@@ -317,7 +317,7 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate_simple(
         }
     } else {
         for (int label_no = 0; label_no < largest_label_no; ++label_no) {
-            if (labels.is_current_label(label_no)) {
+            if (label_costs[label_no] != -1) {
                 contiguous_label_mapping[label_no] = num_labels++;
             }
         }
@@ -371,7 +371,7 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate_simple(
         abstraction_infos.push_back(move(abstraction_info));
     }
     create_global_constraints(
-        infinity, constraints, labels, contiguous_label_mapping,
+        infinity, constraints, label_costs, contiguous_label_mapping,
         abstractions, abs_to_contiguous_label_group_mapping,
         abstraction_infos, verbosity);
 
@@ -540,8 +540,20 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate_over_diffe
     return utils::make_unique_ptr<OptimalCostPartitioning>(move(abstraction_infos), move(lp_solver));
 }
 
+std::unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
+        std::vector<int> &&label_costs,
+        std::vector<std::unique_ptr<Abstraction>> &&abstractions,
+        utils::Verbosity verbosity) {
+    if (abstractions.front()->label_mapping.empty()) {
+        return generate_simple(move(label_costs), move(abstractions), verbosity);
+    } else {
+        // TODO
+//        return generate_over_different_labels();
+        return nullptr;
+    }
+}
+
 static shared_ptr<OptimalCostPartitioningFactory>_parse(OptionParser &parser) {
-    add_cp_options_to_parser(parser);
     lp::add_lp_solver_option_to_parser(parser);
     parser.add_option<bool>(
         "allow_negative_costs",

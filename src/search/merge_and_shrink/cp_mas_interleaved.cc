@@ -5,7 +5,6 @@
 #include "factored_transition_system.h"
 #include "fts_factory.h"
 #include "label_reduction.h"
-#include "labels.h"
 #include "merge_and_shrink_algorithm.h"
 #include "merge_and_shrink_representation.h"
 #include "merge_strategy.h"
@@ -50,8 +49,8 @@ void CPMASInterleaved::compute_cp_and_print_statistics(
     const FactoredTransitionSystem &fts,
     int iteration,
     CostPartitioningFactory &cp_factory) const {
-    std::unique_ptr<CostPartitioning> cp = cp_factory.generate_simple(
-        fts.get_labels(), compute_abstractions_over_fts(fts), verbosity);
+    std::unique_ptr<CostPartitioning> cp = cp_factory.generate(
+        compute_label_costs(fts.get_labels()), compute_abstractions_over_fts(fts), verbosity);
     cout << "CP value in iteration " << iteration << ": "
          << cp->compute_value(
             State(*tasks::g_root_task,
@@ -182,8 +181,8 @@ bool CPMASInterleaved::main_loop(
         if (snapshot_moment == SnapshotMoment::AFTER_LABEL_REDUCTION &&
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
-            cost_partitionings.push_back(cp_factory.generate_simple(
-                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            cost_partitionings.push_back(cp_factory.generate(
+                compute_label_costs(fts.get_labels()), compute_abstractions_over_fts(fts), verbosity));
             computed_snapshot_after_last_transformation = true;
             if (verbosity >= utils::Verbosity::NORMAL) {
                 log_main_loop_progress("after handling main loop snapshot");
@@ -222,8 +221,8 @@ bool CPMASInterleaved::main_loop(
         if (snapshot_moment == SnapshotMoment::AFTER_SHRINKING &&
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
-            cost_partitionings.push_back(cp_factory.generate_simple(
-                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            cost_partitionings.push_back(cp_factory.generate(
+                compute_label_costs(fts.get_labels()), compute_abstractions_over_fts(fts), verbosity));
             computed_snapshot_after_last_transformation = true;
             if (verbosity >= utils::Verbosity::NORMAL) {
                 log_main_loop_progress("after handling main loop snapshot");
@@ -271,8 +270,8 @@ bool CPMASInterleaved::main_loop(
         if (snapshot_moment == SnapshotMoment::AFTER_MERGING &&
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
-            cost_partitionings.push_back(cp_factory.generate_simple(
-                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            cost_partitionings.push_back(cp_factory.generate(
+                compute_label_costs(fts.get_labels()), compute_abstractions_over_fts(fts), verbosity));
             computed_snapshot_after_last_transformation = true;
             if (verbosity >= utils::Verbosity::NORMAL) {
                 log_main_loop_progress("after handling main loop snapshot");
@@ -315,8 +314,8 @@ bool CPMASInterleaved::main_loop(
             }
             vector<unique_ptr<CostPartitioning>>().swap(cost_partitionings);
             cost_partitionings.reserve(1);
-            cost_partitionings.push_back(cp_factory.generate_simple(
-                fts.get_labels(), extract_unsolvable_abstraction(fts, merged_index), verbosity));
+            cost_partitionings.push_back(cp_factory.generate(
+                compute_label_costs(fts.get_labels()), extract_unsolvable_abstraction(fts, merged_index), verbosity));
             computed_snapshot_after_last_transformation = true;
             break;
         }
@@ -333,8 +332,8 @@ bool CPMASInterleaved::main_loop(
         if (snapshot_moment == SnapshotMoment::AFTER_PRUNING &&
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
-            cost_partitionings.push_back(cp_factory.generate_simple(
-                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            cost_partitionings.push_back(cp_factory.generate(
+                compute_label_costs(fts.get_labels()), compute_abstractions_over_fts(fts), verbosity));
             computed_snapshot_after_last_transformation = true;
             if (verbosity >= utils::Verbosity::NORMAL) {
                 log_main_loop_progress("after handling main loop snapshot");
@@ -420,8 +419,8 @@ vector<unique_ptr<CostPartitioning>> CPMASInterleaved::compute_ms_cps(
         if (!fts.is_factor_solvable(index)) {
             cout << "Atomic FTS is unsolvable, stopping computation." << endl;
             unsolvable = true;
-            cost_partitionings.push_back(cp_factory.generate_simple(
-                fts.get_labels(), extract_unsolvable_abstraction(fts, index), verbosity));
+            cost_partitionings.push_back(cp_factory.generate(
+                compute_label_costs(fts.get_labels()), extract_unsolvable_abstraction(fts, index), verbosity));
             break;
         }
     }
@@ -449,8 +448,8 @@ vector<unique_ptr<CostPartitioning>> CPMASInterleaved::compute_ms_cps(
         }
 
         if (compute_atomic_snapshot) {
-            cost_partitionings.push_back(cp_factory.generate_simple(
-                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            cost_partitionings.push_back(cp_factory.generate(
+                compute_label_costs(fts.get_labels()), compute_abstractions_over_fts(fts), verbosity));
             computed_snapshot_after_last_transformation = true;
             if (verbosity >= utils::Verbosity::NORMAL) {
                 log_progress(timer, "after handling atomic snapshot");
@@ -472,8 +471,8 @@ vector<unique_ptr<CostPartitioning>> CPMASInterleaved::compute_ms_cps(
 
         if ((compute_final_snapshot && !computed_snapshot_after_last_transformation) ||
             cost_partitionings.empty()) {
-            cost_partitionings.push_back(cp_factory.generate_simple(
-                fts.get_labels(), compute_abstractions_over_fts(fts), verbosity));
+            cost_partitionings.push_back(cp_factory.generate(
+                compute_label_costs(fts.get_labels()), compute_abstractions_over_fts(fts), verbosity));
             if (verbosity >= utils::Verbosity::NORMAL) {
                 log_progress(timer, "after handling final snapshot");
             }

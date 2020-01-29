@@ -19,6 +19,7 @@ namespace merge_and_shrink {
 class Abstraction;
 class FactoredTransitionSystem;
 class LabelReduction;
+class Labels;
 class MergeStrategyFactory;
 class ShrinkStrategy;
 
@@ -97,6 +98,7 @@ protected:
     void dump_options() const;
     void warn_on_unusual_options() const;
     bool ran_out_of_time(const utils::CountdownTimer &timer) const;
+    std::vector<int> compute_label_costs(const Labels &labels) const;
     std::vector<std::unique_ptr<Abstraction>> extract_unsolvable_abstraction(
         FactoredTransitionSystem &fts, int unsolvable_index) const;
 public:
