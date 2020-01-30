@@ -72,32 +72,10 @@ class OptimalCostPartitioningFactory : public CostPartitioningFactory {
         double infinity,
         std::vector<lp::LPConstraint> &constraints,
         const std::vector<int> &label_costs,
-        const std::vector<int> &contiguous_label_mapping,
         std::vector<std::unique_ptr<Abstraction>> &abstractions,
         const std::vector<std::vector<int>> &abs_to_contiguous_label_group_mapping,
         const std::vector<AbstractionInformation> &abstraction_infos,
         utils::Verbosity verbosity) const;
-    void create_global_constraints_over_different_labels(
-        double infinity,
-        std::vector<lp::LPConstraint> &constraints,
-        const std::vector<int> &original_labels,
-        const std::vector<int> &label_costs,
-        const std::vector<std::vector<int>> &label_mappings,
-        std::vector<std::unique_ptr<Abstraction>> &abstractions,
-        const std::vector<std::vector<int>> &abs_to_contiguous_label_group_mapping,
-        const std::vector<AbstractionInformation> &abstraction_infos,
-        utils::Verbosity verbosity) const;
-    std::unique_ptr<CostPartitioning> generate_simple(
-        std::vector<int> &&label_costs,
-        std::vector<std::unique_ptr<Abstraction>> &&abstractions,
-        utils::Verbosity verbosity);
-    std::unique_ptr<CostPartitioning> generate_over_different_labels(
-        std::vector<int> &&original_labels,
-        std::vector<int> &&label_costs,
-        std::vector<std::vector<int>> &&label_mappings,
-        std::vector<std::vector<int>> &&reduced_to_original_labels,
-        std::vector<std::unique_ptr<Abstraction>> &&abstractions,
-        utils::Verbosity verbosity);
 public:
     explicit OptimalCostPartitioningFactory(const Options &opts);
     virtual ~OptimalCostPartitioningFactory() = default;
