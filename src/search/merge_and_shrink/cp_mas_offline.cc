@@ -202,7 +202,8 @@ bool CPMASOffline::main_loop_single_cp(
         if (shrunk.first || shrunk.second) {
             if (shrunk.first) {
                 factors_modified_since_last_snapshot.insert(merge_index1);
-            } else {
+            }
+            if (shrunk.second) {
                 factors_modified_since_last_snapshot.insert(merge_index2);
             }
             computed_snapshot_after_last_transformation = false;
