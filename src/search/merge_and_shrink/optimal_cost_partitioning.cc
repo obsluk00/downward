@@ -355,6 +355,17 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
             num_labels = compute_contiguous_label_group_mapping(
                 *abstraction, contiguous_label_mapping);
         } else {
+            /*
+              NOTE: for interleaved OCPs, we would need to compute this only
+              once because the mapping is the same for all abstractions. This
+              used to be case before and most likely is the culprit for the
+              performance degradation of this non-efficient encoding:
+              https://ai.dmi.unibas.ch/_tmp_files/sieverss/2020-01-30-sccdfp-ocp-comparison.html
+              However, because the efficient encoding benefits a lot from the
+              refactoring that came together with this change, and because
+              using the efficient encoding makes more sense anyway, we don't
+              bother changing this implementation again.
+            */
             num_labels = compute_contiguous_label_mapping(
                 *abstraction, label_costs, contiguous_label_mapping);
         }
