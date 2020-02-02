@@ -53,6 +53,7 @@ CPMAS::CPMAS(const Options &opts) :
     snapshot_moment(static_cast<SnapshotMoment>(opts.get_enum("snapshot_moment"))),
     filter_trivial_factors(opts.get<bool>("filter_trivial_factors")),
     statistics_only(opts.get<bool>("statistics_only")),
+    cp_factory(opts.get<shared_ptr<CostPartitioningFactory>>("cost_partitioning")),
     starting_peak_memory(0) {
     assert(max_states_before_merge > 0);
     assert(max_states >= max_states_before_merge);
@@ -318,6 +319,11 @@ void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
         "after each transformation. Normalize values with the value of the "
         "atomic CP.",
         "false");
+
+    parser.add_option<shared_ptr<CostPartitioningFactory>>(
+        "cost_partitioning",
+        "A method for computing cost partitionings over intermediate "
+        "'snapshots' of the factored transition system.");
 }
 
 void handle_cp_merge_and_shrink_algorithm_options(Options &opts) {

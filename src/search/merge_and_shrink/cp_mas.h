@@ -4,6 +4,8 @@
 #include <memory>
 #include <vector>
 
+class TaskProxy;
+
 namespace options {
 class OptionParser;
 class Options;
@@ -17,6 +19,8 @@ enum class Verbosity;
 
 namespace merge_and_shrink {
 class Abstraction;
+class CostPartitioning;
+class CostPartitioningFactory;
 class FactoredTransitionSystem;
 class LabelReduction;
 class Labels;
@@ -63,6 +67,8 @@ protected:
     const bool filter_trivial_factors;
     const bool statistics_only;
 
+    std::shared_ptr<CostPartitioningFactory> cp_factory;
+
     long starting_peak_memory;
 
     class NextSnapshot {
@@ -103,6 +109,9 @@ protected:
         FactoredTransitionSystem &fts, int unsolvable_index) const;
 public:
     explicit CPMAS(const options::Options &opts);
+    virtual ~CPMAS() = default;
+    virtual std::vector<std::unique_ptr<CostPartitioning>> compute_cps(
+        const TaskProxy &task_proxy) = 0;
 };
 
 extern void add_cp_merge_and_shrink_algorithm_options_to_parser(options::OptionParser &parser);

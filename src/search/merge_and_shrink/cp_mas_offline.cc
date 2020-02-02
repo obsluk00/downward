@@ -46,7 +46,30 @@ CPMASOffline::CPMASOffline(const Options &opts) :
     CPMAS(opts) {
 }
 
-vector<unique_ptr<Abstraction>> CPMASOffline::compute_abstractions_over_fts_single_cp(
+void CPMASOffline::handle_snapshot(
+    FactoredTransitionSystem &fts,
+    const std::set<int> &factors_modified_since_last_snapshot,
+    const std::vector<int> &original_to_current_labels,
+    int unsolvable_index) {
+    if (unsolvable_index != -1) {
+        vector<unique_ptr<Abstraction>> new_abstractions = extract_unsolvable_abstraction(fts, unsolvable_index);
+        assert(new_abstractions.size() == 1);
+        vector<unique_ptr<Abstraction>>().swap(abstractions);
+        abstractions = move(new_abstractions);
+    } else {
+        vector<unique_ptr<Abstraction>> new_abstractions = compute_abstractions_over_fts(
+            fts, factors_modified_since_last_snapshot, original_to_current_labels);
+        abstractions.insert(
+            abstractions.end(),
+            make_move_iterator(new_abstractions.begin()),
+            make_move_iterator(new_abstractions.end()));
+    }
+    if (verbosity >= utils::Verbosity::DEBUG) {
+        cout << "Number of abstractions: " << abstractions.size() << endl;
+    }
+}
+
+vector<unique_ptr<Abstraction>> CPMASOffline::compute_abstractions_over_fts(
     const FactoredTransitionSystem &fts,
     const set<int> &indices,
     const vector<int> &original_to_current_labels) const {
@@ -84,10 +107,9 @@ vector<unique_ptr<Abstraction>> CPMASOffline::compute_abstractions_over_fts_sing
     return abstractions;
 }
 
-bool CPMASOffline::main_loop_single_cp(
+void CPMASOffline::main_loop(
     FactoredTransitionSystem &fts,
     const TaskProxy &task_proxy,
-    vector<unique_ptr<Abstraction>> &abstractions,
     set<int> &factors_modified_since_last_snapshot,
     vector<int> &original_to_current_labels) {
     utils::CountdownTimer timer(main_loop_max_time);
@@ -127,7 +149,6 @@ bool CPMASOffline::main_loop_single_cp(
         main_loop_snapshot_each_iteration,
         verbosity);
     }
-    bool computed_snapshot_after_last_transformation = false;
     while (fts.get_num_active_entries() > 1) {
         ++iteration_counter;
         // Choose next transition systems to merge
@@ -152,9 +173,6 @@ bool CPMASOffline::main_loop_single_cp(
         if (label_reduction && label_reduction->reduce_before_shrinking()) {
             bool reduced = label_reduction->reduce(
                 merge_indices, fts, verbosity, &original_to_current_labels);
-            if (reduced) {
-                computed_snapshot_after_last_transformation = false;
-            }
             if (verbosity >= utils::Verbosity::NORMAL && reduced) {
                 log_main_loop_progress("after label reduction");
             }
@@ -168,19 +186,11 @@ bool CPMASOffline::main_loop_single_cp(
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
             if (!factors_modified_since_last_snapshot.empty()) {
-                vector<unique_ptr<Abstraction>> new_abstractions =
-                    compute_abstractions_over_fts_single_cp(fts, factors_modified_since_last_snapshot, original_to_current_labels);
-                abstractions.insert(
-                    abstractions.end(),
-                    make_move_iterator(new_abstractions.begin()),
-                    make_move_iterator(new_abstractions.end()));
+                handle_snapshot(
+                    fts, factors_modified_since_last_snapshot, original_to_current_labels);
                 factors_modified_since_last_snapshot.clear();
-                computed_snapshot_after_last_transformation = true;
                 if (verbosity >= utils::Verbosity::NORMAL) {
                     log_main_loop_progress("after handling main loop snapshot");
-                }
-                if (verbosity >= utils::Verbosity::DEBUG) {
-                    cout << "Number of abstractions: " << abstractions.size() << endl;
                 }
             }
         }
@@ -206,7 +216,6 @@ bool CPMASOffline::main_loop_single_cp(
             if (shrunk.second) {
                 factors_modified_since_last_snapshot.insert(merge_index2);
             }
-            computed_snapshot_after_last_transformation = false;
         }
         if (verbosity >= utils::Verbosity::NORMAL && (shrunk.first || shrunk.second)) {
             log_main_loop_progress("after shrinking");
@@ -220,19 +229,11 @@ bool CPMASOffline::main_loop_single_cp(
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
             if (!factors_modified_since_last_snapshot.empty()) {
-                vector<unique_ptr<Abstraction>> new_abstractions =
-                    compute_abstractions_over_fts_single_cp(fts, factors_modified_since_last_snapshot, original_to_current_labels);
-                abstractions.insert(
-                    abstractions.end(),
-                    make_move_iterator(new_abstractions.begin()),
-                    make_move_iterator(new_abstractions.end()));
+                handle_snapshot(
+                    fts, factors_modified_since_last_snapshot, original_to_current_labels);
                 factors_modified_since_last_snapshot.clear();
-                computed_snapshot_after_last_transformation = true;
                 if (verbosity >= utils::Verbosity::NORMAL) {
                     log_main_loop_progress("after handling main loop snapshot");
-                }
-                if (verbosity >= utils::Verbosity::DEBUG) {
-                    cout << "Number of abstractions: " << abstractions.size() << endl;
                 }
             }
         }
@@ -245,9 +246,6 @@ bool CPMASOffline::main_loop_single_cp(
         if (label_reduction && label_reduction->reduce_before_merging()) {
             bool reduced = label_reduction->reduce(
                 merge_indices, fts, verbosity, &original_to_current_labels);
-            if (reduced) {
-                computed_snapshot_after_last_transformation = false;
-            }
             if (verbosity >= utils::Verbosity::NORMAL && reduced) {
                 log_main_loop_progress("after label reduction");
             }
@@ -274,7 +272,6 @@ bool CPMASOffline::main_loop_single_cp(
         factors_modified_since_last_snapshot.erase(merge_index1);
         factors_modified_since_last_snapshot.erase(merge_index2);
         factors_modified_since_last_snapshot.insert(merged_index);
-        computed_snapshot_after_last_transformation = false;
         if (ran_out_of_time(timer)) {
             break;
         }
@@ -283,19 +280,11 @@ bool CPMASOffline::main_loop_single_cp(
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
             if (!factors_modified_since_last_snapshot.empty()) {
-                vector<unique_ptr<Abstraction>> new_abstractions =
-                    compute_abstractions_over_fts_single_cp(fts, factors_modified_since_last_snapshot, original_to_current_labels);
-                abstractions.insert(
-                    abstractions.end(),
-                    make_move_iterator(new_abstractions.begin()),
-                    make_move_iterator(new_abstractions.end()));
+                handle_snapshot(
+                    fts, factors_modified_since_last_snapshot, original_to_current_labels);
                 factors_modified_since_last_snapshot.clear();
-                computed_snapshot_after_last_transformation = true;
                 if (verbosity >= utils::Verbosity::NORMAL) {
                     log_main_loop_progress("after handling main loop snapshot");
-                }
-                if (verbosity >= utils::Verbosity::DEBUG) {
-                    cout << "Number of abstractions: " << abstractions.size() << endl;
                 }
             }
         }
@@ -314,7 +303,6 @@ bool CPMASOffline::main_loop_single_cp(
                 verbosity);
             if (pruned) {
                 factors_modified_since_last_snapshot.insert(merged_index);
-                computed_snapshot_after_last_transformation = false;
             }
             if (verbosity >= utils::Verbosity::NORMAL && pruned) {
                 if (verbosity >= utils::Verbosity::VERBOSE) {
@@ -335,15 +323,10 @@ bool CPMASOffline::main_loop_single_cp(
                 cout << "Abstract problem is unsolvable, stopping "
                     "computation. " << endl << endl;
             }
-            vector<unique_ptr<Abstraction>>().swap(abstractions);
-            vector<unique_ptr<Abstraction>> abstraction = extract_unsolvable_abstraction(fts, merged_index);
-            assert(abstraction.size() == 1);
-            abstractions.insert(
-                abstractions.end(),
-                make_move_iterator(abstraction.begin()),
-                make_move_iterator(abstraction.end()));
+
+            handle_snapshot(
+                fts, factors_modified_since_last_snapshot, original_to_current_labels, merged_index);
             factors_modified_since_last_snapshot.clear();
-            computed_snapshot_after_last_transformation = true;
             break;
         }
 
@@ -355,19 +338,11 @@ bool CPMASOffline::main_loop_single_cp(
             next_snapshot &&
             next_snapshot->compute_next_snapshot(timer.get_elapsed_time(), iteration_counter)) {
             if (!factors_modified_since_last_snapshot.empty()) {
-                vector<unique_ptr<Abstraction>> new_abstractions =
-                    compute_abstractions_over_fts_single_cp(fts, factors_modified_since_last_snapshot, original_to_current_labels);
-                abstractions.insert(
-                    abstractions.end(),
-                    make_move_iterator(new_abstractions.begin()),
-                    make_move_iterator(new_abstractions.end()));
+                handle_snapshot(
+                    fts, factors_modified_since_last_snapshot, original_to_current_labels);
                 factors_modified_since_last_snapshot.clear();
-                computed_snapshot_after_last_transformation = true;
                 if (verbosity >= utils::Verbosity::NORMAL) {
                     log_main_loop_progress("after handling main loop snapshot");
-                }
-                if (verbosity >= utils::Verbosity::DEBUG) {
-                    cout << "Number of abstractions: " << abstractions.size() << endl;
                 }
             }
         }
@@ -391,11 +366,10 @@ bool CPMASOffline::main_loop_single_cp(
          << maximum_intermediate_size << endl;
     shrink_strategy = nullptr;
     label_reduction = nullptr;
-    return computed_snapshot_after_last_transformation;
 }
 
-unique_ptr<CostPartitioning> CPMASOffline::compute_single_ms_cp(
-    const TaskProxy &task_proxy, CostPartitioningFactory &cp_factory) {
+std::vector<std::unique_ptr<CostPartitioning>> CPMASOffline::compute_cps(
+    const TaskProxy &task_proxy) {
     if (starting_peak_memory) {
         cerr << "Using this factory twice is not supported!" << endl;
         utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
@@ -427,12 +401,12 @@ unique_ptr<CostPartitioning> CPMASOffline::compute_single_ms_cp(
         log_progress(timer, "after computation of atomic factors");
     }
 
-    vector<unique_ptr<Abstraction>> abstractions;
+    cp_factory->initialize(task_proxy);
 
     vector<int> label_costs = compute_label_costs(fts.get_labels());
 
     // Global label mapping.
-    vector<int> original_to_current_labels(label_costs.size());
+    vector<int> original_to_current_labels(fts.get_labels().get_size());
     iota(original_to_current_labels.begin(), original_to_current_labels.end(), 0);
 
     /*
@@ -457,12 +431,8 @@ unique_ptr<CostPartitioning> CPMASOffline::compute_single_ms_cp(
         if (!fts.is_factor_solvable(index)) {
             cout << "Atomic FTS is unsolvable, stopping computation." << endl;
             unsolvable = true;
-            vector<unique_ptr<Abstraction>> abstraction = extract_unsolvable_abstraction(fts, index);
-            assert(abstraction.size() == 1);
-            abstractions.insert(
-                abstractions.end(),
-                make_move_iterator(abstraction.begin()),
-                make_move_iterator(abstraction.end()));
+            handle_snapshot(
+                fts, set<int>(), original_to_current_labels, index);
             break;
         }
     }
@@ -492,20 +462,11 @@ unique_ptr<CostPartitioning> CPMASOffline::compute_single_ms_cp(
             factors_modified_since_last_snapshot.insert(index);
         }
         if (compute_atomic_snapshot) {
-            vector<unique_ptr<Abstraction>> new_abstractions =
-                compute_abstractions_over_fts_single_cp(
-                    fts, factors_modified_since_last_snapshot, original_to_current_labels);
-            abstractions.insert(
-                abstractions.end(),
-                make_move_iterator(new_abstractions.begin()),
-                make_move_iterator(new_abstractions.end()));
+            handle_snapshot(
+                fts, factors_modified_since_last_snapshot, original_to_current_labels);
             factors_modified_since_last_snapshot.clear();
-            computed_snapshot_after_last_transformation = true;
             if (verbosity >= utils::Verbosity::NORMAL) {
                 log_progress(timer, "after handling atomic snapshot");
-            }
-            if (verbosity >= utils::Verbosity::DEBUG) {
-                cout << "Number of abstractions: " << abstractions.size() << endl;
             }
         }
 
@@ -514,14 +475,10 @@ unique_ptr<CostPartitioning> CPMASOffline::compute_single_ms_cp(
         }
 
         if (main_loop_max_time > 0) {
-            computed_snapshot_after_last_transformation = main_loop_single_cp(
-                fts, task_proxy, abstractions,
+            main_loop(
+                fts, task_proxy,
                 factors_modified_since_last_snapshot,
                 original_to_current_labels);
-        }
-
-        if (computed_snapshot_after_last_transformation) {
-            assert(!abstractions.empty());
         }
 
         if ((compute_final_snapshot && !computed_snapshot_after_last_transformation) ||
@@ -532,6 +489,7 @@ unique_ptr<CostPartitioning> CPMASOffline::compute_single_ms_cp(
                 /*
                   Happens if computing an atomic snapshot and not running the
                   main loop. Use all factors in this case.
+                  // TODO: this sounds like computing the same snapshot (atomic) twice
                 */
                 if (factors_modified_since_last_snapshot.empty()) {
                     for (int index : fts) {
@@ -539,31 +497,28 @@ unique_ptr<CostPartitioning> CPMASOffline::compute_single_ms_cp(
                     }
                 }
             }
-            vector<unique_ptr<Abstraction>> new_abstractions =
-                compute_abstractions_over_fts_single_cp(fts, factors_modified_since_last_snapshot, original_to_current_labels);
-            abstractions.insert(
-                abstractions.end(),
-                make_move_iterator(new_abstractions.begin()),
-                make_move_iterator(new_abstractions.end()));
+            handle_snapshot(
+                fts, factors_modified_since_last_snapshot, original_to_current_labels);
+
             if (verbosity >= utils::Verbosity::NORMAL) {
                 log_progress(timer, "after handling final snapshot");
-            }
-            if (verbosity >= utils::Verbosity::DEBUG) {
-                cout << "Number of abstractions: " << abstractions.size() << endl;
             }
         }
     }
 
-    unique_ptr<CostPartitioning> cost_partitioning = cp_factory.generate(
+    vector<unique_ptr<CostPartitioning>> cost_partitionings;
+    cost_partitionings.reserve(1);
+    cost_partitionings.push_back(cp_factory->generate(
         move(label_costs),
         move(abstractions),
-        verbosity);
-    cost_partitioning->print_statistics();
+        verbosity));
+    cost_partitionings.back()->print_statistics();
 
     const bool final = true;
     report_peak_memory_delta(final);
     cout << "Merge-and-shrink algorithm runtime: " << timer << endl;
     cout << endl;
-    return cost_partitioning;
+
+    return cost_partitionings;
 }
 }

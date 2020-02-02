@@ -18,16 +18,12 @@ namespace merge_and_shrink {
 MaxCPMSHeuristic::MaxCPMSHeuristic(const options::Options &opts)
     : Heuristic(opts),
       single_cp(opts.get<bool>("single_cp")) {
-    shared_ptr<CostPartitioningFactory> cp_factory =
-        opts.get<shared_ptr<CostPartitioningFactory>>("cost_partitioning");
-    cp_factory->initialize(task_proxy);
     if (single_cp) {
         CPMASOffline algorithm(opts);
-        cost_partitionings.reserve(1);
-        cost_partitionings.push_back(algorithm.compute_single_ms_cp(task_proxy, *cp_factory));
+        cost_partitionings = algorithm.compute_cps(task_proxy);
     } else {
         CPMASInterleaved algorithm(opts);
-        cost_partitionings = algorithm.compute_ms_cps(task_proxy, *cp_factory);
+        cost_partitionings = algorithm.compute_cps(task_proxy);
     }
     int num_cps = cost_partitionings.size();
     cout << "Number of cost partitioning snapshots: " << num_cps << endl;
@@ -68,10 +64,6 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
         "If true, compute a single CP over all abstractions collected through "
         "different snapshots. If false, compute a CP for each snapshot.",
         "false");
-    parser.add_option<shared_ptr<CostPartitioningFactory>>(
-        "cost_partitioning",
-        "A method for computing cost partitionings over intermediate "
-        "'snapshots' of the factored transition system.");
 
     Heuristic::add_options_to_parser(parser);
     add_cp_merge_and_shrink_algorithm_options_to_parser(parser);
