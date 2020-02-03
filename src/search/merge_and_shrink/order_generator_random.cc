@@ -50,6 +50,9 @@ Order MASOrderGeneratorRandom::compute_order_for_state(
         for (int abs_id : factor_order) {
             int index = -1;
             for (size_t i = 0; i < abstractions.size(); ++i) {
+                // TODO: this assumes that fts indices are unique! If we used
+                // offline CP and used the "same" abstraction from an iteration
+                // several times, this would not hold!
                 if (abs_id == abstractions[i]->fts_index) {
                     index = i;
                     break;
