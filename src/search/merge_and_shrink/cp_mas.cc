@@ -891,20 +891,13 @@ void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
 void handle_cp_merge_and_shrink_algorithm_options(Options &opts) {
     handle_shrink_limit_options_defaults(opts);
 
-    bool compute_atomic_snapshot = opts.get<bool>("compute_atomic_snapshot");
     int main_loop_target_num_snapshots = opts.get<int>("main_loop_target_num_snapshots");
     int main_loop_snapshot_each_iteration =
         opts.get<int>("main_loop_snapshot_each_iteration");
-    if (!compute_atomic_snapshot &&
-        !main_loop_target_num_snapshots &&
-        !main_loop_snapshot_each_iteration) {
-        cerr << "At least one option for computing CP merge-and-shrink "
-                "snapshots must be enabled! " << endl;
-        if (main_loop_target_num_snapshots && main_loop_snapshot_each_iteration) {
-            cerr << "Can't set both the number of snapshots and the iteration "
-                    "offset in which snapshots are computed."
-                 << endl;
-        }
+    if (main_loop_target_num_snapshots && main_loop_snapshot_each_iteration) {
+        cerr << "Can't set both the number of snapshots and the iteration "
+                "offset in which snapshots are computed."
+             << endl;
         utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
 }
