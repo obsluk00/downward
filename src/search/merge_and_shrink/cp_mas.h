@@ -106,7 +106,6 @@ protected:
         bool compute_next_snapshot(double current_time, int current_iteration);
     };
 
-    void log_progress(const utils::Timer &timer, std::string msg) const;
     void report_peak_memory_delta(bool final = false) const;
     void dump_options() const;
     void warn_on_unusual_options() const;

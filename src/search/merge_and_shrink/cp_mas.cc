@@ -33,6 +33,7 @@
 #include <numeric>
 #include <string>
 #include <utility>
+#include <vector>
 
 using namespace std;
 using options::Bounds;
@@ -41,6 +42,10 @@ using options::Options;
 using utils::ExitCode;
 
 namespace merge_and_shrink {
+static void log_progress(const utils::Timer &timer, string msg) {
+    cout << "M&S algorithm timer: " << timer << " (" << msg << ")" << endl;
+}
+
 CPMAS::CPMAS(const Options &opts) :
     merge_strategy_factory(opts.get<shared_ptr<MergeStrategyFactory>>("merge_strategy")),
     shrink_strategy(opts.get<shared_ptr<ShrinkStrategy>>("shrink_strategy")),
@@ -65,10 +70,6 @@ CPMAS::CPMAS(const Options &opts) :
     assert(max_states_before_merge > 0);
     assert(max_states >= max_states_before_merge);
     assert(shrink_threshold_before_merge <= max_states_before_merge);
-}
-
-void CPMAS::log_progress(const utils::Timer &timer, string msg) const {
-    cout << "M&S algorithm timer: " << timer << " (" << msg << ")" << endl;
 }
 
 void CPMAS::report_peak_memory_delta(bool final) const {
