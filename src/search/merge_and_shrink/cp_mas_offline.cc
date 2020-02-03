@@ -447,7 +447,6 @@ std::vector<std::unique_ptr<CostPartitioning>> CPMASOffline::compute_cps(
             label_reduction->initialize(task_proxy);
         }
 
-        bool computed_snapshot_after_last_transformation = false;
         if (label_reduction && atomic_label_reduction) {
             bool reduced = label_reduction->reduce(
                 pair<int, int>(-1, -1), fts, verbosity,
@@ -481,7 +480,7 @@ std::vector<std::unique_ptr<CostPartitioning>> CPMASOffline::compute_cps(
                 original_to_current_labels);
         }
 
-        if ((compute_final_snapshot && !computed_snapshot_after_last_transformation) ||
+        if ((compute_final_snapshot && !factors_modified_since_last_snapshot.empty()) ||
             abstractions.empty()) {
             if (abstractions.empty()) {
                 assert(!factors_modified_since_last_snapshot.empty());
