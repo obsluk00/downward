@@ -69,7 +69,7 @@ class LabelReduction {
         const FactoredTransitionSystem &fts,
         std::vector<std::pair<int, std::vector<int>>> &label_mapping,
         utils::Verbosity verbosity,
-        std::vector<int> *original_to_current_labels) const;
+        const std::unique_ptr<std::vector<int>> &original_to_current_labels) const;
     equivalence_relation::EquivalenceRelation
     *compute_combinable_equivalence_relation(
         int ts_index,
@@ -81,7 +81,7 @@ public:
         const std::pair<int, int> &next_merge,
         FactoredTransitionSystem &fts,
         utils::Verbosity verbosity,
-        std::vector<int> *original_to_current_labels = nullptr) const;
+        const std::unique_ptr<std::vector<int>> &original_to_current_labels = nullptr) const;
     void dump_options() const;
     bool reduce_before_shrinking() const {
         return lr_before_shrinking;

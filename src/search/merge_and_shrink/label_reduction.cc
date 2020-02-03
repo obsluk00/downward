@@ -64,7 +64,7 @@ void LabelReduction::compute_label_mapping(
     const FactoredTransitionSystem &fts,
     vector<pair<int, vector<int>>> &label_mapping,
     utils::Verbosity verbosity,
-    vector<int> *original_to_current_labels) const {
+    const unique_ptr<vector<int>> &original_to_current_labels) const {
     const Labels &labels = fts.get_labels();
     int next_new_label_no = labels.get_size();
     int num_labels = 0;
@@ -161,7 +161,7 @@ bool LabelReduction::reduce(
     const pair<int, int> &next_merge,
     FactoredTransitionSystem &fts,
     utils::Verbosity verbosity,
-    vector<int> *original_to_current_labels) const {
+    const unique_ptr<vector<int>> &original_to_current_labels) const {
     assert(initialized());
     assert(reduce_before_shrinking() || reduce_before_merging());
     int num_transition_systems = fts.get_size();

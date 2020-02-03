@@ -627,8 +627,6 @@ fast_downward_plugin(
     HELP "The Merge-and-Shrink heuristic"
     SOURCES
         merge_and_shrink/cp_mas
-        merge_and_shrink/cp_mas_interleaved
-        merge_and_shrink/cp_mas_offline
         merge_and_shrink/cost_partitioning
         merge_and_shrink/distances
         merge_and_shrink/factored_transition_system

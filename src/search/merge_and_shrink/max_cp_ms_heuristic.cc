@@ -1,7 +1,6 @@
 #include "max_cp_ms_heuristic.h"
 
-#include "cp_mas_interleaved.h"
-#include "cp_mas_offline.h"
+#include "cp_mas.h"
 #include "cost_partitioning.h"
 #include "types.h"
 
@@ -16,15 +15,9 @@ using utils::ExitCode;
 
 namespace merge_and_shrink {
 MaxCPMSHeuristic::MaxCPMSHeuristic(const options::Options &opts)
-    : Heuristic(opts),
-      single_cp(opts.get<bool>("single_cp")) {
-    if (single_cp) {
-        CPMASOffline algorithm(opts);
-        cost_partitionings = algorithm.compute_cps(task_proxy);
-    } else {
-        CPMASInterleaved algorithm(opts);
-        cost_partitionings = algorithm.compute_cps(task_proxy);
-    }
+    : Heuristic(opts) {
+    CPMAS algorithm(opts);
+    cost_partitionings = algorithm.compute_cps(task_proxy);
     int num_cps = cost_partitionings.size();
     cout << "Number of cost partitioning snapshots: " << num_cps << endl;
     int summed_num_factors = 0;
@@ -59,11 +52,6 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
         "Maximum CP merge-and-shrink heuristic",
         "The maximum heuristic computed over CP heuristics computed over "
         "M&S abstractions.");
-    parser.add_option<bool>(
-        "single_cp",
-        "If true, compute a single CP over all abstractions collected through "
-        "different snapshots. If false, compute a CP for each snapshot.",
-        "false");
 
     Heuristic::add_options_to_parser(parser);
     add_cp_merge_and_shrink_algorithm_options_to_parser(parser);

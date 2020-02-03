@@ -7,7 +7,6 @@ namespace merge_and_shrink {
 class CostPartitioning;
 
 class MaxCPMSHeuristic : public Heuristic {
-    const bool single_cp; // TODO: this should go away
     std::vector<std::unique_ptr<CostPartitioning>> cost_partitionings;
 protected:
     virtual int compute_heuristic(const GlobalState &global_state) override;

@@ -2,6 +2,7 @@
 #define MERGE_AND_SHRINK_CP_MAS_H
 
 #include <memory>
+#include <set>
 #include <vector>
 
 class TaskProxy;
@@ -52,8 +53,8 @@ protected:
     const double main_loop_max_time;
     const bool atomic_label_reduction;
 
+    // Options for cost partitioning
     const bool compute_atomic_snapshot;
-    const bool compute_final_snapshot;
     const int main_loop_target_num_snapshots;
     const int main_loop_snapshot_each_iteration;
 
@@ -66,6 +67,12 @@ protected:
     const SnapshotMoment snapshot_moment;
     const bool filter_trivial_factors;
     const bool statistics_only;
+
+    const bool single_cp;
+    // Used if single_cp = true
+    std::vector<std::unique_ptr<Abstraction>> abstractions;
+    // Used if single_cp = false
+    std::vector<std::unique_ptr<CostPartitioning>> cost_partitionings;
 
     std::shared_ptr<CostPartitioningFactory> cp_factory;
 
@@ -107,11 +114,31 @@ protected:
     std::vector<int> compute_label_costs(const Labels &labels) const;
     std::vector<std::unique_ptr<Abstraction>> extract_unsolvable_abstraction(
         FactoredTransitionSystem &fts, int unsolvable_index) const;
+    void handle_unsolvable_snapshot(
+        FactoredTransitionSystem &fts, int unsolvable_index);
+    void handle_snapshot(
+        const FactoredTransitionSystem &fts,
+        std::set<int> &factors_modified_since_last_snapshot,
+        const std::unique_ptr<std::vector<int>> &original_to_current_labels);
+    // TODO: the following two methods could be split further and party combined.
+    std::vector<std::unique_ptr<Abstraction>> compute_abstractions_for_interleaved_cp(
+        const FactoredTransitionSystem &fts) const;
+    std::vector<std::unique_ptr<Abstraction>> compute_abstractions_for_offline_cp(
+        const FactoredTransitionSystem &fts,
+        const std::set<int> &indices,
+        const std::vector<int> &original_to_current_labels) const;
+    void compute_cp_and_print_statistics(
+        const FactoredTransitionSystem &fts,
+        int iteration) const;
+    bool main_loop(FactoredTransitionSystem &fts,
+        const TaskProxy &task_proxy,
+        std::set<int> &factors_modified_since_last_snapshot,
+        const std::unique_ptr<std::vector<int>> &original_to_current_labels);
 public:
     explicit CPMAS(const options::Options &opts);
-    virtual ~CPMAS() = default;
-    virtual std::vector<std::unique_ptr<CostPartitioning>> compute_cps(
-        const TaskProxy &task_proxy) = 0;
+    ~CPMAS() = default;
+    std::vector<std::unique_ptr<CostPartitioning>> compute_cps(
+        const TaskProxy &task_proxy);
 };
 
 extern void add_cp_merge_and_shrink_algorithm_options_to_parser(options::OptionParser &parser);
