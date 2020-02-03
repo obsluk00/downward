@@ -59,7 +59,7 @@ CPMAS::CPMAS(const Options &opts) :
     snapshot_moment(static_cast<SnapshotMoment>(opts.get_enum("snapshot_moment"))),
     filter_trivial_factors(opts.get<bool>("filter_trivial_factors")),
     statistics_only(opts.get<bool>("statistics_only")),
-    single_cp(opts.get<bool>("single_cp")),
+    offline_cps(opts.get<bool>("offline_cps")),
     cp_factory(opts.get<shared_ptr<CostPartitioningFactory>>("cost_partitioning")),
     starting_peak_memory(0) {
     assert(max_states_before_merge > 0);
@@ -277,7 +277,7 @@ void CPMAS::handle_unsolvable_snapshot(
     FactoredTransitionSystem &fts, int unsolvable_index) {
     vector<unique_ptr<Abstraction>> new_abstractions = extract_unsolvable_abstraction(fts, unsolvable_index);
     assert(new_abstractions.size() == 1);
-    if (single_cp) {
+    if (offline_cps) {
         vector<unique_ptr<Abstraction>>().swap(abstractions);
     } else {
         vector<unique_ptr<CostPartitioning>>().swap(cost_partitionings);
@@ -361,7 +361,7 @@ void CPMAS::handle_snapshot(
     const FactoredTransitionSystem &fts,
     set<int> &factors_modified_since_last_snapshot,
     const unique_ptr<vector<int>> &original_to_current_labels) {
-    if (single_cp) {
+    if (offline_cps) {
         assert(original_to_current_labels);
         vector<unique_ptr<Abstraction>> new_abstractions = compute_abstractions_for_offline_cp(
             fts, factors_modified_since_last_snapshot, *original_to_current_labels);
@@ -699,7 +699,7 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
 
     // Global label mapping.
     unique_ptr<vector<int>> original_to_current_labels = nullptr;
-    if (single_cp) {
+    if (offline_cps) {
         original_to_current_labels = utils::make_unique_ptr<vector<int>>();
         original_to_current_labels->resize(fts.get_labels().get_size());
         iota(original_to_current_labels->begin(), original_to_current_labels->end(), 0);
@@ -780,12 +780,12 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
 
         if (!unsolvable) {
             if (factors_modified_since_last_snapshot.empty()) {
-                assert((single_cp && !abstractions.empty()) || (!single_cp && !cost_partitionings.empty()));
+                assert((offline_cps && !abstractions.empty()) || (!offline_cps && !cost_partitionings.empty()));
             }
 
             if (!factors_modified_since_last_snapshot.empty() ||
-                (single_cp && abstractions.empty()) ||
-                (!single_cp && cost_partitionings.empty())) {
+                (offline_cps && abstractions.empty()) ||
+                (!offline_cps && cost_partitionings.empty())) {
                 assert(!factors_modified_since_last_snapshot.empty());
                 handle_snapshot(
                     fts, factors_modified_since_last_snapshot, original_to_current_labels);
@@ -797,7 +797,7 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
         }
     }
 
-    if (single_cp) {
+    if (offline_cps) {
         if (unsolvable) {
             assert(abstractions.empty());
             assert(cost_partitionings.size() == 1);
@@ -871,16 +871,16 @@ void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
 
     parser.add_option<bool>(
         "statistics_only",
-        "If true, compute an OCP, an SCP, and the maximum over all factors "
-        "after each transformation. Normalize values with the value of the "
-        "atomic CP.",
+        "If true, compute a CP and the maximum over all factors "
+        "after each transformation.",
         "false");
 
     parser.add_option<bool>(
-        "single_cp",
-        "If true, compute a single CP over all abstractions collected through "
-        "different snapshots. If false, compute a CP for each snapshot.",
-        "false");
+        "offline_cps",
+        "If true, collect all modified abstractions of each snapshot over the"
+        "entire M&S algorithm run and then compue one or several CPs over them. "
+        "Otherwise, compute a CP for each snapshot during the M&S algorithm. ",
+        "true");
 
     parser.add_option<shared_ptr<CostPartitioningFactory>>(
         "cost_partitioning",

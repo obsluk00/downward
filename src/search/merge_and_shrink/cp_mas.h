@@ -68,10 +68,10 @@ protected:
     const bool filter_trivial_factors;
     const bool statistics_only;
 
-    const bool single_cp;
-    // Used if single_cp = true
+    const bool offline_cps;
+    // Used if offline_cps = true
     std::vector<std::unique_ptr<Abstraction>> abstractions;
-    // Used if single_cp = false
+    // Used if offline_cps = false
     std::vector<std::unique_ptr<CostPartitioning>> cost_partitionings;
 
     std::shared_ptr<CostPartitioningFactory> cp_factory;
