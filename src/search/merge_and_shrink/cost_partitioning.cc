@@ -1,7 +1,5 @@
 #include "cost_partitioning.h"
 
-#include "cp_mas_interleaved.h"
-#include "cp_mas_offline.h"
 #include "merge_and_shrink_representation.h"
 
 #include "../plugin.h"
