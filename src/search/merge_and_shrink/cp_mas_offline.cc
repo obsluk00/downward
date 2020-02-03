@@ -323,7 +323,6 @@ void CPMASOffline::main_loop(
                 cout << "Abstract problem is unsolvable, stopping "
                     "computation. " << endl << endl;
             }
-
             handle_snapshot(
                 fts, factors_modified_since_last_snapshot, original_to_current_labels, merged_index);
             factors_modified_since_last_snapshot.clear();
@@ -368,7 +367,7 @@ void CPMASOffline::main_loop(
     label_reduction = nullptr;
 }
 
-std::vector<std::unique_ptr<CostPartitioning>> CPMASOffline::compute_cps(
+vector<unique_ptr<CostPartitioning>> CPMASOffline::compute_cps(
     const TaskProxy &task_proxy) {
     if (starting_peak_memory) {
         cerr << "Using this factory twice is not supported!" << endl;
