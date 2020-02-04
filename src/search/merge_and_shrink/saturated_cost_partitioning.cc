@@ -54,11 +54,12 @@ int SaturatedCostPartitioning::get_number_of_factors() const {
 SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
     const Options &opts)
     : CostPartitioningFactory(),
-      order_generator(opts.get<shared_ptr<SingleUseOrderGenerator>>("order_generator")) {
+      single_use_order_generator(
+        opts.get<shared_ptr<SingleUseOrderGenerator>>("single_use_order_generator")) {
 }
 
 void SaturatedCostPartitioningFactory::initialize(const TaskProxy &task_proxy) {
-    order_generator->initialize(task_proxy);
+    single_use_order_generator->initialize(task_proxy);
 }
 
 unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_order(
@@ -114,7 +115,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
         cout << "Generating SCP M&S heuristic for given abstractions..." << endl;
     }
 
-    vector<int> order = order_generator->compute_order(
+    vector<int> order = single_use_order_generator->compute_order(
         abstractions, label_costs, verbosity);
 
     return generate_for_order(move(label_costs), move(abstractions), order, verbosity);

@@ -27,7 +27,7 @@ public:
 };
 
 class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
-    std::shared_ptr<SingleUseOrderGenerator> order_generator;
+    std::shared_ptr<SingleUseOrderGenerator> single_use_order_generator;
     std::unique_ptr<CostPartitioning> generate_for_order(
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
