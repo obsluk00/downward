@@ -57,7 +57,7 @@ void SingleUseOrderGeneratorMAS::initialize(const TaskProxy &task_proxy) {
     }
 }
 
-Order SingleUseOrderGeneratorMAS::compute_order_for_state(
+Order SingleUseOrderGeneratorMAS::compute_order(
     const Abstractions &abstractions,
     const vector<int> &,
     utils::Verbosity) {

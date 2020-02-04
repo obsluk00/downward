@@ -28,6 +28,8 @@ SingleUseOrderGeneratorGreedy::SingleUseOrderGeneratorGreedy(const Options &opts
 double SingleUseOrderGeneratorGreedy::rate_abstraction(
     const unique_ptr<Abstraction> &abs, const vector<int> &h_values, int stolen_costs) const {
 
+    // NOTE: this is hard-coded to use the initial state compared to the
+    // original code by Seipp et al.
     int abstract_state_id = abs->transition_system->get_init_state();
     int h;
     if (abstract_state_id == merge_and_shrink::PRUNED_STATE) {
@@ -44,7 +46,7 @@ double SingleUseOrderGeneratorGreedy::rate_abstraction(
 void SingleUseOrderGeneratorGreedy::initialize(const TaskProxy &) {
 }
 
-Order SingleUseOrderGeneratorGreedy::compute_order_for_state(
+Order SingleUseOrderGeneratorGreedy::compute_order(
     const Abstractions &abstractions,
     const vector<int> &costs,
     utils::Verbosity verbosity) {

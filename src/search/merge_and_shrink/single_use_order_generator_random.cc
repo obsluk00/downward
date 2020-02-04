@@ -31,7 +31,7 @@ void SingleUseOrderGeneratorRandom::initialize(const TaskProxy &task_proxy) {
     }
 }
 
-Order SingleUseOrderGeneratorRandom::compute_order_for_state(
+Order SingleUseOrderGeneratorRandom::compute_order(
     const Abstractions &abstractions,
     const vector<int> &,
     utils::Verbosity) {

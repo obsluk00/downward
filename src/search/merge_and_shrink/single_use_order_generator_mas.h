@@ -24,7 +24,7 @@ public:
 
     virtual void initialize(const TaskProxy &task_proxy) override;
 
-    virtual Order compute_order_for_state(
+    virtual Order compute_order(
         const Abstractions &abstractions,
         const std::vector<int> &costs,
         utils::Verbosity verbosity) override;
