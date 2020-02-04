@@ -21,15 +21,15 @@ struct Abstraction;
 using Abstractions = std::vector<std::unique_ptr<Abstraction>>;
 using Order = std::vector<int>;
 
-class MASOrderGenerator {
+class SingleUseOrderGenerator {
 protected:
     Order get_default_order(int num_abstractions) const;
     void reduce_costs(
         std::vector<int> &remaining_costs, const std::vector<int> &saturated_costs) const;
     const std::shared_ptr<utils::RandomNumberGenerator> rng;
 public:
-    explicit MASOrderGenerator(const options::Options &opts);
-    virtual ~MASOrderGenerator() = default;
+    explicit SingleUseOrderGenerator(const options::Options &opts);
+    virtual ~SingleUseOrderGenerator() = default;
 
     virtual void initialize(const TaskProxy &task_proxy) = 0;
 

@@ -13,14 +13,14 @@
 using namespace std;
 
 namespace merge_and_shrink {
-MASOrderGeneratorMAS::MASOrderGeneratorMAS(const Options &opts) :
-    MASOrderGenerator(opts),
+SingleUseOrderGeneratorMAS::SingleUseOrderGeneratorMAS(const Options &opts) :
+    SingleUseOrderGenerator(opts),
     atomic_ts_order(AtomicTSOrder(opts.get_enum("atomic_ts_order"))),
     product_ts_order(ProductTSOrder(opts.get_enum("product_ts_order"))),
     atomic_before_product(opts.get<bool>("atomic_before_product")) {
 }
 
-void MASOrderGeneratorMAS::initialize(const TaskProxy &task_proxy) {
+void SingleUseOrderGeneratorMAS::initialize(const TaskProxy &task_proxy) {
     int num_variables = task_proxy.get_variables().size();
     int max_transition_system_count = num_variables * 2 - 1;
     factor_order.reserve(max_transition_system_count);
@@ -57,7 +57,7 @@ void MASOrderGeneratorMAS::initialize(const TaskProxy &task_proxy) {
     }
 }
 
-Order MASOrderGeneratorMAS::compute_order_for_state(
+Order SingleUseOrderGeneratorMAS::compute_order_for_state(
     const Abstractions &abstractions,
     const vector<int> &,
     utils::Verbosity) {
@@ -83,7 +83,7 @@ Order MASOrderGeneratorMAS::compute_order_for_state(
 }
 
 
-static shared_ptr<MASOrderGenerator> _parse_greedy(OptionParser &parser) {
+static shared_ptr<SingleUseOrderGenerator> _parse_greedy(OptionParser &parser) {
     vector<string> atomic_ts_order;
     vector<string> atomic_ts_order_documentation;
     atomic_ts_order.push_back("reverse_level");
@@ -129,8 +129,8 @@ static shared_ptr<MASOrderGenerator> _parse_greedy(OptionParser &parser) {
     if (parser.dry_run())
         return nullptr;
     else
-        return make_shared<MASOrderGeneratorMAS>(opts);
+        return make_shared<SingleUseOrderGeneratorMAS>(opts);
 }
 
-static Plugin<MASOrderGenerator> _plugin_greedy("mas_fixed_orders", _parse_greedy);
+static Plugin<SingleUseOrderGenerator> _plugin_greedy("mas_fixed_orders", _parse_greedy);
 }

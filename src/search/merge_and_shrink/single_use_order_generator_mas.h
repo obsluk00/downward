@@ -4,7 +4,7 @@
 #include "single_use_order_generator.h"
 
 namespace merge_and_shrink {
-class MASOrderGeneratorMAS : public MASOrderGenerator {
+class SingleUseOrderGeneratorMAS : public SingleUseOrderGenerator {
     enum class AtomicTSOrder {
         REVERSE_LEVEL, // regular FD variable order
         LEVEL, // reverse of above
@@ -20,7 +20,7 @@ class MASOrderGeneratorMAS : public MASOrderGenerator {
     const bool atomic_before_product;
     std::vector<int> factor_order;
 public:
-    explicit MASOrderGeneratorMAS(const options::Options &opts);
+    explicit SingleUseOrderGeneratorMAS(const options::Options &opts);
 
     virtual void initialize(const TaskProxy &task_proxy) override;
 

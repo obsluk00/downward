@@ -54,7 +54,7 @@ int SaturatedCostPartitioning::get_number_of_factors() const {
 SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
     const Options &opts)
     : CostPartitioningFactory(),
-      order_generator(opts.get<shared_ptr<MASOrderGenerator>>("order_generator")) {
+      order_generator(opts.get<shared_ptr<SingleUseOrderGenerator>>("order_generator")) {
 }
 
 void SaturatedCostPartitioningFactory::initialize(const TaskProxy &task_proxy) {
@@ -121,7 +121,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
 }
 
 static shared_ptr<SaturatedCostPartitioningFactory>_parse(OptionParser &parser) {
-    parser.add_option<shared_ptr<MASOrderGenerator>>(
+    parser.add_option<shared_ptr<SingleUseOrderGenerator>>(
         "order_generator",
         "order generator",
         "mas_orders()");

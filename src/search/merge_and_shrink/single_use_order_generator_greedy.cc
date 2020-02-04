@@ -19,13 +19,13 @@
 using namespace std;
 
 namespace merge_and_shrink {
-MASOrderGeneratorGreedy::MASOrderGeneratorGreedy(const Options &opts)
-    : MASOrderGenerator(opts),
+SingleUseOrderGeneratorGreedy::SingleUseOrderGeneratorGreedy(const Options &opts)
+    : SingleUseOrderGenerator(opts),
       scoring_function(
           static_cast<ScoringFunction>(opts.get_enum("scoring_function"))) {
 }
 
-double MASOrderGeneratorGreedy::rate_abstraction(
+double SingleUseOrderGeneratorGreedy::rate_abstraction(
     const unique_ptr<Abstraction> &abs, const vector<int> &h_values, int stolen_costs) const {
 
     int abstract_state_id = abs->transition_system->get_init_state();
@@ -41,10 +41,10 @@ double MASOrderGeneratorGreedy::rate_abstraction(
     return compute_score(h, stolen_costs, scoring_function);
 }
 
-void MASOrderGeneratorGreedy::initialize(const TaskProxy &) {
+void SingleUseOrderGeneratorGreedy::initialize(const TaskProxy &) {
 }
 
-Order MASOrderGeneratorGreedy::compute_order_for_state(
+Order SingleUseOrderGeneratorGreedy::compute_order_for_state(
     const Abstractions &abstractions,
     const vector<int> &costs,
     utils::Verbosity verbosity) {
@@ -114,15 +114,15 @@ Order MASOrderGeneratorGreedy::compute_order_for_state(
 }
 
 
-static shared_ptr<MASOrderGenerator> _parse_greedy(OptionParser &parser) {
+static shared_ptr<SingleUseOrderGenerator> _parse_greedy(OptionParser &parser) {
     add_scoring_function_to_parser(parser);
     add_common_order_generator_options(parser);
     Options opts = parser.parse();
     if (parser.dry_run())
         return nullptr;
     else
-        return make_shared<MASOrderGeneratorGreedy>(opts);
+        return make_shared<SingleUseOrderGeneratorGreedy>(opts);
 }
 
-static Plugin<MASOrderGenerator> _plugin_greedy("mas_greedy_orders", _parse_greedy);
+static Plugin<SingleUseOrderGenerator> _plugin_greedy("mas_greedy_orders", _parse_greedy);
 }

@@ -10,7 +10,7 @@
 namespace merge_and_shrink {
 class FactoredTransitionSystem;
 class MergeAndShrinkRepresentation;
-class MASOrderGenerator;
+class SingleUseOrderGenerator;
 
 struct SCPMSHeuristic {
     std::vector<std::vector<int>> goal_distances;
@@ -27,7 +27,7 @@ public:
 };
 
 class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
-    std::shared_ptr<MASOrderGenerator> order_generator;
+    std::shared_ptr<SingleUseOrderGenerator> order_generator;
     std::unique_ptr<CostPartitioning> generate_for_order(
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,

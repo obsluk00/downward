@@ -4,11 +4,11 @@
 #include "single_use_order_generator.h"
 
 namespace merge_and_shrink {
-class MASOrderGeneratorRandom : public MASOrderGenerator {
+class SingleUseOrderGeneratorRandom : public SingleUseOrderGenerator {
     const bool fixed_order;
     std::vector<int> factor_order;
 public:
-    explicit MASOrderGeneratorRandom(const options::Options &opts);
+    explicit SingleUseOrderGeneratorRandom(const options::Options &opts);
 
     virtual void initialize(const TaskProxy &task_proxy) override;
 

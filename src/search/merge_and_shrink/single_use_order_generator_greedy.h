@@ -9,7 +9,7 @@ class Options;
 }
 
 namespace merge_and_shrink {
-class MASOrderGeneratorGreedy : public MASOrderGenerator {
+class SingleUseOrderGeneratorGreedy : public SingleUseOrderGenerator {
     const ScoringFunction scoring_function;
 
     double rate_abstraction(
@@ -17,7 +17,7 @@ class MASOrderGeneratorGreedy : public MASOrderGenerator {
         const std::vector<int> &h_values,
         int stolen_costs) const;
 public:
-    explicit MASOrderGeneratorGreedy(const options::Options &opts);
+    explicit SingleUseOrderGeneratorGreedy(const options::Options &opts);
 
     virtual void initialize(const TaskProxy &task_proxy) override;
 

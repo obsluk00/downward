@@ -13,12 +13,12 @@
 using namespace std;
 
 namespace merge_and_shrink {
-MASOrderGeneratorRandom::MASOrderGeneratorRandom(const Options &opts) :
-    MASOrderGenerator(opts),
+SingleUseOrderGeneratorRandom::SingleUseOrderGeneratorRandom(const Options &opts) :
+    SingleUseOrderGenerator(opts),
     fixed_order(opts.get<bool>("fixed_order")) {
 }
 
-void MASOrderGeneratorRandom::initialize(const TaskProxy &task_proxy) {
+void SingleUseOrderGeneratorRandom::initialize(const TaskProxy &task_proxy) {
     utils::Log() << "Initialize random order generator" << endl;
     int num_variables = task_proxy.get_variables().size();
     int max_transition_system_count = num_variables * 2 - 1;
@@ -31,7 +31,7 @@ void MASOrderGeneratorRandom::initialize(const TaskProxy &task_proxy) {
     }
 }
 
-Order MASOrderGeneratorRandom::compute_order_for_state(
+Order SingleUseOrderGeneratorRandom::compute_order_for_state(
     const Abstractions &abstractions,
     const vector<int> &,
     utils::Verbosity) {
@@ -66,7 +66,7 @@ Order MASOrderGeneratorRandom::compute_order_for_state(
 }
 
 
-static shared_ptr<MASOrderGenerator> _parse_greedy(OptionParser &parser) {
+static shared_ptr<SingleUseOrderGenerator> _parse_greedy(OptionParser &parser) {
     parser.add_option<bool>(
         "fixed_order",
         "If true, compute a single fixed random order used for all calls to "
@@ -77,8 +77,8 @@ static shared_ptr<MASOrderGenerator> _parse_greedy(OptionParser &parser) {
     if (parser.dry_run())
         return nullptr;
     else
-        return make_shared<MASOrderGeneratorRandom>(opts);
+        return make_shared<SingleUseOrderGeneratorRandom>(opts);
 }
 
-static Plugin<MASOrderGenerator> _plugin_greedy("mas_random_orders", _parse_greedy);
+static Plugin<SingleUseOrderGenerator> _plugin_greedy("mas_random_orders", _parse_greedy);
 }
