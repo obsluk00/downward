@@ -1,6 +1,7 @@
 #include "order_generator_greedy.h"
 
 #include "cost_partitioning.h"
+#include "saturated_cost_partitioning_utils.h"
 #include "transition_system.h"
 #include "utils.h"
 
@@ -46,11 +47,26 @@ void MASOrderGeneratorGreedy::initialize(const TaskProxy &) {
 Order MASOrderGeneratorGreedy::compute_order_for_state(
     const Abstractions &abstractions,
     const vector<int> &costs,
-    const std::vector<std::vector<int>> &h_values_by_abstraction,
-    const std::vector<std::vector<int>> &saturated_costs_by_abstraction,
-    bool verbose) {
+    utils::Verbosity verbosity) {
     utils::Timer timer;
     utils::Log() << "Initialize greedy order generator" << endl;
+
+    int num_labels = costs.size();
+
+    vector<vector<int>> h_values_by_abstraction;
+    vector<vector<int>> saturated_costs_by_abstraction;
+    h_values_by_abstraction.reserve(abstractions.size());
+    saturated_costs_by_abstraction.reserve(abstractions.size());
+    for (const unique_ptr<Abstraction> &abstraction : abstractions) {
+        h_values_by_abstraction.push_back(
+            compute_goal_distances_for_abstraction(
+                *abstraction, costs, verbosity));
+        saturated_costs_by_abstraction.push_back(
+            compute_saturated_costs_for_abstraction(
+                *abstraction, h_values_by_abstraction.back(), num_labels, verbosity));
+    }
+    utils::Log() << "Time for computing h values and saturated costs: "
+                 << timer << endl;
 
     vector<int> surplus_costs = compute_all_surplus_costs(
         costs, saturated_costs_by_abstraction);
@@ -82,14 +98,14 @@ Order MASOrderGeneratorGreedy::compute_order_for_state(
     sort(order.begin(), order.end(), [&](int abs1, int abs2) {
              return scores[abs1] > scores[abs2];
          });
-    if (verbose) {
+    if (verbosity >= utils::Verbosity::NORMAL) {
         cout << "Static greedy scores: " << scores << endl;
         unordered_set<double> unique_scores(scores.begin(), scores.end());
         cout << "Static greedy unique scores: " << unique_scores.size() << endl;
         cout << "Static greedy order: " << order << endl;
     }
 
-    if (verbose) {
+    if (verbosity >= utils::Verbosity::NORMAL) {
         utils::Log() << "Time for computing greedy order: " << greedy_timer << endl;
     }
 

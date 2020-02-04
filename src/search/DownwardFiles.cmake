@@ -667,6 +667,7 @@ fast_downward_plugin(
         merge_and_shrink/order_generator_mas
         merge_and_shrink/order_generator_random
         merge_and_shrink/saturated_cost_partitioning
+        merge_and_shrink/saturated_cost_partitioning_utils
         merge_and_shrink/shrink_bisimulation
         merge_and_shrink/shrink_bucket_based
         merge_and_shrink/shrink_fh

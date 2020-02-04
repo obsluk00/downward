@@ -13,6 +13,7 @@ class Options;
 
 namespace utils {
 class RandomNumberGenerator;
+enum class Verbosity;
 }
 
 namespace merge_and_shrink {
@@ -35,9 +36,7 @@ public:
     virtual Order compute_order_for_state(
         const Abstractions &abstractions,
         const std::vector<int> &costs,
-        const std::vector<std::vector<int>> &h_values_by_abstraction,
-        const std::vector<std::vector<int>> &saturated_costs_by_abstraction,
-        bool verbose) = 0;
+        utils::Verbosity verbose) = 0;
 };
 
 extern void add_common_order_generator_options(options::OptionParser &parser);

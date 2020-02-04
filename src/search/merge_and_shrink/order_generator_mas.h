@@ -27,9 +27,7 @@ public:
     virtual Order compute_order_for_state(
         const Abstractions &abstractions,
         const std::vector<int> &costs,
-        const std::vector<std::vector<int>> &h_values_by_abstraction,
-        const std::vector<std::vector<int>> &saturated_costs_by_abstraction,
-        bool verbose) override;
+        utils::Verbosity verbosity) override;
 };
 }
 

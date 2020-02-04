@@ -28,6 +28,11 @@ public:
 
 class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
     std::shared_ptr<MASOrderGenerator> order_generator;
+    std::unique_ptr<CostPartitioning> generate_for_order(
+        std::vector<int> &&label_costs,
+        std::vector<std::unique_ptr<Abstraction>> &&abstractions,
+        const std::vector<int> order,
+        utils::Verbosity verbosity) const;
 public:
     explicit SaturatedCostPartitioningFactory(const Options &opts);
     virtual ~SaturatedCostPartitioningFactory() = default;

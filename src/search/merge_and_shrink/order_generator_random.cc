@@ -34,9 +34,7 @@ void MASOrderGeneratorRandom::initialize(const TaskProxy &task_proxy) {
 Order MASOrderGeneratorRandom::compute_order_for_state(
     const Abstractions &abstractions,
     const vector<int> &,
-    const std::vector<std::vector<int>> &,
-    const std::vector<std::vector<int>> &,
-    bool) {
+    utils::Verbosity) {
     vector<int> abstraction_order;
     abstraction_order.reserve(abstractions.size());
     if (!fixed_order) {
