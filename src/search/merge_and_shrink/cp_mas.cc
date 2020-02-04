@@ -320,14 +320,22 @@ vector<unique_ptr<Abstraction>> CPMAS::compute_abstractions_for_interleaved_cp(
     return abstractions;
 }
 
+bool any(const Bitset &bitset) {
+    for (size_t index = 0; index < bitset.size(); ++index) {
+        if (bitset.test(index)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 vector<unique_ptr<Abstraction>> CPMAS::compute_abstractions_for_offline_cp(
     const FactoredTransitionSystem &fts,
-    const set<int> &indices,
+    const Bitset &factors_modified_since_last_snapshot,
     const vector<int> &original_to_current_labels) const {
-    assert(!indices.empty());
     vector<int> considered_factors;
-    for (int index : indices) {
-        if (!filter_trivial_factors || !fts.is_factor_trivial(index)) {
+    for (int index : fts) {
+        if (factors_modified_since_last_snapshot.test(index) && (!filter_trivial_factors || !fts.is_factor_trivial(index))) {
             considered_factors.push_back(index);
         }
     }
@@ -360,7 +368,7 @@ vector<unique_ptr<Abstraction>> CPMAS::compute_abstractions_for_offline_cp(
 
 void CPMAS::handle_snapshot(
     const FactoredTransitionSystem &fts,
-    set<int> &factors_modified_since_last_snapshot,
+    Bitset &factors_modified_since_last_snapshot,
     const unique_ptr<vector<int>> &original_to_current_labels) {
     if (offline_cps) {
         assert(original_to_current_labels);
@@ -373,11 +381,11 @@ void CPMAS::handle_snapshot(
         if (verbosity >= utils::Verbosity::DEBUG) {
             cout << "Number of abstractions: " << abstractions.size() << endl;
         }
-    } else if (!factors_modified_since_last_snapshot.empty()) {
+    } else if (any(factors_modified_since_last_snapshot)) {
         cost_partitionings.push_back(cp_factory->generate(
             compute_label_costs(fts.get_labels()), compute_abstractions_for_interleaved_cp(fts), verbosity));
     }
-    factors_modified_since_last_snapshot.clear();
+    factors_modified_since_last_snapshot.reset();
 }
 
 void CPMAS::compute_cp_and_print_statistics(
@@ -402,7 +410,7 @@ void CPMAS::compute_cp_and_print_statistics(
 bool CPMAS::main_loop(
     FactoredTransitionSystem &fts,
     const TaskProxy &task_proxy,
-    set<int> &factors_modified_since_last_snapshot,
+    Bitset &factors_modified_since_last_snapshot,
     const unique_ptr<vector<int>> &original_to_current_labels) {
     utils::CountdownTimer timer(main_loop_max_time);
     if (verbosity >= utils::Verbosity::NORMAL) {
@@ -506,10 +514,10 @@ bool CPMAS::main_loop(
             verbosity);
         if (shrunk.first || shrunk.second) {
             if (shrunk.first) {
-                factors_modified_since_last_snapshot.insert(merge_index1);
+                factors_modified_since_last_snapshot.set(merge_index1);
             }
             if (shrunk.second) {
-                factors_modified_since_last_snapshot.insert(merge_index2);
+                factors_modified_since_last_snapshot.set(merge_index2);
             }
         }
         if (verbosity >= utils::Verbosity::NORMAL && (shrunk.first || shrunk.second)) {
@@ -565,9 +573,9 @@ bool CPMAS::main_loop(
             log_main_loop_progress("after merging");
         }
 
-        factors_modified_since_last_snapshot.erase(merge_index1);
-        factors_modified_since_last_snapshot.erase(merge_index2);
-        factors_modified_since_last_snapshot.insert(merged_index);
+        factors_modified_since_last_snapshot.reset(merge_index1);
+        factors_modified_since_last_snapshot.reset(merge_index2);
+        factors_modified_since_last_snapshot.set(merged_index);
         if (ran_out_of_time(timer)) {
             break;
         }
@@ -595,7 +603,7 @@ bool CPMAS::main_loop(
                 prune_irrelevant_states,
                 verbosity);
             if (pruned) {
-                factors_modified_since_last_snapshot.insert(merged_index);
+                factors_modified_since_last_snapshot.set(merged_index);
             }
             if (verbosity >= utils::Verbosity::NORMAL && pruned) {
                 if (verbosity >= utils::Verbosity::VERBOSE) {
@@ -617,7 +625,7 @@ bool CPMAS::main_loop(
                     "computation. " << endl << endl;
             }
             handle_unsolvable_snapshot(fts, merged_index);
-            factors_modified_since_last_snapshot.clear();
+            factors_modified_since_last_snapshot.reset();
             unsolvable = true;
             break;
         }
@@ -756,9 +764,11 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
             }
         }
 
-        set<int> factors_modified_since_last_snapshot; // excluding label reduction
+        // Pos at index i is true iff the factor has been transformed since
+        // the last recorded snapshot, excluding label reductions.
+        Bitset factors_modified_since_last_snapshot(fts.get_size() * 2 - 1);
         for (int index = 0; index < fts.get_size(); ++index) {
-            factors_modified_since_last_snapshot.insert(index);
+            factors_modified_since_last_snapshot.set(index);
         }
         if (compute_atomic_snapshot) {
             handle_snapshot(
@@ -780,14 +790,14 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
         }
 
         if (!unsolvable) {
-            if (factors_modified_since_last_snapshot.empty()) {
+            if (!any(factors_modified_since_last_snapshot)) {
                 assert((offline_cps && !abstractions.empty()) || (!offline_cps && !cost_partitionings.empty()));
             }
 
-            if (!factors_modified_since_last_snapshot.empty() ||
+            if (any(factors_modified_since_last_snapshot) ||
                 (offline_cps && abstractions.empty()) ||
                 (!offline_cps && cost_partitionings.empty())) {
-                assert(!factors_modified_since_last_snapshot.empty());
+                assert(any(factors_modified_since_last_snapshot));
                 handle_snapshot(
                     fts, factors_modified_since_last_snapshot, original_to_current_labels);
 

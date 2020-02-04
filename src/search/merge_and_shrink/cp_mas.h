@@ -1,8 +1,9 @@
 #ifndef MERGE_AND_SHRINK_CP_MAS_H
 #define MERGE_AND_SHRINK_CP_MAS_H
 
+#include "../algorithms/dynamic_bitset.h"
+
 #include <memory>
-#include <set>
 #include <vector>
 
 class TaskProxy;
@@ -27,6 +28,8 @@ class LabelReduction;
 class Labels;
 class MergeStrategyFactory;
 class ShrinkStrategy;
+
+using Bitset = dynamic_bitset::DynamicBitset<unsigned short>;
 
 class CPMAS {
 protected:
@@ -117,21 +120,21 @@ protected:
         FactoredTransitionSystem &fts, int unsolvable_index);
     void handle_snapshot(
         const FactoredTransitionSystem &fts,
-        std::set<int> &factors_modified_since_last_snapshot,
+        Bitset &factors_modified_since_last_snapshot,
         const std::unique_ptr<std::vector<int>> &original_to_current_labels);
     // TODO: the following two methods could be split further and party combined.
     std::vector<std::unique_ptr<Abstraction>> compute_abstractions_for_interleaved_cp(
         const FactoredTransitionSystem &fts) const;
     std::vector<std::unique_ptr<Abstraction>> compute_abstractions_for_offline_cp(
         const FactoredTransitionSystem &fts,
-        const std::set<int> &indices,
+        const Bitset &factors_modified_since_last_snapshot,
         const std::vector<int> &original_to_current_labels) const;
     void compute_cp_and_print_statistics(
         const FactoredTransitionSystem &fts,
         int iteration) const;
     bool main_loop(FactoredTransitionSystem &fts,
         const TaskProxy &task_proxy,
-        std::set<int> &factors_modified_since_last_snapshot,
+        Bitset &factors_modified_since_last_snapshot,
         const std::unique_ptr<std::vector<int>> &original_to_current_labels);
 public:
     explicit CPMAS(const options::Options &opts);
