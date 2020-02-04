@@ -662,12 +662,12 @@ fast_downward_plugin(
         merge_and_shrink/merge_tree_factory
         merge_and_shrink/merge_tree_factory_linear
         merge_and_shrink/optimal_cost_partitioning
-        merge_and_shrink/order_generator
-        merge_and_shrink/order_generator_greedy
-        merge_and_shrink/order_generator_mas
-        merge_and_shrink/order_generator_random
         merge_and_shrink/saturated_cost_partitioning
         merge_and_shrink/saturated_cost_partitioning_utils
+        merge_and_shrink/single_use_order_generator
+        merge_and_shrink/single_use_order_generator_greedy
+        merge_and_shrink/single_use_order_generator_mas
+        merge_and_shrink/single_use_order_generator_random
         merge_and_shrink/shrink_bisimulation
         merge_and_shrink/shrink_bucket_based
         merge_and_shrink/shrink_fh

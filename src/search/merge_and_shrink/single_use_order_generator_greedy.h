@@ -2,7 +2,7 @@
 #define MERGE_AND_SHRINK_ORDER_GENERATOR_GREEDY_H
 
 #include "greedy_order_utils.h"
-#include "order_generator.h"
+#include "single_use_order_generator.h"
 
 namespace options {
 class Options;

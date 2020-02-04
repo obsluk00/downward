@@ -1,7 +1,7 @@
 #include "saturated_cost_partitioning.h"
 
 #include "merge_and_shrink_representation.h"
-#include "order_generator.h"
+#include "single_use_order_generator.h"
 #include "saturated_cost_partitioning_utils.h"
 #include "transition_system.h"
 #include "types.h"

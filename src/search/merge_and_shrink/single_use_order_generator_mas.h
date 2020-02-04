@@ -1,7 +1,7 @@
 #ifndef MERGE_AND_SHRINK_ORDER_GENERATOR_MAS_H
 #define MERGE_AND_SHRINK_ORDER_GENERATOR_MAS_H
 
-#include "order_generator.h"
+#include "single_use_order_generator.h"
 
 namespace merge_and_shrink {
 class MASOrderGeneratorMAS : public MASOrderGenerator {
