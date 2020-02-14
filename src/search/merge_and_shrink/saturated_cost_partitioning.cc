@@ -123,7 +123,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
 
 static shared_ptr<SaturatedCostPartitioningFactory>_parse(OptionParser &parser) {
     parser.add_option<shared_ptr<SingleUseOrderGenerator>>(
-        "order_generator",
+        "single_use_order_generator",
         "order generator",
         "mas_orders()");
 
