@@ -8,19 +8,19 @@
 #include <vector>
 
 namespace merge_and_shrink {
-class FactoredTransitionSystem;
 class MergeAndShrinkRepresentation;
 class SingleUseOrderGenerator;
 
-struct SCPMSHeuristic {
-    std::vector<std::vector<int>> goal_distances;
-    std::vector<std::unique_ptr<MergeAndShrinkRepresentation>> mas_representations;
+struct AbstractionInformation {
+    std::vector<int> goal_distances;
+    std::unique_ptr<MergeAndShrinkRepresentation> mas_representation;
 };
 
 class SaturatedCostPartitioning : public CostPartitioning {
-    SCPMSHeuristic scp_ms_heuristic;
+    std::vector<AbstractionInformation> abstraction_infos;
 public:
-    explicit SaturatedCostPartitioning(SCPMSHeuristic &&scp_ms_heuristic);
+    explicit SaturatedCostPartitioning(
+        std::vector<AbstractionInformation> &&abstraction_infos);
     virtual ~SaturatedCostPartitioning() = default;
     virtual int compute_value(const State &state) override;
     virtual int get_number_of_factors() const override;

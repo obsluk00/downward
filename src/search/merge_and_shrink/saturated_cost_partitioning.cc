@@ -23,21 +23,20 @@ using namespace std;
 
 namespace merge_and_shrink {
 SaturatedCostPartitioning::SaturatedCostPartitioning(
-    SCPMSHeuristic &&scp_ms_heuristic)
+    vector<AbstractionInformation> &&abstraction_infos)
     : CostPartitioning(),
-      scp_ms_heuristic(move(scp_ms_heuristic)) {
+      abstraction_infos(move(abstraction_infos)) {
 }
 
 int SaturatedCostPartitioning::compute_value(const State &state) {
     int h_val = 0;
-    assert(scp_ms_heuristic.mas_representations.size() == scp_ms_heuristic.goal_distances.size());
-    for (size_t factor_index = 0; factor_index < scp_ms_heuristic.mas_representations.size(); ++factor_index) {
-        int abstract_state = scp_ms_heuristic.mas_representations[factor_index]->get_value(state);
+    for (const AbstractionInformation &abstraction_info : abstraction_infos) {
+        int abstract_state = abstraction_info.mas_representation->get_value(state);
         if (abstract_state == PRUNED_STATE)  {
             // If the state has been pruned, we encountered a dead end.
             return INF;
         }
-        int cost = scp_ms_heuristic.goal_distances[factor_index][abstract_state];
+        int cost = abstraction_info.goal_distances[abstract_state];
         if (cost == INF) {
             // If the state is unreachable or irrelevant, we encountered a dead end.
             return INF;
@@ -48,7 +47,7 @@ int SaturatedCostPartitioning::compute_value(const State &state) {
 }
 
 int SaturatedCostPartitioning::get_number_of_factors() const {
-    return scp_ms_heuristic.goal_distances.size();
+    return abstraction_infos.size();
 }
 
 SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
@@ -67,8 +66,10 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_orde
     vector<unique_ptr<Abstraction>> &&abstractions,
     const vector<int> order,
     utils::Verbosity verbosity) const {
+    assert(order.size() == abstractions.size());
     int num_labels = label_costs.size();
-    SCPMSHeuristic scp_ms_heuristic;
+    vector<AbstractionInformation> abstraction_infos;
+    abstraction_infos.reserve(abstractions.size());
     for (size_t i = 0; i < order.size(); ++i) {
         int index = order[i];
         Abstraction &abstraction = *abstractions[index];
@@ -84,8 +85,10 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_orde
         if (verbosity >= utils::Verbosity::DEBUG) {
             cout << "Distances under remaining costs: " << goal_distances << endl;
         }
-        scp_ms_heuristic.goal_distances.push_back(goal_distances);
-        scp_ms_heuristic.mas_representations.push_back(move(abstraction.merge_and_shrink_representation));
+        AbstractionInformation abstraction_info;
+        abstraction_info.goal_distances = goal_distances;
+        abstraction_info.mas_representation = move(abstraction.merge_and_shrink_representation);
+        abstraction_infos.push_back(move(abstraction_info));
         if (i == order.size() - 1) {
             break;
         }
@@ -104,7 +107,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_orde
         }
     }
 
-    return utils::make_unique_ptr<SaturatedCostPartitioning>(move(scp_ms_heuristic));
+    return utils::make_unique_ptr<SaturatedCostPartitioning>(move(abstraction_infos));
 }
 
 unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
