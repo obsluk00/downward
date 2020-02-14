@@ -31,6 +31,12 @@ public:
 };
 
 struct Abstraction {
+    /*
+      NOTE: depending on the use case, this is either a copy owned by this
+      class (which therefore needs to be deleted at the end), or it is a
+      pointer to a transition system in some FTS which should not be deleted.
+      TODO: can we deal with this in a nicer way?
+    */
     const TransitionSystem *transition_system;
     std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation;
     int fts_index;
