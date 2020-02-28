@@ -629,6 +629,7 @@ fast_downward_plugin(
         merge_and_shrink/cp_mas
         merge_and_shrink/cost_partitioning
         merge_and_shrink/distances
+        merge_and_shrink/diversifier
         merge_and_shrink/factored_transition_system
         merge_and_shrink/fts_factory
         merge_and_shrink/greedy_order_utils
@@ -661,8 +662,14 @@ fast_downward_plugin(
         merge_and_shrink/merge_tree
         merge_and_shrink/merge_tree_factory
         merge_and_shrink/merge_tree_factory_linear
+        merge_and_shrink/order_generator
+        merge_and_shrink/order_generator_dynamic_greedy
+        merge_and_shrink/order_generator_greedy
+        merge_and_shrink/order_generator_random
+        merge_and_shrink/order_optimizer
         merge_and_shrink/optimal_cost_partitioning
         merge_and_shrink/saturated_cost_partitioning
+        merge_and_shrink/saturated_cost_partitionings
         merge_and_shrink/saturated_cost_partitioning_utils
         merge_and_shrink/single_use_order_generator
         merge_and_shrink/single_use_order_generator_greedy

@@ -3,6 +3,7 @@
 
 #include <forward_list>
 #include <list>
+#include <memory>
 #include <vector>
 
 namespace merge_and_shrink {
@@ -20,6 +21,10 @@ extern const int PRUNED_STATE;
 */
 using StateEquivalenceClass = std::forward_list<int>;
 using StateEquivalenceRelation = std::vector<StateEquivalenceClass>;
+
+class Abstraction;
+using Abstractions = std::vector<std::unique_ptr<Abstraction>>;
+using Order = std::vector<int>;
 }
 
 #endif

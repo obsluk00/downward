@@ -21,6 +21,10 @@ Abstraction::Abstraction(
 Abstraction::~Abstraction() {
 }
 
+unique_ptr<MergeAndShrinkRepresentation> Abstraction::extract_abstraction_function() {
+    return move(merge_and_shrink_representation);
+}
+
 static options::PluginTypePlugin<CostPartitioningFactory> _type_plugin(
     "CostPartitioning",
     "This page describes the various cost partitioning generation methods.");
