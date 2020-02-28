@@ -42,7 +42,7 @@ void SingleUseOrderGenerator::reduce_costs(
     }
 }
 
-void add_common_order_generator_options(OptionParser &parser) {
+void add_common_single_order_generator_options(OptionParser &parser) {
     utils::add_rng_options(parser);
 }
 

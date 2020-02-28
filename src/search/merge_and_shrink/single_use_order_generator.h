@@ -39,7 +39,7 @@ public:
         utils::Verbosity verbose) = 0;
 };
 
-extern void add_common_order_generator_options(options::OptionParser &parser);
+extern void add_common_single_order_generator_options(options::OptionParser &parser);
 }
 
 #endif

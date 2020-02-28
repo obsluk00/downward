@@ -118,7 +118,7 @@ Order SingleUseOrderGeneratorGreedy::compute_order(
 
 static shared_ptr<SingleUseOrderGenerator> _parse_greedy(OptionParser &parser) {
     add_scoring_function_to_parser(parser);
-    add_common_order_generator_options(parser);
+    add_common_single_order_generator_options(parser);
     Options opts = parser.parse();
     if (parser.dry_run())
         return nullptr;

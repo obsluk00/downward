@@ -72,7 +72,7 @@ static shared_ptr<SingleUseOrderGenerator> _parse_greedy(OptionParser &parser) {
         "If true, compute a single fixed random order used for all calls to "
         "compute_order_for_abstractions",
         "true");
-    add_common_order_generator_options(parser);
+    add_common_single_order_generator_options(parser);
     Options opts = parser.parse();
     if (parser.dry_run())
         return nullptr;
