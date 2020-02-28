@@ -64,7 +64,7 @@ void SaturatedCostPartitioningFactory::initialize(const TaskProxy &task_proxy) {
 unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_order(
     vector<int> &&label_costs,
     vector<unique_ptr<Abstraction>> &&abstractions,
-    const vector<int> order,
+    const vector<int> &order,
     utils::Verbosity verbosity) const {
     assert(order.size() == abstractions.size());
     int num_labels = label_costs.size();
