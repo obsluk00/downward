@@ -36,7 +36,7 @@ class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
 public:
     explicit SaturatedCostPartitioningFactory(const Options &opts);
     virtual ~SaturatedCostPartitioningFactory() = default;
-    virtual void initialize(const TaskProxy &task_proxy) override;
+    virtual void initialize(const std::shared_ptr<AbstractTask> &task) override;
     virtual std::unique_ptr<CostPartitioning> generate(
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,

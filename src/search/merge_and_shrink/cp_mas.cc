@@ -672,7 +672,7 @@ bool CPMAS::main_loop(
 }
 
 vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
-    const TaskProxy &task_proxy) {
+    const shared_ptr<AbstractTask> &task) {
     if (starting_peak_memory) {
         cerr << "Using this factory twice is not supported!" << endl;
         utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
@@ -681,6 +681,7 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
 
     utils::Timer timer;
     cout << "Running merge-and-shrink algorithm..." << endl;
+    TaskProxy task_proxy(*task);
     task_properties::verify_no_axioms(task_proxy);
     dump_options();
     warn_on_unusual_options();
@@ -704,7 +705,7 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
         log_progress(timer, "after computation of atomic factors");
     }
 
-    cp_factory->initialize(task_proxy);
+    cp_factory->initialize(task);
 
     // Global label mapping.
     unique_ptr<vector<int>> original_to_current_labels = nullptr;

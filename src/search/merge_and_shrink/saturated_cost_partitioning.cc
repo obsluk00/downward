@@ -57,8 +57,8 @@ SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
         opts.get<shared_ptr<SingleUseOrderGenerator>>("single_use_order_generator")) {
 }
 
-void SaturatedCostPartitioningFactory::initialize(const TaskProxy &task_proxy) {
-    single_use_order_generator->initialize(task_proxy);
+void SaturatedCostPartitioningFactory::initialize(const shared_ptr<AbstractTask> &task) {
+    single_use_order_generator->initialize(TaskProxy(*task));
 }
 
 unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_order(

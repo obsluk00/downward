@@ -4,8 +4,8 @@
 #include <memory>
 #include <vector>
 
+class AbstractTask;
 class State;
-class TaskProxy;
 
 namespace options {
 class OptionParser;
@@ -48,12 +48,13 @@ struct Abstraction {
         int fts_index,
         const std::vector<int> &label_mapping = std::vector<int>());
     ~Abstraction();
+    std::unique_ptr<MergeAndShrinkRepresentation> extract_abstraction_function();
 };
 
 class CostPartitioningFactory {
 public:
     virtual ~CostPartitioningFactory() = default;
-    virtual void initialize(const TaskProxy &) {}
+    virtual void initialize(const std::shared_ptr<AbstractTask> &) {}
     virtual std::unique_ptr<CostPartitioning> generate(
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,

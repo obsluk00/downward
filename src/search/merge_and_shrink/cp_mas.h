@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+class AbstractTask;
 class TaskProxy;
 
 namespace options {
@@ -140,7 +141,7 @@ public:
     explicit CPMAS(const options::Options &opts);
     ~CPMAS() = default;
     std::vector<std::unique_ptr<CostPartitioning>> compute_cps(
-        const TaskProxy &task_proxy);
+        const std::shared_ptr<AbstractTask> &task);
 };
 
 extern void add_cp_merge_and_shrink_algorithm_options_to_parser(options::OptionParser &parser);
