@@ -286,6 +286,15 @@ static vector<vector<int>> sample_states_and_return_abstract_state_ids(
     return abstract_state_ids_by_sample;
 }
 
+unique_ptr<CostPartitioning> single_cp(
+    vector<int> &&costs,
+    vector<unique_ptr<Abstraction>> &&abstractions) {
+    vector<CostPartitioningHeuristic> cp_heuristics;
+    cp_heuristics.reserve(1);
+    cp_heuristics.push_back(compute_scp(abstractions, get_default_order(abstractions.size()), costs));
+    return utils::make_unique_ptr<SaturatedCostPartitionings>(move(abstractions), move(cp_heuristics));
+}
+
 unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
     vector<int> &&costs,
     vector<unique_ptr<Abstraction>> &&abstractions,
@@ -294,13 +303,17 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
         cout << "Generating multiple SCP M&S heuristics for given abstractions..." << endl;
     }
 
+    if (abstractions.size() == 1) {
+        return single_cp(move(costs), move(abstractions));
+    }
+
     utils::Log log;
     utils::CountdownTimer timer(max_time);
 
     DeadEndDetector is_dead_end =
         [&abstractions](const State &state) {
             vector<int> abstract_state_ids = get_abstract_state_ids(abstractions, state);
-            return any_of(abstract_state_ids.begin(), abstract_state_ids.end(), [](int i){return i == INF;});
+            return any_of(abstract_state_ids.begin(), abstract_state_ids.end(), [](int i){return i == -1;});
         };
 
     TaskProxy task_proxy(*task);

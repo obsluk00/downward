@@ -827,6 +827,7 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
                 move(abstractions),
                 verbosity));
         }
+        assert(cost_partitionings.size() == 1);
         cost_partitionings.back()->print_statistics();
     } else {
         assert(!cost_partitionings.empty());
