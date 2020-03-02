@@ -12,7 +12,7 @@ class Abstraction;
 
 extern std::vector<int> compute_goal_distances_for_abstraction(
         const Abstraction &abstraction, const std::vector<int> &label_costs, utils::Verbosity verbosity);
-extern std::vector<std::vector<int>> compute_inverse_label_mapping(const Abstraction &abstractions);
+extern std::vector<std::vector<int>> compute_inverse_label_mapping(const Abstraction &abstraction);
 extern std::vector<int> compute_saturated_costs_for_abstraction(
         const Abstraction &abstraction,
         const std::vector<int> &goal_distances,

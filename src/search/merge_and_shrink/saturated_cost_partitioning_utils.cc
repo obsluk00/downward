@@ -40,12 +40,12 @@ vector<int> compute_goal_distances_for_abstraction(
     return goal_distances;
 }
 
-vector<vector<int>> compute_inverse_label_mapping(const Abstraction &abstractions) {
-    assert(!abstractions.label_mapping.empty());
+vector<vector<int>> compute_inverse_label_mapping(const Abstraction &abstraction) {
+    assert(!abstraction.label_mapping.empty());
     // TODO: taking twice the size is pessimistic; maybe resize dynamically?
-    vector<vector<int>> reduced_to_orignal_labels(abstractions.label_mapping.size() * 2);
-    for (size_t original_label = 0; original_label < abstractions.label_mapping.size(); ++original_label) {
-        int reduced_label = abstractions.label_mapping[original_label];
+    vector<vector<int>> reduced_to_orignal_labels(abstraction.label_mapping.size() * 2);
+    for (size_t original_label = 0; original_label < abstraction.label_mapping.size(); ++original_label) {
+        int reduced_label = abstraction.label_mapping[original_label];
         reduced_to_orignal_labels[reduced_label].push_back(original_label);
     }
     return reduced_to_orignal_labels;
