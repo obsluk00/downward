@@ -16,7 +16,6 @@ class Options;
 
 namespace utils {
 class CountdownTimer;
-class Timer;
 enum class Verbosity;
 }
 
