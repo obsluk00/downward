@@ -309,11 +309,12 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
 
     utils::Log log;
     utils::CountdownTimer timer(max_time);
+    log << "Number of abstractions: " << abstractions.size() << endl;
 
     DeadEndDetector is_dead_end =
         [&abstractions](const State &state) {
             vector<int> abstract_state_ids = get_abstract_state_ids(abstractions, state);
-            return any_of(abstract_state_ids.begin(), abstract_state_ids.end(), [](int i){return i == -1;});
+            return any_of(abstract_state_ids.begin(), abstract_state_ids.end(), [](int i){return i == PRUNED_STATE;});
         };
 
     TaskProxy task_proxy(*task);
