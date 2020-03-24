@@ -128,7 +128,7 @@ static shared_ptr<SaturatedCostPartitioningFactory>_parse(OptionParser &parser) 
     parser.add_option<shared_ptr<SingleUseOrderGenerator>>(
         "single_use_order_generator",
         "order generator",
-        "mas_orders()");
+        "mas_fixed_orders()");
 
     Options opts = parser.parse();
     if (parser.help_mode()) {
