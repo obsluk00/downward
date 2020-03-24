@@ -22,7 +22,7 @@ extern const int PRUNED_STATE;
 using StateEquivalenceClass = std::forward_list<int>;
 using StateEquivalenceRelation = std::vector<StateEquivalenceClass>;
 
-class Abstraction;
+struct Abstraction;
 using Abstractions = std::vector<std::unique_ptr<Abstraction>>;
 using Order = std::vector<int>;
 }
