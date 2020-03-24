@@ -15,7 +15,6 @@ class RandomNumberGenerator;
 
 namespace merge_and_shrink {
 class MergeAndShrinkRepresentation;
-class SingleUseOrderGenerator;
 
 struct AbstractionInformation {
     std::vector<int> goal_distances;
