@@ -212,7 +212,8 @@ SaturatedCostPartitioningsFactory::SaturatedCostPartitioningsFactory(
       diversify(opts.get<bool>("diversify")),
       num_samples(opts.get<int>("samples")),
       max_optimization_time(opts.get<double>("max_optimization_time")),
-      rng(utils::parse_rng_from_options(opts)) {
+      rng(utils::parse_rng_from_options(opts)),
+      sampling_with_dead_ends(SamplingWithDeadEnds(opts.get_enum("sampling_with_dead_ends"))) {
 }
 
 void SaturatedCostPartitioningsFactory::initialize(const std::shared_ptr<AbstractTask> &task_) {
@@ -311,18 +312,19 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
     utils::CountdownTimer timer(max_time);
     log << "Number of abstractions: " << abstractions.size() << endl;
 
-    DeadEndDetector is_dead_end =
+    DeadEndDetector real_is_dead_end =
         [&abstractions](const State &state) {
             vector<int> abstract_state_ids = get_abstract_state_ids(abstractions, state);
             return any_of(abstract_state_ids.begin(), abstract_state_ids.end(), [](int i){return i == PRUNED_STATE;});
         };
+    DeadEndDetector no_is_dead_end = [](const State &) { return false;};
 
     TaskProxy task_proxy(*task);
     State initial_state = task_proxy.get_initial_state();
 
     // If the unsolvability heuristic detects unsolvability in the initial state,
     // we don't need any orders.
-    if (is_dead_end(initial_state)) {
+    if (real_is_dead_end(initial_state)) {
         log << "Initial state is unsolvable." << endl;
         return {};
     }
@@ -347,9 +349,20 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
     unique_ptr<Diversifier> diversifier;
     if (diversify) {
         double max_sampling_time = timer.get_remaining_time();
+        DeadEndDetector is_dead_end = no_is_dead_end;
+        if (sampling_with_dead_ends == SamplingWithDeadEnds::Div ||
+            sampling_with_dead_ends == SamplingWithDeadEnds::DivAndOpt) {
+            is_dead_end = real_is_dead_end;
+        }
         diversifier = utils::make_unique_ptr<Diversifier>(
             sample_states_and_return_abstract_state_ids(
                 task_proxy, abstractions, sampler, num_samples, init_h, is_dead_end, max_sampling_time));
+    }
+
+    DeadEndDetector is_dead_end = no_is_dead_end;
+    if (sampling_with_dead_ends == SamplingWithDeadEnds::Opt ||
+        sampling_with_dead_ends == SamplingWithDeadEnds::DivAndOpt) {
+        is_dead_end = real_is_dead_end;
     }
 
     log << "Start computing cost partitionings" << endl;
@@ -457,6 +470,23 @@ static shared_ptr<SaturatedCostPartitioningsFactory>_parse(OptionParser &parser)
         "(this option only affects the saturated_cost_partitioning() plugin)",
         "true");
     utils::add_rng_options(parser);
+
+    vector<string> sampling_names;
+    vector<string> sampling_doc;
+    sampling_names.push_back("none");
+    sampling_doc.push_back("no dead-end detector is used");
+    sampling_names.push_back("div");
+    sampling_doc.push_back("only use dead-end detector for diversifier");
+    sampling_names.push_back("opt");
+    sampling_doc.push_back("only use dead-end detector for optimizer");
+    sampling_names.push_back("divandopt");
+    sampling_doc.push_back("use dead-end detector for both diversifier and optimizer");
+    parser.add_enum_option(
+        "sampling_with_dead_ends",
+        sampling_names,
+        "Decide if and when to use a dead-end detector for sampling.",
+        "divandopt",
+        sampling_doc);
 
     Options opts = parser.parse();
     if (parser.help_mode()) {

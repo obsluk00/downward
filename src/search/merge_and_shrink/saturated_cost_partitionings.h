@@ -112,6 +112,14 @@ class SaturatedCostPartitioningsFactory : public CostPartitioningFactory {
     const std::shared_ptr<utils::RandomNumberGenerator> rng;
     std::shared_ptr<AbstractTask> task;
 
+    enum class SamplingWithDeadEnds {
+        None,
+        Div,
+        Opt,
+        DivAndOpt
+    };
+    const SamplingWithDeadEnds sampling_with_dead_ends;
+
     std::unique_ptr<CostPartitioning> generate_for_order(
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
