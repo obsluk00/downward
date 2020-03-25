@@ -18,12 +18,16 @@ class OrderGeneratorMAS : public OrderGenerator {
     };
     const ProductTSOrder product_ts_order;
     const bool atomic_before_product;
-    std::vector<int> factor_order;
 public:
     explicit OrderGeneratorMAS(const options::Options &opts);
 
-    virtual void initialize(const TaskProxy &task_proxy) override;
     virtual void clear_internal_state() override {}
+    /*
+      This method assumes that abstractions are ordered by the generation
+      time, i.e., oldest abstractions are ordered first. In particular, atomic
+      abstractions are ordered according to the regular variable order, and
+      any product abstractions in the order they were generated.
+    */
     virtual Order compute_order(
         const Abstractions &abstractions,
         const std::vector<int> &costs,

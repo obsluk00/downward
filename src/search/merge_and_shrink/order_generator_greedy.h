@@ -28,7 +28,6 @@ class OrderGeneratorGreedy : public OrderGenerator {
 public:
     explicit OrderGeneratorGreedy(const options::Options &opts);
 
-    virtual void initialize(const TaskProxy &) override {}
     virtual void clear_internal_state() override;
     virtual Order compute_order(
         const Abstractions &abstractions,

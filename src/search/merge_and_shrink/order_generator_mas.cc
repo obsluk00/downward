@@ -1,6 +1,7 @@
 #include "order_generator_mas.h"
 
 #include "cost_partitioning.h"
+#include "transition_system.h"
 #include "utils.h"
 
 #include "../option_parser.h"
@@ -20,67 +21,52 @@ OrderGeneratorMAS::OrderGeneratorMAS(const Options &opts) :
     atomic_before_product(opts.get<bool>("atomic_before_product")) {
 }
 
-void OrderGeneratorMAS::initialize(const TaskProxy &task_proxy) {
-    int num_variables = task_proxy.get_variables().size();
-    int max_transition_system_count = num_variables * 2 - 1;
-    factor_order.reserve(max_transition_system_count);
-
-    // Compute the order in which atomic transition systems are considered
-    vector<int> atomic_tso(num_variables);
-    iota(atomic_tso.begin(), atomic_tso.end(), 0);
-    if (atomic_ts_order == AtomicTSOrder::LEVEL) {
-        reverse(atomic_tso.begin(), atomic_tso.end());
-    } else if (atomic_ts_order == AtomicTSOrder::RANDOM) {
-        rng->shuffle(atomic_tso);
-    }
-
-    // Compute the order in which product transition systems are considered
-    vector<int> product_tso(max_transition_system_count - num_variables);
-    iota(product_tso.begin(), product_tso.end(), num_variables);
-    if (product_ts_order == ProductTSOrder::NEW_TO_OLD) {
-        reverse(product_tso.begin(), product_tso.end());
-    } else if (product_ts_order == ProductTSOrder::RANDOM) {
-        rng->shuffle(product_tso);
-    }
-
-    // Put the orders in the correct order
-    if (atomic_before_product) {
-        factor_order.insert(
-            factor_order.end(), atomic_tso.begin(), atomic_tso.end());
-        factor_order.insert(
-            factor_order.end(), product_tso.begin(), product_tso.end());
-    } else {
-        factor_order.insert(
-            factor_order.end(), product_tso.begin(), product_tso.end());
-        factor_order.insert(
-            factor_order.end(), atomic_tso.begin(), atomic_tso.end());
-    }
-}
-
 Order OrderGeneratorMAS::compute_order(
     const Abstractions &abstractions,
     const vector<int> &,
     utils::Verbosity,
     const vector<int> &) {
-    vector<int> abstraction_order;
-    abstraction_order.reserve(abstractions.size());
-    for (int abs_id : factor_order) {
-        int index = -1;
-        for (size_t i = 0; i < abstractions.size(); ++i) {
-            // TODO: this assumes that fts indices are unique! If we used
-            // offline CP and used the "same" abstraction from an iteration
-            // several times, this would not hold!
-            if (abs_id == abstractions[i]->fts_index) {
-                index = i;
-                break;
-            }
-        }
-        if (index != -1) {
-            abstraction_order.push_back(index);
+
+    // Collect atomic and product abstractions.
+    Order atomic_order;
+    Order product_order;
+    for (size_t i = 0; i < abstractions.size(); ++i) {
+        bool is_atomic = abstractions[i]->transition_system->get_incorporated_variables().size() == 1;
+        if (is_atomic) {
+            atomic_order.push_back(i);
+        } else {
+            product_order.push_back(i);
         }
     }
-    assert(abstraction_order.size() == abstractions.size());
-    return abstraction_order;
+
+    // Compute the order of atomic abstractions. The default order is reverse
+    // level and hence we don't have to change it in that case.
+    if (atomic_ts_order == AtomicTSOrder::LEVEL) {
+        reverse(atomic_order.begin(), atomic_order.end());
+    } else if (atomic_ts_order == AtomicTSOrder::RANDOM) {
+        rng->shuffle(atomic_order);
+    }
+
+    // Compute the order of product abstractions. The default order is old
+    // to new and hence we don't have to change it in that case.
+    if (product_ts_order == ProductTSOrder::NEW_TO_OLD) {
+        reverse(product_order.begin(), product_order.end());
+    } else if (product_ts_order == ProductTSOrder::RANDOM) {
+        rng->shuffle(product_order);
+    }
+
+    // Combine atomic and product orders in the correct order.
+    Order order;
+    order.reserve(abstractions.size());
+    if (atomic_before_product) {
+        order.insert(order.end(), atomic_order.begin(), atomic_order.end());
+        order.insert(order.end(), product_order.begin(), product_order.end());
+    } else {
+        order.insert(order.end(), product_order.begin(), product_order.end());
+        order.insert(order.end(), atomic_order.begin(), atomic_order.end());
+    }
+    assert(order.size() == abstractions.size());
+    return order;
 }
 
 
@@ -106,7 +92,7 @@ static shared_ptr<OrderGenerator> _parse_greedy(OptionParser &parser) {
     vector<string> product_ts_order_documentation;
     product_ts_order.push_back("old_to_new");
     product_ts_order_documentation.push_back(
-        "consider composite transition systems from most recent to oldest, "
+        "consider product transition systems from most recent to oldest, "
         "that is in decreasing index order");
     product_ts_order.push_back("new_to_old");
     product_ts_order_documentation.push_back("opposite of old_to_new");
@@ -122,7 +108,7 @@ static shared_ptr<OrderGenerator> _parse_greedy(OptionParser &parser) {
 
     parser.add_option<bool>(
         "atomic_before_product",
-        "Consider atomic transition systems before composite ones iff true.",
+        "Consider atomic transition systems before product ones iff true.",
         "false");
 
     add_common_order_generator_options(parser);

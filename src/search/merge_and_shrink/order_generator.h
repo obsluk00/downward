@@ -27,11 +27,11 @@ public:
     explicit OrderGenerator(const options::Options &opts);
     virtual ~OrderGenerator() = default;
 
-    virtual void initialize(const TaskProxy &task_proxy) = 0;
     // This is a HACK for greedy order generator: they need to precompute
     // information for a current set of abstractions for being reusable
-    // efficiently. The initialize method, on the other hand, is a one-time
-    // initialization that is *not* cleared.
+    // efficiently. We preferred to not do this via the previous initialize
+    // method because we might use a generator for different sets of
+    // abstractions.
     virtual void clear_internal_state() = 0;
     virtual Order compute_order(
         const Abstractions &abstractions,

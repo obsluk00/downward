@@ -270,7 +270,7 @@ vector<unique_ptr<Abstraction>> CPMAS::extract_unsolvable_abstraction(
     abstractions.reserve(1);
     auto factor = fts.extract_ts_and_representation(unsolvable_index);
     abstractions.push_back(utils::make_unique_ptr<Abstraction>(
-        factor.first.release(), move(factor.second), unsolvable_index));
+        factor.first.release(), move(factor.second)));
     return abstractions;
 }
 
@@ -315,7 +315,7 @@ vector<unique_ptr<Abstraction>> CPMAS::compute_abstractions_for_interleaved_cp(
                 dynamic_cast<const MergeAndShrinkRepresentationMerge *>(
                     fts.get_mas_representation_raw_ptr(index)));
         }
-        abstractions.push_back(utils::make_unique_ptr<Abstraction>(transition_system, move(mas_representation), index));
+        abstractions.push_back(utils::make_unique_ptr<Abstraction>(transition_system, move(mas_representation)));
     }
     return abstractions;
 }
@@ -361,7 +361,7 @@ vector<unique_ptr<Abstraction>> CPMAS::compute_abstractions_for_offline_cp(
                     fts.get_mas_representation_raw_ptr(index)));
         }
         abstractions.push_back(utils::make_unique_ptr<Abstraction>(
-            transition_system, move(mas_representation), index, original_to_current_labels));
+            transition_system, move(mas_representation), original_to_current_labels));
     }
     return abstractions;
 }

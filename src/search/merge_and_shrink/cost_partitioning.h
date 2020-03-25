@@ -39,13 +39,11 @@ struct Abstraction {
     */
     const TransitionSystem *transition_system;
     std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation;
-    int fts_index;
     const std::vector<int> label_mapping;
 
     Abstraction(
         const TransitionSystem *transition_system,
         std::unique_ptr<MergeAndShrinkRepresentation> merge_and_shrink_representation,
-        int fts_index,
         const std::vector<int> &label_mapping = std::vector<int>());
     ~Abstraction();
     std::unique_ptr<MergeAndShrinkRepresentation> extract_abstraction_function();
