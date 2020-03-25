@@ -5,6 +5,8 @@
 
 #include <vector>
 
+class TaskProxy;
+
 namespace options {
 class OptionParser;
 class Options;
@@ -12,6 +14,7 @@ class Options;
 
 namespace utils {
 class RandomNumberGenerator;
+enum class Verbosity;
 }
 
 namespace merge_and_shrink {
@@ -24,15 +27,17 @@ public:
     explicit OrderGenerator(const options::Options &opts);
     virtual ~OrderGenerator() = default;
 
-    virtual void initialize(
-        const Abstractions &abstractions,
-        const std::vector<int> &costs) = 0;
-
-    virtual Order compute_order_for_state(
+    virtual void initialize(const TaskProxy &task_proxy) = 0;
+    // This is a HACK for greedy order generator: they need to precompute
+    // information for a current set of abstractions for being reusable
+    // efficiently. The initialize method, on the other hand, is a one-time
+    // initialization that is *not* cleared.
+    virtual void clear_internal_state() = 0;
+    virtual Order compute_order(
         const Abstractions &abstractions,
         const std::vector<int> &costs,
-        const std::vector<int> &abstract_state_ids,
-        bool verbose) = 0;
+        utils::Verbosity verbosity,
+        const std::vector<int> &abstract_state_ids = std::vector<int>()) = 0;
 };
 
 extern void add_common_order_generator_options(options::OptionParser &parser);

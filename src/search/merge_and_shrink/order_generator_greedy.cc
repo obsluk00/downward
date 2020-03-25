@@ -1,6 +1,8 @@
 #include "order_generator_greedy.h"
 
+#include "cost_partitioning.h"
 #include "saturated_cost_partitioning_utils.h"
+#include "transition_system.h"
 #include "utils.h"
 
 #include "../option_parser.h"
@@ -44,7 +46,7 @@ double OrderGeneratorGreedy::rate_abstraction(
 }
 
 Order OrderGeneratorGreedy::compute_static_greedy_order_for_sample(
-    const vector<int> &abstract_state_ids, bool verbose) const {
+    const vector<int> &abstract_state_ids, utils::Verbosity verbosity) const {
     assert(abstract_state_ids.size() == h_values_by_abstraction.size());
     int num_abstractions = abstract_state_ids.size();
     Order order = get_default_order(num_abstractions);
@@ -58,7 +60,7 @@ Order OrderGeneratorGreedy::compute_static_greedy_order_for_sample(
     sort(order.begin(), order.end(), [&](int abs1, int abs2) {
              return scores[abs1] > scores[abs2];
          });
-    if (verbose) {
+    if (verbosity >= utils::Verbosity::VERBOSE) {
         cout << "Static greedy scores: " << scores << endl;
         unordered_set<double> unique_scores(scores.begin(), scores.end());
         cout << "Static greedy unique scores: " << unique_scores.size() << endl;
@@ -67,14 +69,17 @@ Order OrderGeneratorGreedy::compute_static_greedy_order_for_sample(
     return order;
 }
 
-void OrderGeneratorGreedy::initialize(
+void OrderGeneratorGreedy::precompute_info(
     const Abstractions &abstractions,
-    const vector<int> &costs) {
-    utils::Timer timer;
-    utils::Log() << "Initialize greedy order generator" << endl;
+    const vector<int> &costs,
+    utils::Verbosity verbosity) {
+    assert(h_values_by_abstraction.empty());
+    assert(stolen_costs_by_abstraction.empty());
+    h_values_by_abstraction.reserve(abstractions.size());
+    stolen_costs_by_abstraction.reserve(abstractions.size());
 
     vector<vector<int>> saturated_costs_by_abstraction;
-    utils::Verbosity verbosity = utils::Verbosity::SILENT;
+    saturated_costs_by_abstraction.reserve(abstractions.size());
     for (const unique_ptr<Abstraction> &abstraction : abstractions) {
         vector<int> h_values = compute_goal_distances_for_abstraction(
             *abstraction, costs, verbosity);
@@ -83,34 +88,55 @@ void OrderGeneratorGreedy::initialize(
         h_values_by_abstraction.push_back(move(h_values));
         saturated_costs_by_abstraction.push_back(move(saturated_costs));
     }
-    utils::Log() << "Time for computing h values and saturated costs: "
-                 << timer << endl;
 
     vector<int> surplus_costs = compute_all_surplus_costs(
         costs, saturated_costs_by_abstraction);
-    utils::Log() << "Done computing surplus costs" << endl;
 
-    utils::Log() << "Compute stolen costs" << endl;
     int num_abstractions = abstractions.size();
     for (int abs = 0; abs < num_abstractions; ++abs) {
         int sum_stolen_costs = compute_costs_stolen_by_heuristic(
             saturated_costs_by_abstraction[abs], surplus_costs);
         stolen_costs_by_abstraction.push_back(sum_stolen_costs);
     }
-    utils::Log() << "Time for initializing greedy order generator: "
-                 << timer << endl;
 }
 
-Order OrderGeneratorGreedy::compute_order_for_state(
-    const Abstractions &,
-    const vector<int> &,
-    const vector<int> &abstract_state_ids,
-    bool verbose) {
-    utils::Timer greedy_timer;
-    vector<int> order = compute_static_greedy_order_for_sample(
-        abstract_state_ids, verbose);
+void OrderGeneratorGreedy::clear_internal_state() {
+    vector<vector<int>>().swap(h_values_by_abstraction);
+    vector<int>().swap(stolen_costs_by_abstraction);
+}
 
-    if (verbose) {
+Order OrderGeneratorGreedy::compute_order(
+    const Abstractions &abstractions,
+    const vector<int> &costs,
+    utils::Verbosity verbosity,
+    const vector<int> &abstract_state_ids) {
+    if (h_values_by_abstraction.empty()) {
+        precompute_info(abstractions, costs, verbosity);
+    } else {
+        assert(h_values_by_abstraction.size() == abstractions.size());
+        assert(stolen_costs_by_abstraction.size() == abstractions.size());
+    }
+
+    utils::Timer greedy_timer;
+
+    vector<int> order;
+    if (abstract_state_ids.empty()) {
+        if (verbosity >= utils::Verbosity::VERBOSE) {
+            utils::Log() << "No sample given; use initial state." << endl;
+        }
+        vector<int> init_abstract_state_ids;
+        init_abstract_state_ids.reserve(abstractions.size());
+        for (const auto &abstraction : abstractions) {
+            init_abstract_state_ids.push_back(abstraction->transition_system->get_init_state());
+        }
+        order = compute_static_greedy_order_for_sample(
+                    init_abstract_state_ids, verbosity);
+    } else {
+        order = compute_static_greedy_order_for_sample(
+                    abstract_state_ids, verbosity);
+    }
+
+    if (verbosity >= utils::Verbosity::VERBOSE) {
         utils::Log() << "Time for computing greedy order: " << greedy_timer << endl;
     }
 

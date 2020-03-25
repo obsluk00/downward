@@ -19,20 +19,22 @@ class OrderGeneratorGreedy : public OrderGenerator {
     double rate_abstraction(
         const std::vector<int> &abstract_state_ids, int abs_id) const;
     Order compute_static_greedy_order_for_sample(
-        const std::vector<int> &abstract_state_ids, bool verbose) const;
-
+        const std::vector<int> &abstract_state_ids,
+        utils::Verbosity verbosity) const;
+    void precompute_info(
+        const Abstractions &abstractions,
+        const std::vector<int> &costs,
+        utils::Verbosity verbosity);
 public:
     explicit OrderGeneratorGreedy(const options::Options &opts);
 
-    virtual void initialize(
-        const Abstractions &abstractions,
-        const std::vector<int> &costs) override;
-
-    virtual Order compute_order_for_state(
+    virtual void initialize(const TaskProxy &) override {}
+    virtual void clear_internal_state() override;
+    virtual Order compute_order(
         const Abstractions &abstractions,
         const std::vector<int> &costs,
-        const std::vector<int> &abstract_state_ids,
-        bool verbose) override;
+        utils::Verbosity verbosity,
+        const std::vector<int> &abstract_state_ids) override;
 };
 }
 

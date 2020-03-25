@@ -1,10 +1,10 @@
 #ifndef MERGE_AND_SHRINK_ORDER_GENERATOR_MAS_H
 #define MERGE_AND_SHRINK_ORDER_GENERATOR_MAS_H
 
-#include "single_use_order_generator.h"
+#include "order_generator.h"
 
 namespace merge_and_shrink {
-class SingleUseOrderGeneratorMAS : public SingleUseOrderGenerator {
+class OrderGeneratorMAS : public OrderGenerator {
     enum class AtomicTSOrder {
         REVERSE_LEVEL, // regular FD variable order
         LEVEL, // reverse of above
@@ -20,14 +20,15 @@ class SingleUseOrderGeneratorMAS : public SingleUseOrderGenerator {
     const bool atomic_before_product;
     std::vector<int> factor_order;
 public:
-    explicit SingleUseOrderGeneratorMAS(const options::Options &opts);
+    explicit OrderGeneratorMAS(const options::Options &opts);
 
     virtual void initialize(const TaskProxy &task_proxy) override;
-
+    virtual void clear_internal_state() override {}
     virtual Order compute_order(
         const Abstractions &abstractions,
         const std::vector<int> &costs,
-        utils::Verbosity verbosity) override;
+        utils::Verbosity verbosity,
+        const std::vector<int> &abstract_state_ids) override;
 };
 }
 

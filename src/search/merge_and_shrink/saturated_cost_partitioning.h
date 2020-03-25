@@ -9,7 +9,7 @@
 
 namespace merge_and_shrink {
 class MergeAndShrinkRepresentation;
-class SingleUseOrderGenerator;
+class OrderGenerator;
 
 struct AbstractionInformation {
     std::vector<int> goal_distances;
@@ -27,7 +27,7 @@ public:
 };
 
 class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
-    std::shared_ptr<SingleUseOrderGenerator> single_use_order_generator;
+    std::shared_ptr<OrderGenerator> order_generator;
     std::unique_ptr<CostPartitioning> generate_for_order(
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,

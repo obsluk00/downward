@@ -329,13 +329,13 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
         return {};
     }
 
-    order_generator->initialize(abstractions, costs);
+    order_generator->initialize(task_proxy);
 
     // Compute h(s_0) using a greedy order for s_0.
     vector<int> abstract_state_ids_for_init = get_abstract_state_ids(
         abstractions, initial_state);
-    Order order_for_init = order_generator->compute_order_for_state(
-        abstractions, costs, abstract_state_ids_for_init, true);
+    Order order_for_init = order_generator->compute_order(
+        abstractions, costs, verbosity, abstract_state_ids_for_init);
     CostPartitioningHeuristic cp_for_init = compute_scp(
         abstractions, order_for_init, costs);
     int init_h = cp_for_init.compute_heuristic(abstract_state_ids_for_init);
@@ -383,8 +383,8 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
         } else {
             abstract_state_ids = get_abstract_state_ids(
                 abstractions, sampler.sample_state(init_h, is_dead_end));
-            order = order_generator->compute_order_for_state(
-                abstractions, costs, abstract_state_ids, false);
+            order = order_generator->compute_order(
+                abstractions, costs, verbosity, abstract_state_ids);
             cp_heuristic = compute_scp(abstractions, order, costs);
         }
 

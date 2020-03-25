@@ -1,4 +1,4 @@
-#include "single_use_order_generator_mas.h"
+#include "order_generator_mas.h"
 
 #include "cost_partitioning.h"
 #include "utils.h"
@@ -13,14 +13,14 @@
 using namespace std;
 
 namespace merge_and_shrink {
-SingleUseOrderGeneratorMAS::SingleUseOrderGeneratorMAS(const Options &opts) :
-    SingleUseOrderGenerator(opts),
+OrderGeneratorMAS::OrderGeneratorMAS(const Options &opts) :
+    OrderGenerator(opts),
     atomic_ts_order(AtomicTSOrder(opts.get_enum("atomic_ts_order"))),
     product_ts_order(ProductTSOrder(opts.get_enum("product_ts_order"))),
     atomic_before_product(opts.get<bool>("atomic_before_product")) {
 }
 
-void SingleUseOrderGeneratorMAS::initialize(const TaskProxy &task_proxy) {
+void OrderGeneratorMAS::initialize(const TaskProxy &task_proxy) {
     int num_variables = task_proxy.get_variables().size();
     int max_transition_system_count = num_variables * 2 - 1;
     factor_order.reserve(max_transition_system_count);
@@ -57,10 +57,11 @@ void SingleUseOrderGeneratorMAS::initialize(const TaskProxy &task_proxy) {
     }
 }
 
-Order SingleUseOrderGeneratorMAS::compute_order(
+Order OrderGeneratorMAS::compute_order(
     const Abstractions &abstractions,
     const vector<int> &,
-    utils::Verbosity) {
+    utils::Verbosity,
+    const vector<int> &) {
     vector<int> abstraction_order;
     abstraction_order.reserve(abstractions.size());
     for (int abs_id : factor_order) {
@@ -83,7 +84,7 @@ Order SingleUseOrderGeneratorMAS::compute_order(
 }
 
 
-static shared_ptr<SingleUseOrderGenerator> _parse_greedy(OptionParser &parser) {
+static shared_ptr<OrderGenerator> _parse_greedy(OptionParser &parser) {
     vector<string> atomic_ts_order;
     vector<string> atomic_ts_order_documentation;
     atomic_ts_order.push_back("reverse_level");
@@ -124,13 +125,13 @@ static shared_ptr<SingleUseOrderGenerator> _parse_greedy(OptionParser &parser) {
         "Consider atomic transition systems before composite ones iff true.",
         "false");
 
-    add_common_single_order_generator_options(parser);
+    add_common_order_generator_options(parser);
     Options opts = parser.parse();
     if (parser.dry_run())
         return nullptr;
     else
-        return make_shared<SingleUseOrderGeneratorMAS>(opts);
+        return make_shared<OrderGeneratorMAS>(opts);
 }
 
-static Plugin<SingleUseOrderGenerator> _plugin_greedy("mas_fixed_orders", _parse_greedy);
+static Plugin<OrderGenerator> _plugin_greedy("fixed_orders", _parse_greedy);
 }

@@ -20,15 +20,13 @@ class OrderGeneratorDynamicGreedy : public OrderGenerator {
 public:
     explicit OrderGeneratorDynamicGreedy(const options::Options &opts);
 
-    virtual void initialize(
-        const Abstractions &abstractions,
-        const std::vector<int> &costs) override;
-
-    virtual Order compute_order_for_state(
+    virtual void initialize(const TaskProxy &) override {}
+    virtual void clear_internal_state() override {}
+    virtual Order compute_order(
         const Abstractions &abstractions,
         const std::vector<int> &costs,
-        const std::vector<int> &abstract_state_ids,
-        bool verbose) override;
+        utils::Verbosity verbosity,
+        const std::vector<int> &abstract_state_ids) override;
 };
 }
 

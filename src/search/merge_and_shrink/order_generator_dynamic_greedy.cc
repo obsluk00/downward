@@ -1,6 +1,8 @@
 #include "order_generator_dynamic_greedy.h"
 
+#include "cost_partitioning.h"
 #include "saturated_cost_partitioning_utils.h"
+#include "transition_system.h"
 #include "utils.h"
 
 #include "../option_parser.h"
@@ -77,22 +79,31 @@ Order OrderGeneratorDynamicGreedy::compute_dynamic_greedy_order_for_sample(
     return order;
 }
 
-void OrderGeneratorDynamicGreedy::initialize(
-    const Abstractions &,
-    const vector<int> &) {
-    utils::Log() << "Initialize dynamic greedy order generator" << endl;
-}
-
-Order OrderGeneratorDynamicGreedy::compute_order_for_state(
+Order OrderGeneratorDynamicGreedy::compute_order(
     const Abstractions &abstractions,
     const vector<int> &costs,
-    const vector<int> &abstract_state_ids,
-    bool verbose) {
+    utils::Verbosity verbosity,
+    const vector<int> &abstract_state_ids) {
     utils::Timer greedy_timer;
-    vector<int> order = compute_dynamic_greedy_order_for_sample(
-        abstractions, abstract_state_ids, costs);
 
-    if (verbose) {
+    vector<int> order;
+    if (abstract_state_ids.empty()) {
+        if (verbosity >= utils::Verbosity::VERBOSE) {
+            utils::Log() << "No sample given; use initial state." << endl;
+        }
+        vector<int> init_abstract_state_ids;
+        init_abstract_state_ids.reserve(abstractions.size());
+        for (const auto &abstraction : abstractions) {
+            init_abstract_state_ids.push_back(abstraction->transition_system->get_init_state());
+        }
+        order = compute_dynamic_greedy_order_for_sample(
+                    abstractions, init_abstract_state_ids, costs);
+    } else {
+        order = compute_dynamic_greedy_order_for_sample(
+                    abstractions, abstract_state_ids, costs);
+    }
+
+    if (verbosity >= utils::Verbosity::VERBOSE) {
         utils::Log() << "Time for computing dynamic greedy order: "
                      << greedy_timer << endl;
     }

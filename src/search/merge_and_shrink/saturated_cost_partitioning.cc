@@ -1,7 +1,7 @@
 #include "saturated_cost_partitioning.h"
 
 #include "merge_and_shrink_representation.h"
-#include "single_use_order_generator.h"
+#include "order_generator.h"
 #include "saturated_cost_partitioning_utils.h"
 #include "transition_system.h"
 #include "types.h"
@@ -53,12 +53,12 @@ int SaturatedCostPartitioning::get_number_of_factors() const {
 SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
     const Options &opts)
     : CostPartitioningFactory(),
-      single_use_order_generator(
-        opts.get<shared_ptr<SingleUseOrderGenerator>>("single_use_order_generator")) {
+      order_generator(
+        opts.get<shared_ptr<OrderGenerator>>("order_generator")) {
 }
 
 void SaturatedCostPartitioningFactory::initialize(const shared_ptr<AbstractTask> &task) {
-    single_use_order_generator->initialize(TaskProxy(*task));
+    order_generator->initialize(TaskProxy(*task));
 }
 
 unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_order(
@@ -118,17 +118,17 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
         cout << "Generating SCP M&S heuristic for given abstractions..." << endl;
     }
 
-    vector<int> order = single_use_order_generator->compute_order(
+    vector<int> order = order_generator->compute_order(
         abstractions, label_costs, verbosity);
 
     return generate_for_order(move(label_costs), move(abstractions), order, verbosity);
 }
 
 static shared_ptr<SaturatedCostPartitioningFactory>_parse(OptionParser &parser) {
-    parser.add_option<shared_ptr<SingleUseOrderGenerator>>(
-        "single_use_order_generator",
+    parser.add_option<shared_ptr<OrderGenerator>>(
+        "order_generator",
         "order generator",
-        "mas_fixed_orders()");
+        "mas_orders()");
 
     Options opts = parser.parse();
     if (parser.help_mode()) {
