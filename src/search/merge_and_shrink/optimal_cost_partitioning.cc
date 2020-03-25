@@ -89,10 +89,6 @@ int OptimalCostPartitioning::get_number_of_factors() const {
     return abstraction_infos.size();
 }
 
-void OptimalCostPartitioning::print_statistics() const {
-    lp_solver->print_statistics();
-}
-
 OptimalCostPartitioningFactory::OptimalCostPartitioningFactory(
     const Options &opts)
     : CostPartitioningFactory(),

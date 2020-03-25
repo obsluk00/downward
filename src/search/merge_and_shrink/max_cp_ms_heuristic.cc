@@ -18,17 +18,7 @@ MaxCPMSHeuristic::MaxCPMSHeuristic(const options::Options &opts)
     : Heuristic(opts) {
     CPMAS algorithm(opts);
     cost_partitionings = algorithm.compute_cps(task);
-    int num_cps = cost_partitionings.size();
-    cout << "Number of cost partitioning snapshots: " << num_cps << endl;
-    int summed_num_factors = 0;
-    for (const auto &cp : cost_partitionings) {
-        summed_num_factors += cp->get_number_of_factors();
-    }
-    double average_num_factors = static_cast<double>(summed_num_factors) /
-        static_cast<double>(cost_partitionings.size());
-    cout << "Average number of factors per snapshot: "
-         << average_num_factors << endl;
-    if (!num_cps) {
+    if (cost_partitionings.empty()) {
         cerr << "Got 0 cost partitionings" << endl;
         utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
