@@ -140,7 +140,7 @@ Order OrderGeneratorGreedy::compute_order(
         utils::Log() << "Time for computing greedy order: " << greedy_timer << endl;
     }
 
-    assert(order.size() == abstract_state_ids.size());
+    assert(order.size() == abstractions.size());
     return order;
 }
 
