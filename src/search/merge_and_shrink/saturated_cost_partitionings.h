@@ -88,7 +88,6 @@ extern CostPartitioningHeuristic compute_scp(
 class SaturatedCostPartitionings : public CostPartitioning {
     std::vector<std::unique_ptr<MergeAndShrinkRepresentation>> abstraction_functions;
     std::vector<CostPartitioningHeuristic> cp_heuristics;
-    const int num_original_abstractions;
 public:
     SaturatedCostPartitionings(
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,

@@ -137,8 +137,7 @@ SaturatedCostPartitionings::SaturatedCostPartitionings(
     std::vector<std::unique_ptr<Abstraction>> &&abstractions,
     std::vector<CostPartitioningHeuristic> &&cp_heuristics_)
     : CostPartitioning(),
-      cp_heuristics(move(cp_heuristics_)),
-      num_original_abstractions(abstractions.size()) {
+      cp_heuristics(move(cp_heuristics_)) {
       log_info_about_stored_lookup_tables(abstractions, cp_heuristics);
 
       // We only need abstraction functions during search and no transition systems.
@@ -202,7 +201,7 @@ int SaturatedCostPartitionings::compute_value(const State &state) {
 }
 
 int SaturatedCostPartitionings::get_number_of_abstractions() const {
-    return num_original_abstractions;
+    return abstraction_functions.size();
 }
 
 SaturatedCostPartitioningsFactory::SaturatedCostPartitioningsFactory(
