@@ -114,9 +114,9 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
         cout << "Generating SCP M&S heuristic for given abstractions..." << endl;
     }
 
-    order_generator->clear_internal_state();
     vector<int> order = order_generator->compute_order(
         abstractions, label_costs, verbosity);
+    order_generator->clear_internal_state();
 
     return generate_for_order(move(label_costs), move(abstractions), order, verbosity);
 }
