@@ -57,9 +57,6 @@ SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
         opts.get<shared_ptr<OrderGenerator>>("order_generator")) {
 }
 
-void SaturatedCostPartitioningFactory::initialize(const shared_ptr<AbstractTask> &) {
-}
-
 unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_order(
     vector<int> &&label_costs,
     vector<unique_ptr<Abstraction>> &&abstractions,

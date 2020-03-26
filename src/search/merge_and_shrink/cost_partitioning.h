@@ -51,6 +51,7 @@ struct Abstraction {
 class CostPartitioningFactory {
 public:
     virtual ~CostPartitioningFactory() = default;
+    // This is required only because the scps factory depends on sampling.
     virtual void initialize(const std::shared_ptr<AbstractTask> &) {}
     virtual std::unique_ptr<CostPartitioning> generate(
         std::vector<int> &&label_costs,
