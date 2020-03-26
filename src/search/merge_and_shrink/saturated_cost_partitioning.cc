@@ -46,7 +46,7 @@ int SaturatedCostPartitioning::compute_value(const State &state) {
     return h_val;
 }
 
-int SaturatedCostPartitioning::get_number_of_factors() const {
+int SaturatedCostPartitioning::get_number_of_abstractions() const {
     return abstraction_infos.size();
 }
 

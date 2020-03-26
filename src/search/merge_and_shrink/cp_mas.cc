@@ -840,7 +840,7 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
              << num_cps << endl;
         int summed_num_factors = 0;
         for (const auto &cp : cost_partitionings) {
-            summed_num_factors += cp->get_number_of_factors();
+            summed_num_factors += cp->get_number_of_abstractions();
         }
         double average_num_factors = static_cast<double>(summed_num_factors) /
             static_cast<double>(cost_partitionings.size());

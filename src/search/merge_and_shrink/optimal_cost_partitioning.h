@@ -45,7 +45,7 @@ public:
         std::unique_ptr<lp::LPSolver> lp_solver);
     virtual ~OptimalCostPartitioning() = default;
     virtual int compute_value(const State &state) override;
-    virtual int get_number_of_factors() const override;
+    virtual int get_number_of_abstractions() const override;
 };
 
 class OptimalCostPartitioningFactory : public CostPartitioningFactory {

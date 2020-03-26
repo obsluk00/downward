@@ -95,7 +95,7 @@ public:
         std::vector<CostPartitioningHeuristic> &&cp_heuristics);
     virtual ~SaturatedCostPartitionings() = default;
     virtual int compute_value(const State &state) override;
-    virtual int get_number_of_factors() const override;
+    virtual int get_number_of_abstractions() const override;
 };
 
 class OrderGenerator;

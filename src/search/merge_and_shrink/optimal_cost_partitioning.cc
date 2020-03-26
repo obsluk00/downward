@@ -85,7 +85,7 @@ int OptimalCostPartitioning::compute_value(const State &state) {
     }
 }
 
-int OptimalCostPartitioning::get_number_of_factors() const {
+int OptimalCostPartitioning::get_number_of_abstractions() const {
     return abstraction_infos.size();
 }
 

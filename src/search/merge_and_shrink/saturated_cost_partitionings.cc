@@ -199,7 +199,7 @@ int SaturatedCostPartitionings::compute_value(const State &state) {
     return h;
 }
 
-int SaturatedCostPartitionings::get_number_of_factors() const {
+int SaturatedCostPartitionings::get_number_of_abstractions() const {
     return num_original_abstractions;
 }
 

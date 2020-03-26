@@ -26,7 +26,7 @@ public:
     CostPartitioning() = default;
     virtual ~CostPartitioning() = default;
     virtual int compute_value(const State &state) = 0;
-    virtual int get_number_of_factors() const = 0;
+    virtual int get_number_of_abstractions() const = 0;
 };
 
 struct Abstraction {

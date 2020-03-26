@@ -23,7 +23,7 @@ public:
         std::vector<AbstractionInformation> &&abstraction_infos);
     virtual ~SaturatedCostPartitioning() = default;
     virtual int compute_value(const State &state) override;
-    virtual int get_number_of_factors() const override;
+    virtual int get_number_of_abstractions() const override;
 };
 
 class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
