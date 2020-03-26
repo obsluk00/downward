@@ -810,11 +810,9 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
     }
 
     if (offline_cps) {
-        int num_abstractions;
         if (unsolvable) {
             assert(abstractions.empty());
             assert(cost_partitionings.size() == 1);
-            num_abstractions = 1;
         } else {
             assert(cost_partitionings.empty());
             // Compute original label costs.
@@ -823,7 +821,6 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
             for (OperatorProxy op : task_proxy.get_operators()) {
                 label_costs.push_back(op.get_cost());
             }
-            num_abstractions = abstractions.size();
             cost_partitionings.reserve(1);
             cost_partitionings.push_back(cp_factory->generate(
                 move(label_costs),
@@ -832,7 +829,7 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
         }
         assert(cost_partitionings.size() == 1);
         cout << "Offline CPs: number of abstractions: "
-             << num_abstractions << endl;
+             << cost_partitionings.back()->get_number_of_abstractions() << endl;
     } else {
         assert(!cost_partitionings.empty());
         int num_cps = cost_partitionings.size();
