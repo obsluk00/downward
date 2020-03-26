@@ -114,9 +114,14 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
         cout << "Generating SCP M&S heuristic for given abstractions..." << endl;
     }
 
-    vector<int> order = order_generator->compute_order(
-        abstractions, label_costs, verbosity);
-    order_generator->clear_internal_state();
+    vector<int> order;
+    if (abstractions.size() == 1) {
+        order = get_default_order(abstractions.size());
+    } else {
+        order = order_generator->compute_order(
+            abstractions, label_costs, verbosity);
+        order_generator->clear_internal_state();
+    }
 
     return generate_for_order(move(label_costs), move(abstractions), order, verbosity);
 }
