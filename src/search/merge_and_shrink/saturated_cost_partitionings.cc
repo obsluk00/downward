@@ -30,8 +30,13 @@ using namespace std;
 namespace merge_and_shrink {
 void CostPartitioningHeuristic::add_h_values(
     int abstraction_id, vector<int> &&h_values, bool total_abstraction) {
+    // Silvan: assume that we use full pruning and don't have inifite values.
+    // If h = INF, nothing bad should happen anyway, though. We simply don't
+    // filter infinite values before like Jendrik does with the unsolvabiltiy
+    // heuristic.
     if (!total_abstraction || any_of(h_values.begin(), h_values.end(), [](int h) {
-                   return h > 0 && h != INF;
+                   assert(h != INF);
+                   return h > 0;
                })) {
         lookup_tables.emplace_back(abstraction_id, move(h_values));
     }

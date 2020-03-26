@@ -83,7 +83,8 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_orde
         }
 
         // Only keep "useful" abstractions: abstractions which have non-zero
-        // heuristic values or are non-total (map to infinite values).
+        // heuristic values or are non-total (map to infinite values). See
+        // also comment at add_h_values in saturated_cost_partitionings.cc.
         if (!abstraction.merge_and_shrink_representation->is_total() ||
             any_of(goal_distances.begin(), goal_distances.end(), [](int h) {
                        assert(h != INF);
