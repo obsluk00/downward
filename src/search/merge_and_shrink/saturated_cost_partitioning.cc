@@ -81,10 +81,20 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_orde
         if (verbosity >= utils::Verbosity::DEBUG) {
             cout << "Distances under remaining costs: " << goal_distances << endl;
         }
-        AbstractionInformation abstraction_info;
-        abstraction_info.goal_distances = goal_distances;
-        abstraction_info.mas_representation = move(abstraction.merge_and_shrink_representation);
-        abstraction_infos.push_back(move(abstraction_info));
+
+        // Only keep "useful" abstractions: abstractions which have non-zero
+        // heuristic values or are non-total (map to infinite values).
+        if (!abstraction.merge_and_shrink_representation->is_total() ||
+            any_of(goal_distances.begin(), goal_distances.end(), [](int h) {
+                       assert(h != INF);
+                       return h > 0;
+                   })) {
+            AbstractionInformation abstraction_info;
+            abstraction_info.goal_distances = goal_distances;
+            abstraction_info.mas_representation = move(abstraction.merge_and_shrink_representation);
+            abstraction_infos.push_back(move(abstraction_info));
+        }
+
         if (i == order.size() - 1) {
             break;
         }
@@ -93,6 +103,15 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_orde
             abstraction, goal_distances, num_labels, verbosity);
 
         reduce_costs(label_costs, saturated_label_costs);
+    }
+
+    if (verbosity >= utils::Verbosity::VERBOSE) {
+        int num_abstractions = abstractions.size();
+        int num_useful_abstractions = abstraction_infos.size();
+        cout << "SCP: useful abstractions: " << num_useful_abstractions << "/"
+             << num_abstractions << " = "
+             << static_cast<double>(num_useful_abstractions) / num_abstractions
+             << endl;
     }
 
     // Release copied transition systems if we are in an offline scenario.
