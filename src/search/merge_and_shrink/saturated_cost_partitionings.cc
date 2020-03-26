@@ -152,6 +152,14 @@ SaturatedCostPartitionings::SaturatedCostPartitionings(
                    << num_abstractions << " = "
                    << static_cast<double>(num_useful_abstractions) / num_abstractions
                    << endl;
+
+      // Release copied transition systems if we are in an offline scenario.
+      for (auto &abs : abstractions) {
+          if (!abs->label_mapping.empty()) {
+              delete abs->transition_system;
+              abs->transition_system = nullptr;
+          }
+      }
 }
 
 static std::vector<int> get_abstract_state_ids(
