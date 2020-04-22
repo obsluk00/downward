@@ -85,7 +85,10 @@ void MergeAndShrinkAlgorithm::dump_options() const {
              << shrink_threshold_before_merge << endl;
         cout << endl;
 
-        shrink_strategy->dump_options();
+        cout << "Pruning unreachable states: "
+             << (prune_unreachable_states ? "yes" : "no") << endl;
+        cout << "Pruning irrelevant states: "
+             << (prune_irrelevant_states ? "yes" : "no") << endl;
         cout << endl;
 
         if (label_reduction) {
@@ -451,6 +454,7 @@ void add_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
       silent: no output during construction, only starting and final statistics
       normal: basic output during construction, starting and final statistics
       verbose: full output during construction, starting and final statistics
+      debug: full output with additional debug output
     */
     utils::add_verbosity_option_to_parser(parser);
 
