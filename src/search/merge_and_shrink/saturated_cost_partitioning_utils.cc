@@ -31,8 +31,8 @@ vector<int> compute_goal_distances_for_abstraction(
 //            abs_labels.insert(abs_label_no);
     }
     if (verbosity >= utils::Verbosity::DEBUG) {
-//            cout << "Abs labels: " << vector<int>(abs_labels.begin(), abs_labels.end()) << endl;
-        cout << "Remaining label costs in abs: " << abs_label_costs << endl;
+//            utils::g_log << "Abs labels: " << vector<int>(abs_labels.begin(), abs_labels.end()) << endl;
+        utils::g_log << "Remaining label costs in abs: " << abs_label_costs << endl;
     }
 
     vector<int> goal_distances = compute_goal_distances(
@@ -70,7 +70,7 @@ vector<int> compute_saturated_costs_for_abstraction(
         int group_saturated_cost = -INF;
         if (verbosity >= utils::Verbosity::VERBOSE && dump_if_empty_transitions && transitions.empty()) {
             dump_if_empty_transitions = false;
-            cout << "found dead label group" << endl;
+            utils::g_log << "found dead label group" << endl;
         } else {
             for (const Transition &transition : transitions) {
                 int src = transition.src;
@@ -88,7 +88,7 @@ vector<int> compute_saturated_costs_for_abstraction(
                 && dump_if_infinite_transitions
                 && group_saturated_cost == -INF) {
                 dump_if_infinite_transitions = false;
-                cout << "label group does not lead to any state with finite heuristic value" << endl;
+                utils::g_log << "label group does not lead to any state with finite heuristic value" << endl;
             }
         }
         for (int label_no : label_group) {
@@ -103,13 +103,13 @@ vector<int> compute_saturated_costs_for_abstraction(
             }
         }
     }
-//    cout << "num original labels in abs: " << mapped_labels.size() << endl;
+//    utils::g_log << "num original labels in abs: " << mapped_labels.size() << endl;
 //    assert(static_cast<int>(mapped_labels.size()) == num_original_labels);
-//    cout << "original labels from abs: "
+//    utils::g_log << "original labels from abs: "
 //         << vector<int>(mapped_labels.begin(), mapped_labels.end()) << endl;
 //    assert(original_labels == vector<int>(mapped_labels.begin(), mapped_labels.end()));
     if (verbosity >= utils::Verbosity::DEBUG) {
-        cout << "Saturated label costs: " << saturated_label_costs << endl;
+        utils::g_log << "Saturated label costs: " << saturated_label_costs << endl;
     }
     return saturated_label_costs;
 }

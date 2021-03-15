@@ -19,8 +19,7 @@ using namespace std;
 namespace merge_and_shrink {
 OrderGeneratorDynamicGreedy::OrderGeneratorDynamicGreedy(const Options &opts)
     : OrderGenerator(opts),
-      scoring_function(
-          static_cast<ScoringFunction>(opts.get_enum("scoring_function"))) {
+      scoring_function(opts.get<ScoringFunction>("scoring_function")) {
 }
 
 Order OrderGeneratorDynamicGreedy::compute_dynamic_greedy_order_for_sample(

@@ -70,16 +70,16 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_orde
         int index = order[i];
         Abstraction &abstraction = *abstractions[index];
         if (verbosity >= utils::Verbosity::DEBUG) {
-            cout << endl;
-            cout << "Abstraction index " << index << endl;
+            utils::g_log << endl;
+            utils::g_log << "Abstraction index " << index << endl;
 //            abstraction.transition_system->dump_labels_and_transitions();
-            cout << abstraction.transition_system->tag() << endl;
-            cout << "Remaining label costs: " << label_costs << endl;
+            utils::g_log << abstraction.transition_system->tag() << endl;
+            utils::g_log << "Remaining label costs: " << label_costs << endl;
         }
         vector<int> goal_distances = compute_goal_distances_for_abstraction(
             abstraction, label_costs, verbosity);
         if (verbosity >= utils::Verbosity::DEBUG) {
-            cout << "Distances under remaining costs: " << goal_distances << endl;
+            utils::g_log << "Distances under remaining costs: " << goal_distances << endl;
         }
 
         // Only keep "useful" abstractions: abstractions which have non-zero
@@ -109,7 +109,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_orde
     if (verbosity >= utils::Verbosity::VERBOSE) {
         int num_abstractions = abstractions.size();
         int num_useful_abstractions = abstraction_infos.size();
-        cout << "SCP: useful abstractions: " << num_useful_abstractions << "/"
+        utils::g_log << "SCP: useful abstractions: " << num_useful_abstractions << "/"
              << num_abstractions << " = "
              << static_cast<double>(num_useful_abstractions) / num_abstractions
              << endl;
@@ -131,7 +131,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
     vector<unique_ptr<Abstraction>> &&abstractions,
     utils::Verbosity verbosity) {
     if (verbosity >= utils::Verbosity::DEBUG) {
-        cout << "Generating SCP M&S heuristic for given abstractions..." << endl;
+        utils::g_log << "Generating SCP M&S heuristic for given abstractions..." << endl;
     }
 
     vector<int> order;

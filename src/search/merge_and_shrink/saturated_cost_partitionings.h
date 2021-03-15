@@ -99,6 +99,13 @@ public:
 
 class OrderGenerator;
 
+enum class SamplingWithDeadEnds {
+    None,
+    Div,
+    Opt,
+    DivAndOpt
+};
+
 // Adapted from Jendrik's CostPartitioningHeuristicCollectionGenerator
 class SaturatedCostPartitioningsFactory : public CostPartitioningFactory {
     const std::shared_ptr<OrderGenerator> order_generator;
@@ -109,13 +116,6 @@ class SaturatedCostPartitioningsFactory : public CostPartitioningFactory {
     const double max_optimization_time;
     const std::shared_ptr<utils::RandomNumberGenerator> rng;
     std::shared_ptr<AbstractTask> task;
-
-    enum class SamplingWithDeadEnds {
-        None,
-        Div,
-        Opt,
-        DivAndOpt
-    };
     const SamplingWithDeadEnds sampling_with_dead_ends;
 
     std::unique_ptr<CostPartitioning> generate_for_order(

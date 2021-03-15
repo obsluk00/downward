@@ -4,18 +4,19 @@
 #include "order_generator.h"
 
 namespace merge_and_shrink {
+enum class AtomicTSOrder {
+    REVERSE_LEVEL, // regular FD variable order
+    LEVEL, // reverse of above
+    RANDOM
+};
+
+enum class ProductTSOrder {
+    OLD_TO_NEW,
+    NEW_TO_OLD,
+    RANDOM
+};
 class OrderGeneratorMAS : public OrderGenerator {
-    enum class AtomicTSOrder {
-        REVERSE_LEVEL, // regular FD variable order
-        LEVEL, // reverse of above
-        RANDOM
-    };
     const AtomicTSOrder atomic_ts_order;
-    enum class ProductTSOrder {
-        OLD_TO_NEW,
-        NEW_TO_OLD,
-        RANDOM
-    };
     const ProductTSOrder product_ts_order;
     const bool atomic_before_product;
 public:

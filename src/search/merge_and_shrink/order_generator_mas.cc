@@ -16,8 +16,8 @@ using namespace std;
 namespace merge_and_shrink {
 OrderGeneratorMAS::OrderGeneratorMAS(const Options &opts) :
     OrderGenerator(opts),
-    atomic_ts_order(AtomicTSOrder(opts.get_enum("atomic_ts_order"))),
-    product_ts_order(ProductTSOrder(opts.get_enum("product_ts_order"))),
+    atomic_ts_order(opts.get<AtomicTSOrder>("atomic_ts_order")),
+    product_ts_order(opts.get<ProductTSOrder>("product_ts_order")),
     atomic_before_product(opts.get<bool>("atomic_before_product")) {
 }
 
@@ -80,7 +80,7 @@ static shared_ptr<OrderGenerator> _parse_greedy(OptionParser &parser) {
     atomic_ts_order_documentation.push_back("opposite of reverse_level");
     atomic_ts_order.push_back("random");
     atomic_ts_order_documentation.push_back("a randomized order");
-    parser.add_enum_option(
+    parser.add_enum_option<AtomicTSOrder>(
         "atomic_ts_order",
         atomic_ts_order,
         "The order in which atomic transition systems are considered when "
@@ -98,7 +98,7 @@ static shared_ptr<OrderGenerator> _parse_greedy(OptionParser &parser) {
     product_ts_order_documentation.push_back("opposite of old_to_new");
     product_ts_order.push_back("random");
     product_ts_order_documentation.push_back("a randomized order");
-    parser.add_enum_option(
+    parser.add_enum_option<ProductTSOrder>(
         "product_ts_order",
         product_ts_order,
         "The order in which product transition systems are considered when "

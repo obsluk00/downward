@@ -21,8 +21,7 @@ using namespace std;
 namespace merge_and_shrink {
 OrderGeneratorGreedy::OrderGeneratorGreedy(const Options &opts)
     : OrderGenerator(opts),
-      scoring_function(
-          static_cast<ScoringFunction>(opts.get_enum("scoring_function"))) {
+      scoring_function(opts.get<ScoringFunction>("scoring_function")) {
 }
 
 double OrderGeneratorGreedy::rate_abstraction(
@@ -61,10 +60,10 @@ Order OrderGeneratorGreedy::compute_static_greedy_order_for_sample(
              return scores[abs1] > scores[abs2];
          });
     if (verbosity >= utils::Verbosity::VERBOSE) {
-        cout << "Static greedy scores: " << scores << endl;
+        utils::g_log << "Static greedy scores: " << scores << endl;
         unordered_set<double> unique_scores(scores.begin(), scores.end());
-        cout << "Static greedy unique scores: " << unique_scores.size() << endl;
-        cout << "Static greedy order: " << order << endl;
+        utils::g_log << "Static greedy unique scores: " << unique_scores.size() << endl;
+        utils::g_log << "Static greedy order: " << order << endl;
     }
     return order;
 }

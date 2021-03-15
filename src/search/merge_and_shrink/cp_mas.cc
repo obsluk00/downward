@@ -43,7 +43,7 @@ using utils::ExitCode;
 
 namespace merge_and_shrink {
 static void log_progress(const utils::Timer &timer, string msg) {
-    cout << "M&S algorithm timer: " << timer << " (" << msg << ")" << endl;
+    utils::g_log << "M&S algorithm timer: " << timer << " (" << msg << ")" << endl;
 }
 
 CPMAS::CPMAS(const Options &opts) :
@@ -55,13 +55,13 @@ CPMAS::CPMAS(const Options &opts) :
     shrink_threshold_before_merge(opts.get<int>("threshold_before_merge")),
     prune_unreachable_states(opts.get<bool>("prune_unreachable_states")),
     prune_irrelevant_states(opts.get<bool>("prune_irrelevant_states")),
-    verbosity(static_cast<utils::Verbosity>(opts.get_enum("verbosity"))),
+    verbosity(opts.get<utils::Verbosity>("verbosity")),
     main_loop_max_time(opts.get<double>("main_loop_max_time")),
     atomic_label_reduction(opts.get<bool>("atomic_label_reduction")),
     compute_atomic_snapshot(opts.get<bool>("compute_atomic_snapshot")),
     main_loop_target_num_snapshots(opts.get<int>("main_loop_target_num_snapshots")),
     main_loop_snapshot_each_iteration(opts.get<int>("main_loop_snapshot_each_iteration")),
-    snapshot_moment(static_cast<SnapshotMoment>(opts.get_enum("snapshot_moment"))),
+    snapshot_moment(opts.get<SnapshotMoment>("snapshot_moment")),
     filter_trivial_factors(opts.get<bool>("filter_trivial_factors")),
     statistics_only(opts.get<bool>("statistics_only")),
     offline_cps(opts.get<bool>("offline_cps")),
@@ -74,10 +74,10 @@ CPMAS::CPMAS(const Options &opts) :
 
 void CPMAS::report_peak_memory_delta(bool final) const {
     if (final)
-        cout << "Final";
+        utils::g_log << "Final";
     else
-        cout << "Current";
-    cout << " peak memory increase of merge-and-shrink algorithm: "
+        utils::g_log << "Current";
+    utils::g_log << " peak memory increase of merge-and-shrink algorithm: "
          << utils::get_peak_memory_in_kb() - starting_peak_memory << " KB"
          << endl;
 }
@@ -86,41 +86,41 @@ void CPMAS::dump_options() const {
     if (verbosity >= utils::Verbosity::NORMAL) {
         if (merge_strategy_factory) { // deleted after merge strategy extraction
             merge_strategy_factory->dump_options();
-            cout << endl;
+            utils::g_log << endl;
         }
 
-        cout << "Options related to size limits and shrinking: " << endl;
-        cout << "Transition system size limit: " << max_states << endl
+        utils::g_log << "Options related to size limits and shrinking: " << endl;
+        utils::g_log << "Transition system size limit: " << max_states << endl
              << "Transition system size limit right before merge: "
              << max_states_before_merge << endl;
-        cout << "Threshold to trigger shrinking right before merge: "
+        utils::g_log << "Threshold to trigger shrinking right before merge: "
              << shrink_threshold_before_merge << endl;
-        cout << endl;
+        utils::g_log << endl;
 
         shrink_strategy->dump_options();
-        cout << endl;
+        utils::g_log << endl;
 
         if (label_reduction) {
             label_reduction->dump_options();
         } else {
-            cout << "Label reduction disabled" << endl;
+            utils::g_log << "Label reduction disabled" << endl;
         }
-        cout << endl;
+        utils::g_log << endl;
 
-        cout << "Main loop max time in seconds: " << main_loop_max_time << endl;
-        cout << endl;
+        utils::g_log << "Main loop max time in seconds: " << main_loop_max_time << endl;
+        utils::g_log << endl;
     }
 }
 
 void CPMAS::warn_on_unusual_options() const {
     string dashes(79, '=');
     if (!label_reduction) {
-        cout << dashes << endl
+        utils::g_log << dashes << endl
              << "WARNING! You did not enable label reduction.\nThis may "
             "drastically reduce the performance of merge-and-shrink!"
              << endl << dashes << endl;
     } else if (label_reduction->reduce_before_merging() && label_reduction->reduce_before_shrinking()) {
-        cout << dashes << endl
+        utils::g_log << dashes << endl
              << "WARNING! You set label reduction to be applied twice in each merge-and-shrink\n"
             "iteration, both before shrinking and merging. This double computation effort\n"
             "does not pay off for most configurations!"
@@ -129,14 +129,14 @@ void CPMAS::warn_on_unusual_options() const {
         if (label_reduction->reduce_before_shrinking() &&
             (shrink_strategy->get_name() == "f-preserving"
              || shrink_strategy->get_name() == "random")) {
-            cout << dashes << endl
+            utils::g_log << dashes << endl
                  << "WARNING! Bucket-based shrink strategies such as f-preserving random perform\n"
                 "best if used with label reduction before merging, not before shrinking!"
                  << endl << dashes << endl;
         }
         if (label_reduction->reduce_before_merging() &&
             shrink_strategy->get_name() == "bisimulation") {
-            cout << dashes << endl
+            utils::g_log << dashes << endl
                  << "WARNING! Shrinking based on bisimulation performs best if used with label\n"
                 "reduction before shrinking, not before merging!"
                  << endl << dashes << endl;
@@ -144,7 +144,7 @@ void CPMAS::warn_on_unusual_options() const {
     }
 
     if (!prune_unreachable_states || !prune_irrelevant_states) {
-        cout << dashes << endl
+        utils::g_log << dashes << endl
              << "WARNING! Pruning is (partially) turned off!\nThis may "
             "drastically reduce the performance of merge-and-shrink!"
              << endl << dashes << endl;
@@ -155,8 +155,8 @@ bool CPMAS::ran_out_of_time(
     const utils::CountdownTimer &timer) const {
     if (timer.is_expired()) {
         if (verbosity >= utils::Verbosity::NORMAL) {
-            cout << "Ran out of time, stopping computation." << endl;
-            cout << endl;
+            utils::g_log << "Ran out of time, stopping computation." << endl;
+            utils::g_log << endl;
         }
         return true;
     }
@@ -217,7 +217,7 @@ CPMAS::NextSnapshot::NextSnapshot(
     compute_next_snapshot_time(0);
     compute_next_snapshot_iteration(0);
     if (verbosity >= utils::Verbosity::DEBUG) {
-        cout << "Snapshot collector: next time: " << next_time_to_compute_snapshot
+        utils::g_log << "Snapshot collector: next time: " << next_time_to_compute_snapshot
              << ", next iteration: " << next_iteration_to_compute_snapshot
              << endl;
     }
@@ -228,7 +228,7 @@ bool CPMAS::NextSnapshot::compute_next_snapshot(double current_time, int current
         return false;
     }
     if (verbosity >= utils::Verbosity::DEBUG) {
-        cout << "Snapshot collector: compute next snapshot? current time: " << current_time
+        utils::g_log << "Snapshot collector: compute next snapshot? current time: " << current_time
              << ", current iteration: " << current_iteration
              << ", num existing snapshots: " << num_main_loop_snapshots
              << endl;
@@ -243,8 +243,8 @@ bool CPMAS::NextSnapshot::compute_next_snapshot(double current_time, int current
         compute_next_snapshot_time(current_time);
         compute_next_snapshot_iteration(current_iteration);
         if (verbosity >= utils::Verbosity::DEBUG) {
-            cout << "Compute snapshot now" << endl;
-            cout << "Next snapshot: next time: " << next_time_to_compute_snapshot
+            utils::g_log << "Compute snapshot now" << endl;
+            utils::g_log << "Next snapshot: next time: " << next_time_to_compute_snapshot
                  << ", next iteration: " << next_iteration_to_compute_snapshot
                  << endl;
         }
@@ -341,7 +341,7 @@ vector<unique_ptr<Abstraction>> CPMAS::compute_abstractions_for_offline_cp(
     }
     // We allow that all to-be-considered factors be trivial.
     if (considered_factors.empty() && verbosity >= utils::Verbosity::DEBUG) {
-        cout << "All factors modified since last transformation are trivial; "
+        utils::g_log << "All factors modified since last transformation are trivial; "
                 "no abstraction will be computed" << endl;
     }
 
@@ -379,7 +379,7 @@ void CPMAS::handle_snapshot(
             make_move_iterator(new_abstractions.begin()),
             make_move_iterator(new_abstractions.end()));
         if (verbosity >= utils::Verbosity::DEBUG) {
-            cout << "Number of abstractions: " << abstractions.size() << endl;
+            utils::g_log << "Number of abstractions: " << abstractions.size() << endl;
         }
     } else if (any(factors_modified_since_last_snapshot)) {
         cost_partitionings.push_back(cp_factory->generate(
@@ -393,7 +393,7 @@ void CPMAS::compute_cp_and_print_statistics(
     int iteration) const {
     std::unique_ptr<CostPartitioning> cp = cp_factory->generate(
         compute_label_costs(fts.get_labels()), compute_abstractions_for_interleaved_cp(fts), verbosity);
-    cout << "CP value in iteration " << iteration << ": "
+    utils::g_log << "CP value in iteration " << iteration << ": "
          << cp->compute_value(
             State(*tasks::g_root_task,
                   tasks::g_root_task->get_initial_state_values()))
@@ -404,7 +404,7 @@ void CPMAS::compute_cp_and_print_statistics(
             fts.get_transition_system(index).get_init_state());
         max_h = max(max_h, h);
     }
-    cout << "Max value in iteration " << iteration << ": " << max_h << endl;
+    utils::g_log << "Max value in iteration " << iteration << ": " << max_h << endl;
 }
 
 bool CPMAS::main_loop(
@@ -414,11 +414,11 @@ bool CPMAS::main_loop(
     const unique_ptr<vector<int>> &original_to_current_labels) {
     utils::CountdownTimer timer(main_loop_max_time);
     if (verbosity >= utils::Verbosity::NORMAL) {
-        cout << "Starting main loop ";
+        utils::g_log << "Starting main loop ";
         if (main_loop_max_time == numeric_limits<double>::infinity()) {
-            cout << "without a time limit." << endl;
+            utils::g_log << "without a time limit." << endl;
         } else {
-            cout << "with a time limit of "
+            utils::g_log << "with a time limit of "
                  << main_loop_max_time << "s." << endl;
         }
     }
@@ -435,7 +435,7 @@ bool CPMAS::main_loop(
     merge_strategy_factory = nullptr;
 
     auto log_main_loop_progress = [&timer](const string &msg) {
-            cout << "M&S algorithm main loop timer: "
+            utils::g_log << "M&S algorithm main loop timer: "
                  << timer.get_elapsed_time()
                  << " (" << msg << ")" << endl;
         };
@@ -462,7 +462,7 @@ bool CPMAS::main_loop(
         int merge_index2 = merge_indices.second;
         assert(merge_index1 != merge_index2);
         if (verbosity >= utils::Verbosity::NORMAL) {
-            cout << "Next pair of indices: ("
+            utils::g_log << "Next pair of indices: ("
                  << merge_index1 << ", " << merge_index2 << ")" << endl;
             if (verbosity >= utils::Verbosity::VERBOSE) {
                 fts.statistics(merge_index1);
@@ -621,7 +621,7 @@ bool CPMAS::main_loop(
         */
         if (!fts.is_factor_solvable(merged_index)) {
             if (verbosity >= utils::Verbosity::NORMAL) {
-                cout << "Abstract problem is unsolvable, stopping "
+                utils::g_log << "Abstract problem is unsolvable, stopping "
                     "computation. " << endl << endl;
             }
             handle_unsolvable_snapshot(fts, merged_index);
@@ -658,13 +658,13 @@ bool CPMAS::main_loop(
             report_peak_memory_delta();
         }
         if (verbosity >= utils::Verbosity::NORMAL) {
-            cout << endl;
+            utils::g_log << endl;
         }
     }
 
-    cout << "End of merge-and-shrink algorithm, statistics:" << endl;
-    cout << "Main loop runtime: " << timer.get_elapsed_time() << endl;
-    cout << "Maximum intermediate abstraction size: "
+    utils::g_log << "End of merge-and-shrink algorithm, statistics:" << endl;
+    utils::g_log << "Main loop runtime: " << timer.get_elapsed_time() << endl;
+    utils::g_log << "Maximum intermediate abstraction size: "
          << maximum_intermediate_size << endl;
     shrink_strategy = nullptr;
     label_reduction = nullptr;
@@ -680,12 +680,12 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
     starting_peak_memory = utils::get_peak_memory_in_kb();
 
     utils::Timer timer;
-    cout << "Running merge-and-shrink algorithm..." << endl;
+    utils::g_log << "Running merge-and-shrink algorithm..." << endl;
     TaskProxy task_proxy(*task);
     task_properties::verify_no_axioms(task_proxy);
     dump_options();
     warn_on_unusual_options();
-    cout << endl;
+    utils::g_log << endl;
 
     const bool compute_init_distances =
         shrink_strategy->requires_init_distances() ||
@@ -735,7 +735,7 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
             pruned = pruned || pruned_factor;
         }
         if (!fts.is_factor_solvable(index)) {
-            cout << "Atomic FTS is unsolvable, stopping computation." << endl;
+            utils::g_log << "Atomic FTS is unsolvable, stopping computation." << endl;
             unsolvable = true;
             handle_unsolvable_snapshot(fts, index);
             break;
@@ -780,7 +780,7 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
         }
 
         if (verbosity >= utils::Verbosity::NORMAL) {
-            cout << endl;
+            utils::g_log << endl;
         }
 
         if (main_loop_max_time > 0) {
@@ -828,12 +828,12 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
                 verbosity));
         }
         assert(cost_partitionings.size() == 1);
-        cout << "Offline CPs: number of abstractions: "
+        utils::g_log << "Offline CPs: number of abstractions: "
              << cost_partitionings.back()->get_number_of_abstractions() << endl;
     } else {
         assert(!cost_partitionings.empty());
         int num_cps = cost_partitionings.size();
-        cout << "Interleaved CPs: number of CPs: "
+        utils::g_log << "Interleaved CPs: number of CPs: "
              << num_cps << endl;
         int summed_num_factors = 0;
         for (const auto &cp : cost_partitionings) {
@@ -841,14 +841,14 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
         }
         double average_num_factors = static_cast<double>(summed_num_factors) /
             static_cast<double>(cost_partitionings.size());
-        cout << "Interleaved CPs: average number of abstractions per CP: "
+        utils::g_log << "Interleaved CPs: average number of abstractions per CP: "
              << average_num_factors << endl;
     }
 
     const bool final = true;
     report_peak_memory_delta(final);
-    cout << "Merge-and-shrink algorithm runtime: " << timer << endl;
-    cout << endl;
+    utils::g_log << "Merge-and-shrink algorithm runtime: " << timer << endl;
+    utils::g_log << endl;
     return move(cost_partitionings);
 }
 
@@ -882,7 +882,7 @@ void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
     snapshot_moment_doc.push_back("after merging");
     snapshot_moment.push_back("after_pruning");
     snapshot_moment_doc.push_back("after pruning, i.e., at end of iteration");
-    parser.add_enum_option(
+    parser.add_enum_option<SnapshotMoment>(
         "snapshot_moment",
         snapshot_moment,
         "the point in one iteration at which a snapshot should be computed",

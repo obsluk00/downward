@@ -227,7 +227,7 @@ SaturatedCostPartitioningsFactory::SaturatedCostPartitioningsFactory(
       num_samples(opts.get<int>("samples")),
       max_optimization_time(opts.get<double>("max_optimization_time")),
       rng(utils::parse_rng_from_options(opts)),
-      sampling_with_dead_ends(SamplingWithDeadEnds(opts.get_enum("sampling_with_dead_ends"))) {
+      sampling_with_dead_ends(opts.get<SamplingWithDeadEnds>("sampling_with_dead_ends")) {
 }
 
 void SaturatedCostPartitioningsFactory::initialize(const std::shared_ptr<AbstractTask> &task_) {
@@ -315,7 +315,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
     vector<unique_ptr<Abstraction>> &&abstractions,
     utils::Verbosity verbosity) {
     if (verbosity >= utils::Verbosity::DEBUG) {
-        cout << "Generating multiple SCP M&S heuristics for given abstractions..." << endl;
+        utils::g_log << "Generating multiple SCP M&S heuristics for given abstractions..." << endl;
     }
 
     if (abstractions.size() == 1) {
@@ -493,7 +493,7 @@ static shared_ptr<SaturatedCostPartitioningsFactory>_parse(OptionParser &parser)
     sampling_doc.push_back("only use dead-end detector for optimizer");
     sampling_names.push_back("divandopt");
     sampling_doc.push_back("use dead-end detector for both diversifier and optimizer");
-    parser.add_enum_option(
+    parser.add_enum_option<SamplingWithDeadEnds>(
         "sampling_with_dead_ends",
         sampling_names,
         "Decide if and when to use a dead-end detector for sampling.",

@@ -5,6 +5,7 @@
 
 #include "../task_proxy.h"
 
+#include "../utils/logging.h"
 #include "../utils/memory.h"
 
 #include <algorithm>
@@ -78,11 +79,11 @@ bool MergeAndShrinkRepresentationLeaf::is_total() const {
 }
 
 void MergeAndShrinkRepresentationLeaf::dump() const {
-    cout << "lookup table (leaf): ";
+    utils::g_log << "lookup table (leaf): ";
     for (const auto &value : lookup_table) {
-        cout << value << ", ";
+        utils::g_log << value << ", ";
     }
-    cout << endl;
+    utils::g_log << endl;
 }
 
 
@@ -158,16 +159,16 @@ bool MergeAndShrinkRepresentationMerge::is_total() const {
 }
 
 void MergeAndShrinkRepresentationMerge::dump() const {
-    cout << "lookup table (merge): " << endl;
+    utils::g_log << "lookup table (merge): " << endl;
     for (const auto &row : lookup_table) {
         for (const auto &value : row) {
-            cout << value << ", ";
+            utils::g_log << value << ", ";
         }
-        cout << endl;
+        utils::g_log << endl;
     }
-    cout << "left child:" << endl;
+    utils::g_log << "left child:" << endl;
     left_child->dump();
-    cout << "right child:" << endl;
+    utils::g_log << "right child:" << endl;
     right_child->dump();
 }
 }

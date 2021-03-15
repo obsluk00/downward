@@ -9,6 +9,28 @@ For more details, check the repository history
 (<http://issues.fast-downward.org>). Repository branches are named
 after the corresponding tracker issues.
 
+## Changes since the last release
+
+- Integrate new pruning method `atom_centric_stubborn_sets()`
+  <http://issues.fast-downward.org/issue781>
+  We merged the code for the SoCS 2020 paper "An Atom-Centric Perspective
+  on Stubborn Sets" (https://ai.dmi.unibas.ch/papers/roeger-et-al-socs2020.pdf).
+
+- Fix `--show-aliases` parameter.
+
+- OptionParser: make OptionParser::add_enum_option templated and remove Options::get_enum
+  <http://issues.fast-downward.org/issue962>
+  We now store enum options as enums instead of as ints in Options objects.
+
+- Use global logging mechanism for all output
+  <http://issues.fast-downward.org/issue963>
+  All output of the planner is now handled by a global logging mechnism, which
+  prefaces printed lines with time and memory information. For developers, this
+  means that output is no longer passed to cout, but utils::g_log.
+
+- For developers: allow creating Timers in stopped state
+  <http://issues.fast-downward.org/issue965>
+
 ## Fast Downward 19.12
 
 Released on December 20, 2019.
@@ -73,7 +95,7 @@ Details:
   <http://issues.fast-downward.org/issue934>
 
 - scripts: move Stone Soup generator scripts to separate repository at
-  https://bitbucket.org/aibasel/stonesoup.
+  https://github.com/aibasel/stonesoup.
   <http://issues.fast-downward.org/issue932>
 
 ## Fast Downward 19.06

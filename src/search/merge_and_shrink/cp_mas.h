@@ -31,6 +31,13 @@ class ShrinkStrategy;
 
 using Bitset = dynamic_bitset::DynamicBitset<unsigned short>;
 
+enum class SnapshotMoment {
+    AFTER_LABEL_REDUCTION,
+    AFTER_SHRINKING,
+    AFTER_MERGING,
+    AFTER_PRUNING
+};
+
 class CPMAS {
 protected:
     // TODO: when the option parser supports it, the following should become
@@ -60,13 +67,6 @@ protected:
     const bool compute_atomic_snapshot;
     const int main_loop_target_num_snapshots;
     const int main_loop_snapshot_each_iteration;
-
-    enum class SnapshotMoment {
-        AFTER_LABEL_REDUCTION,
-        AFTER_SHRINKING,
-        AFTER_MERGING,
-        AFTER_PRUNING
-    };
     const SnapshotMoment snapshot_moment;
     const bool filter_trivial_factors;
     const bool statistics_only;
