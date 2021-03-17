@@ -24,8 +24,8 @@ MaxCPMSHeuristic::MaxCPMSHeuristic(const options::Options &opts)
     }
 }
 
-int MaxCPMSHeuristic::compute_heuristic(const GlobalState &global_state) {
-    State state = convert_global_state(global_state);
+int MaxCPMSHeuristic::compute_heuristic(const State &ancestor_state) {
+    State state = convert_ancestor_state(ancestor_state);
     int max_h = -INF;
     for (const auto &cp: cost_partitionings) {
         int h_val = cp->compute_value(state);

@@ -98,7 +98,7 @@ OptimalCostPartitioningFactory::OptimalCostPartitioningFactory(
 }
 
 void OptimalCostPartitioningFactory::create_abstraction_variables(
-    vector<lp::LPVariable> &variables,
+    named_vector::NamedVector<lp::LPVariable> &variables,
     double infinity,
     AbstractionInformation &abstraction_info,
     int num_states,
@@ -124,8 +124,8 @@ void OptimalCostPartitioningFactory::create_abstraction_variables(
 }
 
 void OptimalCostPartitioningFactory::create_abstraction_constraints(
-    vector<lp::LPVariable> &variables,
-    vector<lp::LPConstraint> &constraints,
+    named_vector::NamedVector<lp::LPVariable> &variables,
+    named_vector::NamedVector<lp::LPConstraint> &constraints,
     double infinity,
     const AbstractionInformation &abstraction_info,
     const TransitionSystem &ts,
@@ -234,7 +234,7 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
 
 void OptimalCostPartitioningFactory::create_global_constraints(
     double infinity,
-    vector<lp::LPConstraint> &constraints,
+    named_vector::NamedVector<lp::LPConstraint> &constraints,
     const vector<int> &label_costs,
     vector<unique_ptr<Abstraction>> &abstractions,
     const vector<vector<int>> &abs_to_contiguous_label_group_mapping,
@@ -372,8 +372,8 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
     vector<AbstractionInformation> abstraction_infos;
     abstraction_infos.reserve(abstractions.size());
     unique_ptr<lp::LPSolver> lp_solver = utils::make_unique_ptr<lp::LPSolver>(lp_solver_type);
-    vector<lp::LPVariable> variables;
-    vector<lp::LPConstraint> constraints;
+    named_vector::NamedVector<lp::LPVariable> variables;
+    named_vector::NamedVector<lp::LPConstraint> constraints;
     double infinity = lp_solver->get_infinity();
     int num_abstract_states = 0;
     for (size_t i = 0; i < abstractions.size(); ++i) {
@@ -417,7 +417,8 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
         utils::g_log << "LP peak memory before load: " << utils::get_peak_memory_in_kb() << endl;
     }
 
-    lp_solver->load_problem(lp::LPObjectiveSense::MAXIMIZE, variables, constraints);
+    lp::LinearProgram lp(lp::LPObjectiveSense::MAXIMIZE, move(variables), move(constraints));
+    lp_solver->load_problem(lp);
     if (verbosity >= utils::Verbosity::DEBUG) {
         utils::g_log << "LP peak memory after load: " << utils::get_peak_memory_in_kb() << endl;
     }

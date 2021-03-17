@@ -3,6 +3,7 @@
 
 #include "cost_partitioning.h"
 
+#include "../algorithms/named_vector.h"
 #include "../option_parser.h"
 
 #include "../lp/lp_solver.h"
@@ -54,14 +55,14 @@ class OptimalCostPartitioningFactory : public CostPartitioningFactory {
     const bool efficient_cp;
 
     void create_abstraction_variables(
-        std::vector<lp::LPVariable> &variables,
+        named_vector::NamedVector<lp::LPVariable> &variables,
         double infinity,
         AbstractionInformation &abstraction_info,
         int num_states,
         int num_labels);
     void create_abstraction_constraints(
-        std::vector<lp::LPVariable> &variables,
-        std::vector<lp::LPConstraint> &constraints,
+        named_vector::NamedVector<lp::LPVariable> &variables,
+        named_vector::NamedVector<lp::LPConstraint> &constraints,
         double infinity,
         const AbstractionInformation &abstraction_info,
         const TransitionSystem &ts,
@@ -69,7 +70,7 @@ class OptimalCostPartitioningFactory : public CostPartitioningFactory {
         utils::Verbosity verbosity) const;
     void create_global_constraints(
         double infinity,
-        std::vector<lp::LPConstraint> &constraints,
+        named_vector::NamedVector<lp::LPConstraint> &constraints,
         const std::vector<int> &label_costs,
         std::vector<std::unique_ptr<Abstraction>> &abstractions,
         const std::vector<std::vector<int>> &abs_to_contiguous_label_group_mapping,
