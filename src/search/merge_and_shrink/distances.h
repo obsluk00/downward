@@ -15,7 +15,7 @@
 */
 
 namespace utils {
-enum class Verbosity;
+class LogProxy;
 }
 
 namespace merge_and_shrink {
@@ -52,7 +52,7 @@ public:
     void compute_distances(
         bool compute_init_distances,
         bool compute_goal_distances,
-        utils::Verbosity verbosity);
+        utils::LogProxy &log);
 
     /*
       Update distances according to the given abstraction. If the abstraction
@@ -67,7 +67,7 @@ public:
         const StateEquivalenceRelation &state_equivalence_relation,
         bool compute_init_distances,
         bool compute_goal_distances,
-        utils::Verbosity verbosity);
+        utils::LogProxy &log);
 
     int get_init_distance(int state) const {
         assert(are_init_distances_computed());
@@ -83,14 +83,14 @@ public:
         return goal_distances;
     }
 
-    void dump() const;
-    void statistics() const;
+    void dump(utils::LogProxy &log) const;
+    void statistics(utils::LogProxy &log) const;
 };
 
 extern std::vector<int> compute_goal_distances(
     const TransitionSystem &transition_system,
     const std::vector<int> &label_costs,
-    utils::Verbosity verbosity);
+    utils::LogProxy &log);
 }
 
 #endif

@@ -63,7 +63,7 @@ void LabelReduction::compute_label_mapping(
     const equivalence_relation::EquivalenceRelation *relation,
     const FactoredTransitionSystem &fts,
     vector<pair<int, vector<int>>> &label_mapping,
-    utils::Verbosity verbosity,
+    utils::LogProxy &log,
     const unique_ptr<vector<int>> &original_to_current_labels) const {
     const Labels &labels = fts.get_labels();
     int next_new_label_no = labels.get_size();
@@ -88,12 +88,13 @@ void LabelReduction::compute_label_mapping(
              it != equivalent_label_nos.end(); ++it) {
             const vector<int> &label_nos = it->second;
             if (label_nos.size() > 1) {
-                if (verbosity >= utils::Verbosity::DEBUG) {
-                    utils::g_log << "Reducing labels " << label_nos << " to " << next_new_label_no << endl;
+                if (log.is_at_least_debug()) {
+                    log << "Reducing labels " << label_nos << " to "
+                        << next_new_label_no << endl;
                 }
                 label_mapping.push_back(make_pair(next_new_label_no, label_nos));
 
-                if (verbosity >= utils::Verbosity::DEBUG) {
+                if (log.is_at_least_debug()) {
                     utils::g_log << "Reducing labels " << label_nos << " to " << next_new_label_no << endl;
                 }
 
@@ -116,11 +117,11 @@ void LabelReduction::compute_label_mapping(
         }
     }
     int number_reduced_labels = num_labels - num_labels_after_reduction;
-    if (verbosity >= utils::Verbosity::VERBOSE && number_reduced_labels > 0) {
-        utils::g_log << "Label reduction: "
-                     << num_labels << " labels, "
-                     << num_labels_after_reduction << " after reduction"
-                     << endl;
+    if (log.is_at_least_verbose() && number_reduced_labels > 0) {
+        log << "Label reduction: "
+            << num_labels << " labels, "
+            << num_labels_after_reduction << " after reduction"
+            << endl;
     }
 }
 
@@ -163,7 +164,7 @@ equivalence_relation::EquivalenceRelation
 bool LabelReduction::reduce(
     const pair<int, int> &next_merge,
     FactoredTransitionSystem &fts,
-    utils::Verbosity verbosity,
+    utils::LogProxy &log,
     const unique_ptr<vector<int>> &original_to_current_labels) const {
     assert(initialized());
     assert(reduce_before_shrinking() || reduce_before_merging());
@@ -186,7 +187,7 @@ bool LabelReduction::reduce(
             compute_combinable_equivalence_relation(next_merge.first, fts);
         vector<pair<int, vector<int>>> label_mapping;
         compute_label_mapping(
-            relation, fts, label_mapping, verbosity, original_to_current_labels);
+            relation, fts, label_mapping, log, original_to_current_labels);
         if (!label_mapping.empty()) {
             fts.apply_label_mapping(label_mapping, next_merge.first);
             reduced = true;
@@ -199,7 +200,7 @@ bool LabelReduction::reduce(
             next_merge.second,
             fts);
         compute_label_mapping(
-            relation, fts, label_mapping, verbosity, original_to_current_labels);
+            relation, fts, label_mapping, log, original_to_current_labels);
         if (!label_mapping.empty()) {
             fts.apply_label_mapping(label_mapping, next_merge.second);
             reduced = true;
@@ -248,7 +249,7 @@ bool LabelReduction::reduce(
             equivalence_relation::EquivalenceRelation *relation =
                 compute_combinable_equivalence_relation(ts_index, fts);
             compute_label_mapping(
-                relation, fts, label_mapping, verbosity, original_to_current_labels);
+                relation, fts, label_mapping, log, original_to_current_labels);
             delete relation;
         }
 
@@ -285,40 +286,42 @@ bool LabelReduction::reduce(
     return reduced;
 }
 
-void LabelReduction::dump_options() const {
-    utils::g_log << "Label reduction options:" << endl;
-    utils::g_log << "Before merging: "
-                 << (lr_before_merging ? "enabled" : "disabled") << endl;
-    utils::g_log << "Before shrinking: "
-                 << (lr_before_shrinking ? "enabled" : "disabled") << endl;
-    utils::g_log << "Method: ";
-    switch (lr_method) {
-    case LabelReductionMethod::TWO_TRANSITION_SYSTEMS:
-        utils::g_log << "two transition systems (which will be merged next)";
-        break;
-    case LabelReductionMethod::ALL_TRANSITION_SYSTEMS:
-        utils::g_log << "all transition systems";
-        break;
-    case LabelReductionMethod::ALL_TRANSITION_SYSTEMS_WITH_FIXPOINT:
-        utils::g_log << "all transition systems with fixpoint computation";
-        break;
-    }
-    utils::g_log << endl;
-    if (lr_method == LabelReductionMethod::ALL_TRANSITION_SYSTEMS ||
-        lr_method == LabelReductionMethod::ALL_TRANSITION_SYSTEMS_WITH_FIXPOINT) {
-        utils::g_log << "System order: ";
-        switch (lr_system_order) {
-        case LabelReductionSystemOrder::REGULAR:
-            utils::g_log << "regular";
+void LabelReduction::dump_options(utils::LogProxy &log) const {
+    if (log.is_at_least_normal()) {
+        log << "Label reduction options:" << endl;
+        log << "Before merging: "
+            << (lr_before_merging ? "enabled" : "disabled") << endl;
+        log << "Before shrinking: "
+            << (lr_before_shrinking ? "enabled" : "disabled") << endl;
+        log << "Method: ";
+        switch (lr_method) {
+        case LabelReductionMethod::TWO_TRANSITION_SYSTEMS:
+            log << "two transition systems (which will be merged next)";
             break;
-        case LabelReductionSystemOrder::REVERSE:
-            utils::g_log << "reversed";
+        case LabelReductionMethod::ALL_TRANSITION_SYSTEMS:
+            log << "all transition systems";
             break;
-        case LabelReductionSystemOrder::RANDOM:
-            utils::g_log << "random";
+        case LabelReductionMethod::ALL_TRANSITION_SYSTEMS_WITH_FIXPOINT:
+            log << "all transition systems with fixpoint computation";
             break;
         }
-        utils::g_log << endl;
+        log << endl;
+        if (lr_method == LabelReductionMethod::ALL_TRANSITION_SYSTEMS ||
+            lr_method == LabelReductionMethod::ALL_TRANSITION_SYSTEMS_WITH_FIXPOINT) {
+            log << "System order: ";
+            switch (lr_system_order) {
+            case LabelReductionSystemOrder::REGULAR:
+                log << "regular";
+                break;
+            case LabelReductionSystemOrder::REVERSE:
+                log << "reversed";
+                break;
+            case LabelReductionSystemOrder::RANDOM:
+                log << "random";
+                break;
+            }
+            log << endl;
+        }
     }
 }
 

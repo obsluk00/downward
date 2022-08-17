@@ -3,9 +3,7 @@
 #include "../option_parser.h"
 #include "../plugin.h"
 
-#include "../utils/logging.h"
 #include "../utils/markup.h"
-#include "../utils/memory.h"
 
 using namespace std;
 
@@ -18,7 +16,7 @@ StubbornSetsAtomCentric::StubbornSetsAtomCentric(const options::Options &opts)
 
 void StubbornSetsAtomCentric::initialize(const shared_ptr<AbstractTask> &task) {
     StubbornSets::initialize(task);
-    utils::g_log << "pruning method: atom-centric stubborn sets" << endl;
+    log << "pruning method: atom-centric stubborn sets" << endl;
 
     TaskProxy task_proxy(*task);
 
@@ -195,7 +193,7 @@ void StubbornSetsAtomCentric::enqueue_interferers(int op) {
     }
 }
 
-void StubbornSetsAtomCentric::initialize_stubborn_set(const State &state) {
+void StubbornSetsAtomCentric::compute_stubborn_set(const State &state) {
     assert(producer_queue.empty());
     assert(consumer_queue.empty());
     // Reset data structures from previous call.
@@ -289,7 +287,7 @@ static shared_ptr<PruningMethod> _parse(OptionParser &parser) {
         "breaking ties.",
         "quick_skip",
         strategies_docs);
-    stubborn_sets::add_pruning_options(parser);
+    add_pruning_options_to_parser(parser);
 
     Options opts = parser.parse();
 
