@@ -234,7 +234,7 @@ void MergeAndShrinkAlgorithm::main_loop(
             max_states_before_merge,
             shrink_threshold_before_merge,
             *shrink_strategy,
-        log);
+            log);
         if (log.is_at_least_normal() && (shrunk.first || shrunk.second)) {
             log_main_loop_progress("after shrinking");
         }

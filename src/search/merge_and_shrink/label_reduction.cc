@@ -95,7 +95,7 @@ void LabelReduction::compute_label_mapping(
                 label_mapping.push_back(make_pair(next_new_label_no, label_nos));
 
                 if (log.is_at_least_debug()) {
-                    utils::g_log << "Reducing labels " << label_nos << " to " << next_new_label_no << endl;
+                    log << "Reducing labels " << label_nos << " to " << next_new_label_no << endl;
                 }
 
                 if (original_to_current_labels) {

@@ -20,11 +20,11 @@ class OrderGeneratorGreedy : public OrderGenerator {
         const std::vector<int> &abstract_state_ids, int abs_id) const;
     Order compute_static_greedy_order_for_sample(
         const std::vector<int> &abstract_state_ids,
-        utils::Verbosity verbosity) const;
+        utils::LogProxy &log) const;
     void precompute_info(
         const Abstractions &abstractions,
         const std::vector<int> &costs,
-        utils::Verbosity verbosity);
+        utils::LogProxy &log);
 public:
     explicit OrderGeneratorGreedy(const options::Options &opts);
 
@@ -32,7 +32,7 @@ public:
     virtual Order compute_order(
         const Abstractions &abstractions,
         const std::vector<int> &costs,
-        utils::Verbosity verbosity,
+        utils::LogProxy &log,
         const std::vector<int> &abstract_state_ids) override;
 };
 }

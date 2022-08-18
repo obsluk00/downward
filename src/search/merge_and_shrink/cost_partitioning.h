@@ -13,7 +13,7 @@ class Options;
 }
 
 namespace utils {
-enum class Verbosity;
+class LogProxy;
 }
 
 namespace merge_and_shrink {
@@ -56,7 +56,7 @@ public:
     virtual std::unique_ptr<CostPartitioning> generate(
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
-        utils::Verbosity verbosity) = 0;
+        utils::LogProxy &log) = 0;
 };
 
 extern void add_cp_options_to_parser(options::OptionParser &parser);

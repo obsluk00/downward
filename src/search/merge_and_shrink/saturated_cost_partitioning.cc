@@ -32,7 +32,7 @@ int SaturatedCostPartitioning::compute_value(const State &state) {
     int h_val = 0;
     for (const AbstractionInformation &abstraction_info : abstraction_infos) {
         int abstract_state = abstraction_info.mas_representation->get_value(state);
-        if (abstract_state == PRUNED_STATE)  {
+        if (abstract_state == PRUNED_STATE) {
             // If the state has been pruned, we encountered a dead end.
             return INF;
         }
@@ -54,14 +54,14 @@ SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
     const Options &opts)
     : CostPartitioningFactory(),
       order_generator(
-        opts.get<shared_ptr<OrderGenerator>>("order_generator")) {
+          opts.get<shared_ptr<OrderGenerator>>("order_generator")) {
 }
 
 unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_order(
     vector<int> &&label_costs,
     vector<unique_ptr<Abstraction>> &&abstractions,
     const vector<int> &order,
-    utils::Verbosity verbosity) const {
+    utils::LogProxy &log) const {
     assert(order.size() == abstractions.size());
     int num_labels = label_costs.size();
     vector<AbstractionInformation> abstraction_infos;
@@ -69,17 +69,17 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_orde
     for (size_t i = 0; i < order.size(); ++i) {
         int index = order[i];
         Abstraction &abstraction = *abstractions[index];
-        if (verbosity >= utils::Verbosity::DEBUG) {
-            utils::g_log << endl;
-            utils::g_log << "Abstraction index " << index << endl;
+        if (log.is_at_least_debug()) {
+            log << endl;
+            log << "Abstraction index " << index << endl;
 //            abstraction.transition_system->dump_labels_and_transitions();
-            utils::g_log << abstraction.transition_system->tag() << endl;
-            utils::g_log << "Remaining label costs: " << label_costs << endl;
+            log << abstraction.transition_system->tag() << endl;
+            log << "Remaining label costs: " << label_costs << endl;
         }
         vector<int> goal_distances = compute_goal_distances_for_abstraction(
-            abstraction, label_costs, verbosity);
-        if (verbosity >= utils::Verbosity::DEBUG) {
-            utils::g_log << "Distances under remaining costs: " << goal_distances << endl;
+            abstraction, label_costs, log);
+        if (log.is_at_least_debug()) {
+            log << "Distances under remaining costs: " << goal_distances << endl;
         }
 
         // Only keep "useful" abstractions: abstractions which have non-zero
@@ -101,18 +101,18 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_orde
         }
 
         vector<int> saturated_label_costs = compute_saturated_costs_for_abstraction(
-            abstraction, goal_distances, num_labels, verbosity);
+            abstraction, goal_distances, num_labels, log);
 
         reduce_costs(label_costs, saturated_label_costs);
     }
 
-    if (verbosity >= utils::Verbosity::VERBOSE) {
+    if (log.is_at_least_verbose()) {
         int num_abstractions = abstractions.size();
         int num_useful_abstractions = abstraction_infos.size();
-        utils::g_log << "SCP: useful abstractions: " << num_useful_abstractions << "/"
-             << num_abstractions << " = "
-             << static_cast<double>(num_useful_abstractions) / num_abstractions
-             << endl;
+        log << "SCP: useful abstractions: " << num_useful_abstractions << "/"
+                     << num_abstractions << " = "
+                     << static_cast<double>(num_useful_abstractions) / num_abstractions
+                     << endl;
     }
 
     // Release copied transition systems if we are in an offline scenario.
@@ -129,9 +129,9 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_orde
 unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
     vector<int> &&label_costs,
     vector<unique_ptr<Abstraction>> &&abstractions,
-    utils::Verbosity verbosity) {
-    if (verbosity >= utils::Verbosity::DEBUG) {
-        utils::g_log << "Generating SCP M&S heuristic for given abstractions..." << endl;
+    utils::LogProxy &log) {
+    if (log.is_at_least_debug()) {
+        log << "Generating SCP M&S heuristic for given abstractions..." << endl;
     }
 
     vector<int> order;
@@ -139,11 +139,11 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
         order = get_default_order(abstractions.size());
     } else {
         order = order_generator->compute_order(
-            abstractions, label_costs, verbosity);
+            abstractions, label_costs, log);
         order_generator->clear_internal_state();
     }
 
-    return generate_for_order(move(label_costs), move(abstractions), order, verbosity);
+    return generate_for_order(move(label_costs), move(abstractions), order, log);
 }
 
 static shared_ptr<SaturatedCostPartitioningFactory>_parse(OptionParser &parser) {

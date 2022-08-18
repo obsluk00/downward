@@ -12,7 +12,7 @@ public:
     virtual Order compute_order(
         const Abstractions &abstractions,
         const std::vector<int> &costs,
-        utils::Verbosity verbosity,
+        utils::LogProxy &log,
         const std::vector<int> &abstract_state_ids) override;
 };
 }

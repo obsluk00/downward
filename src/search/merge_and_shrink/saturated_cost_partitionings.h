@@ -91,7 +91,8 @@ class SaturatedCostPartitionings : public CostPartitioning {
 public:
     SaturatedCostPartitionings(
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
-        std::vector<CostPartitioningHeuristic> &&cp_heuristics);
+        std::vector<CostPartitioningHeuristic> &&cp_heuristics,
+        utils::LogProxy &log);
     virtual ~SaturatedCostPartitionings() = default;
     virtual int compute_value(const State &state) override;
     virtual int get_number_of_abstractions() const override;
@@ -122,7 +123,7 @@ class SaturatedCostPartitioningsFactory : public CostPartitioningFactory {
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
         const std::vector<int> order,
-        utils::Verbosity verbosity) const;
+        utils::LogProxy &log) const;
 public:
     explicit SaturatedCostPartitioningsFactory(const Options &opts);
     virtual ~SaturatedCostPartitioningsFactory() = default;
@@ -130,7 +131,7 @@ public:
     virtual std::unique_ptr<CostPartitioning> generate(
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
-        utils::Verbosity verbosity) override;
+        utils::LogProxy &log) override;
 };
 }
 

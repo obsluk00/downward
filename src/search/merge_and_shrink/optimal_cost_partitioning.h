@@ -67,7 +67,7 @@ class OptimalCostPartitioningFactory : public CostPartitioningFactory {
         const AbstractionInformation &abstraction_info,
         const TransitionSystem &ts,
         const std::vector<int> &contiguous_label_mapping,
-        utils::Verbosity verbosity) const;
+        utils::LogProxy &log) const;
     void create_global_constraints(
         double infinity,
         named_vector::NamedVector<lp::LPConstraint> &constraints,
@@ -75,14 +75,14 @@ class OptimalCostPartitioningFactory : public CostPartitioningFactory {
         std::vector<std::unique_ptr<Abstraction>> &abstractions,
         const std::vector<std::vector<int>> &abs_to_contiguous_label_group_mapping,
         const std::vector<AbstractionInformation> &abstraction_infos,
-        utils::Verbosity verbosity) const;
+        utils::LogProxy &log) const;
 public:
     explicit OptimalCostPartitioningFactory(const Options &opts);
     virtual ~OptimalCostPartitioningFactory() = default;
     virtual std::unique_ptr<CostPartitioning> generate(
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
-        utils::Verbosity verbosity) override;
+        utils::LogProxy &log) override;
 };
 }
 

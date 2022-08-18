@@ -33,15 +33,18 @@ bool Diversifier::is_diverse(const CostPartitioningHeuristic &cp_heuristic) {
     return cp_improves_portfolio;
 }
 
-int Diversifier::compute_sum_portfolio_h_value_for_samples() const {
-    // Silvan: the sum is INF iff one of the values is INF
-    int sum = 0;
+float Diversifier::compute_avg_finite_sample_h_value() const {
+    double sum_h = 0;
+    int num_finite_values = 0;
     for (int h : portfolio_h_values) {
-        if (h == INF) {
-            return INF;
+        if (h != INF) {
+            sum_h += h;
+            ++num_finite_values;
         }
-        sum += h;
     }
-    return sum;
+    if (num_finite_values == 0) {
+        return 0.0;
+    }
+    return sum_h / num_finite_values;
 }
 }

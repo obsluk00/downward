@@ -11,10 +11,10 @@ using namespace std;
 
 namespace merge_and_shrink {
 vector<int> compute_goal_distances_for_abstraction(
-    const Abstraction &abstraction, const vector<int> &label_costs, utils::Verbosity verbosity) {
+    const Abstraction &abstraction, const vector<int> &label_costs, utils::LogProxy &log) {
     if (abstraction.label_mapping.empty()) {
         return compute_goal_distances(
-             *abstraction.transition_system, label_costs, verbosity);
+            *abstraction.transition_system, label_costs, log);
     }
     int num_labels = label_costs.size();
     vector<int> abs_label_costs(num_labels * 2, -1);
@@ -30,13 +30,13 @@ vector<int> compute_goal_distances_for_abstraction(
         }
 //            abs_labels.insert(abs_label_no);
     }
-    if (verbosity >= utils::Verbosity::DEBUG) {
-//            utils::g_log << "Abs labels: " << vector<int>(abs_labels.begin(), abs_labels.end()) << endl;
-        utils::g_log << "Remaining label costs in abs: " << abs_label_costs << endl;
+    if (log.is_at_least_debug()) {
+//        log << "Abs labels: " << vector<int>(abs_labels.begin(), abs_labels.end()) << endl;
+        log << "Remaining label costs in abs: " << abs_label_costs << endl;
     }
 
     vector<int> goal_distances = compute_goal_distances(
-        *abstraction.transition_system, abs_label_costs, verbosity);
+        *abstraction.transition_system, abs_label_costs, log);
     return goal_distances;
 }
 
@@ -55,7 +55,7 @@ vector<int> compute_saturated_costs_for_abstraction(
     const Abstraction &abstraction,
     const vector<int> &goal_distances,
     int num_labels,
-    utils::Verbosity verbosity) {
+    utils::LogProxy &log) {
     static bool dump_if_empty_transitions = true;
     static bool dump_if_infinite_transitions = true;
     vector<vector<int>> reduced_to_original_labels;
@@ -68,9 +68,9 @@ vector<int> compute_saturated_costs_for_abstraction(
         const LabelGroup &label_group = gat.label_group;
         const vector<Transition> &transitions = gat.transitions;
         int group_saturated_cost = -INF;
-        if (verbosity >= utils::Verbosity::VERBOSE && dump_if_empty_transitions && transitions.empty()) {
+        if (log.is_at_least_verbose() && dump_if_empty_transitions && transitions.empty()) {
             dump_if_empty_transitions = false;
-            utils::g_log << "found dead label group" << endl;
+            log << "found dead label group" << endl;
         } else {
             for (const Transition &transition : transitions) {
                 int src = transition.src;
@@ -84,11 +84,11 @@ vector<int> compute_saturated_costs_for_abstraction(
                     group_saturated_cost = max(group_saturated_cost, diff);
                 }
             }
-            if (verbosity >= utils::Verbosity::VERBOSE
+            if (log.is_at_least_verbose()
                 && dump_if_infinite_transitions
                 && group_saturated_cost == -INF) {
                 dump_if_infinite_transitions = false;
-                utils::g_log << "label group does not lead to any state with finite heuristic value" << endl;
+                log << "label group does not lead to any state with finite heuristic value" << endl;
             }
         }
         for (int label_no : label_group) {
@@ -103,13 +103,13 @@ vector<int> compute_saturated_costs_for_abstraction(
             }
         }
     }
-//    utils::g_log << "num original labels in abs: " << mapped_labels.size() << endl;
+//    log << "num original labels in abs: " << mapped_labels.size() << endl;
 //    assert(static_cast<int>(mapped_labels.size()) == num_original_labels);
-//    utils::g_log << "original labels from abs: "
+//    log << "original labels from abs: "
 //         << vector<int>(mapped_labels.begin(), mapped_labels.end()) << endl;
 //    assert(original_labels == vector<int>(mapped_labels.begin(), mapped_labels.end()));
-    if (verbosity >= utils::Verbosity::DEBUG) {
-        utils::g_log << "Saturated label costs: " << saturated_label_costs << endl;
+    if (log.is_at_least_debug()) {
+        log << "Saturated label costs: " << saturated_label_costs << endl;
     }
     return saturated_label_costs;
 }

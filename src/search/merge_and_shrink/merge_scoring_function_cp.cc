@@ -57,7 +57,7 @@ vector<unique_ptr<Abstraction>> MergeScoringFunctionCP::compute_abstractions_ove
         if (dynamic_cast<const MergeAndShrinkRepresentationLeaf *>(fts.get_mas_representation_raw_ptr(index))) {
             mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationLeaf>(
                 dynamic_cast<const MergeAndShrinkRepresentationLeaf *>
-                    (fts.get_mas_representation_raw_ptr(index)));
+                (fts.get_mas_representation_raw_ptr(index)));
         } else {
             mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
                 dynamic_cast<const MergeAndShrinkRepresentationMerge *>(
@@ -100,6 +100,7 @@ vector<double> MergeScoringFunctionCP::compute_scores(
             }
         }
 
+        utils::LogProxy log = utils::get_silent_log();
         // Compute initial h value of the product.
         unique_ptr<TransitionSystem> product = shrink_before_merge_externally(
             fts,
@@ -108,19 +109,19 @@ vector<double> MergeScoringFunctionCP::compute_scores(
             *shrink_strategy,
             max_states,
             max_states_before_merge,
-            shrink_threshold_before_merge);
+            shrink_threshold_before_merge,
+            log);
         unique_ptr<Distances> distances = utils::make_unique_ptr<Distances>(*product);
         const bool compute_init_distances = true;
         const bool compute_goal_distances = true;
-        utils::Verbosity verbosity = utils::Verbosity::SILENT;
-        distances->compute_distances(compute_init_distances, compute_goal_distances, verbosity);
+        distances->compute_distances(compute_init_distances, compute_goal_distances, log);
         int product_init_h = distances->get_goal_distance(product->get_init_state());
 
         // Compute the CP over the product.
         unique_ptr<CostPartitioning> cp = cp_factory->generate(
             compute_label_costs(fts.get_labels()),
             compute_abstractions_over_fts(fts, {index1, index2}),
-            verbosity);
+            log);
         // TODO: this is a hack that we could avoid by being able to have a
         // cost partitioning that works for abstract states rather than
         // concrete states. By doing so we could actually avoid copying mas

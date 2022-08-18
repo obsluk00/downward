@@ -3,6 +3,8 @@
 
 #include "../algorithms/dynamic_bitset.h"
 
+#include "../utils/logging.h"
+
 #include <memory>
 #include <vector>
 
@@ -16,7 +18,6 @@ class Options;
 
 namespace utils {
 class CountdownTimer;
-enum class Verbosity;
 }
 
 namespace merge_and_shrink {
@@ -59,7 +60,7 @@ protected:
     const bool prune_unreachable_states;
     const bool prune_irrelevant_states;
 
-    const utils::Verbosity verbosity;
+    mutable utils::LogProxy log;
     const double main_loop_max_time;
     const bool atomic_label_reduction;
 
@@ -82,12 +83,12 @@ protected:
     long starting_peak_memory;
 
     class NextSnapshot {
-    private:
+private:
         const double max_time;
         const int max_iterations;
         const int main_loop_target_num_snapshots;
         const int main_loop_snapshot_each_iteration;
-        const utils::Verbosity verbosity;
+        utils::LogProxy &log;
 
         double next_time_to_compute_snapshot;
         int next_iteration_to_compute_snapshot;
@@ -95,7 +96,7 @@ protected:
 
         void compute_next_snapshot_time(double current_time);
         void compute_next_snapshot_iteration(int current_iteration);
-    public:
+public:
         /*
           Counting of iterations is 1-based in this class.
         */
@@ -104,7 +105,7 @@ protected:
             int max_iterations,
             int main_loop_target_num_snapshots,
             int main_loop_snapshot_each_iteration,
-            utils::Verbosity verbosity);
+            utils::LogProxy &log);
 
         bool compute_next_snapshot(double current_time, int current_iteration);
     };
@@ -133,9 +134,9 @@ protected:
         const FactoredTransitionSystem &fts,
         int iteration) const;
     bool main_loop(FactoredTransitionSystem &fts,
-        const TaskProxy &task_proxy,
-        Bitset &factors_modified_since_last_snapshot,
-        const std::unique_ptr<std::vector<int>> &original_to_current_labels);
+                   const TaskProxy &task_proxy,
+                   Bitset &factors_modified_since_last_snapshot,
+                   const std::unique_ptr<std::vector<int>> &original_to_current_labels);
 public:
     explicit CPMAS(const options::Options &opts);
     ~CPMAS() = default;

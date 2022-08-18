@@ -32,14 +32,14 @@ class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
         const std::vector<int> &order,
-        utils::Verbosity verbosity) const;
+        utils::LogProxy &log) const;
 public:
     explicit SaturatedCostPartitioningFactory(const Options &opts);
     virtual ~SaturatedCostPartitioningFactory() = default;
     virtual std::unique_ptr<CostPartitioning> generate(
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
-        utils::Verbosity verbosity) override;
+        utils::LogProxy &log) override;
 };
 }
 

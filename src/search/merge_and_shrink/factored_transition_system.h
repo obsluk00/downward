@@ -142,7 +142,7 @@ public:
               std::unique_ptr<Distances>> extract_factor(int index);
     std::pair<std::unique_ptr<TransitionSystem>,
               std::unique_ptr<MergeAndShrinkRepresentation>>
-        extract_ts_and_representation(int index);
+    extract_ts_and_representation(int index);
 
     void statistics(int index, utils::LogProxy &log) const;
     void dump(int index, utils::LogProxy &log) const;

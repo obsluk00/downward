@@ -69,7 +69,7 @@ class LabelReduction {
         const equivalence_relation::EquivalenceRelation *relation,
         const FactoredTransitionSystem &fts,
         std::vector<std::pair<int, std::vector<int>>> &label_mapping,
-            utils::LogProxy &log,
+        utils::LogProxy &log,
         const std::unique_ptr<std::vector<int>> &original_to_current_labels) const;
     equivalence_relation::EquivalenceRelation
     *compute_combinable_equivalence_relation(
@@ -81,7 +81,7 @@ public:
     bool reduce(
         const std::pair<int, int> &next_merge,
         FactoredTransitionSystem &fts,
-            utils::LogProxy &log,
+        utils::LogProxy &log,
         const std::unique_ptr<std::vector<int>> &original_to_current_labels = nullptr) const;
     void dump_options(utils::LogProxy &log) const;
     bool reduce_before_shrinking() const {

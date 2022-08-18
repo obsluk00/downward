@@ -70,8 +70,8 @@ int OptimalCostPartitioning::compute_value(const State &state) {
 
     /*static bool first = true;
     if (first) {
-        utils::g_log << "LP solve time: " << solve_time << endl;
-        utils::g_log << "LP peak memory after solve: " << utils::get_peak_memory_in_kb() << endl;
+        log << "LP solve time: " << solve_time << endl;
+        log << "LP peak memory after solve: " << utils::get_peak_memory_in_kb() << endl;
 
         first = false;
     }*/
@@ -103,7 +103,6 @@ void OptimalCostPartitioningFactory::create_abstraction_variables(
     AbstractionInformation &abstraction_info,
     int num_states,
     int num_labels) {
-
     // Create variables for local label cost.
     abstraction_info.local_label_cost_offset = variables.size();
     for (int label_no = 0; label_no < num_labels; ++label_no) {
@@ -130,8 +129,7 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
     const AbstractionInformation &abstraction_info,
     const TransitionSystem &ts,
     const vector<int> &contiguous_label_mapping,
-    utils::Verbosity verbosity) const {
-
+    utils::LogProxy &log) const {
     // Add constraints: H_alpha(g) <= 0 (as variable lower bounds) for all abstract goals g.
     for (int state = 0; state < ts.get_size(); ++state) {
         if (ts.is_goal_state(state)) {
@@ -141,19 +139,19 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
     }
 
     for (GroupAndTransitions gat : ts) {
-        if (verbosity >= utils::Verbosity::DEBUG) {
-            utils::g_log << "Label group: [";
+        if (log.is_at_least_debug()) {
+            log << "Label group: [";
             for (int label : gat.label_group) {
-                utils::g_log << label << " ";
+                log << label << " ";
             }
-            utils::g_log << "]" << endl;
+            log << "]" << endl;
         }
         if (efficient_cp) {
             // Label group var is the same for the group.
             int some_label_no = *gat.label_group.begin();
             int group_id = ts.get_label_equivalence_relation().get_group_id(some_label_no);
             int group_var = abstraction_info.get_local_label_cost_variable(
-                    contiguous_label_mapping[group_id]);
+                contiguous_label_mapping[group_id]);
 
             bool have_set_lower_bound = false;
             for (const Transition &transition : gat.transitions) {
@@ -168,10 +166,10 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
                     constraint.insert(group_var, 1);
                     constraint.insert(target_var, 1);
                     constraints.push_back(constraint);
-                    if (verbosity >= utils::Verbosity::DEBUG) {
-                        utils::g_log << "adding transition constraint: " << source_var
-                             << " <= " << target_var << " + " << group_var
-                             << endl;
+                    if (log.is_at_least_debug()) {
+                        log << "adding transition constraint: " << source_var
+                                     << " <= " << target_var << " + " << group_var
+                                     << endl;
                     }
                 } else {
                     if (!have_set_lower_bound) {
@@ -181,8 +179,8 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
                         */
                         variables[group_var].lower_bound = 0;
                         have_set_lower_bound = true;
-                        if (verbosity >= utils::Verbosity::DEBUG) {
-                            utils::g_log << "lower-bounding group: " << group_var << endl;
+                        if (log.is_at_least_debug()) {
+                            log << "lower-bounding group: " << group_var << endl;
                         }
                     }
                 }
@@ -196,7 +194,7 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
                     int target_var = abstraction_info.get_state_cost_variable(transition.target);
                     for (int label_no : gat.label_group) {
                         int label_var = abstraction_info.get_local_label_cost_variable(
-                                contiguous_label_mapping[label_no]);
+                            contiguous_label_mapping[label_no]);
 
                         // Add constraint: H_alpha(s) <= H_alpha(s') + C_alpha(l)
                         lp::LPConstraint constraint(0, infinity);
@@ -204,10 +202,10 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
                         constraint.insert(label_var, 1);
                         constraint.insert(target_var, 1);
                         constraints.push_back(constraint);
-                        if (verbosity >= utils::Verbosity::DEBUG) {
-                            utils::g_log << "adding transition constraint: " << source_var
-                                 << " <= " << target_var << " + " << label_var
-                                 << endl;
+                        if (log.is_at_least_debug()) {
+                            log << "adding transition constraint: " << source_var
+                                         << " <= " << target_var << " + " << label_var
+                                         << endl;
                         }
                     }
                 } else {
@@ -218,10 +216,10 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
                         */
                         for (int label_no : gat.label_group) {
                             int label_var = abstraction_info.get_local_label_cost_variable(
-                                    contiguous_label_mapping[label_no]);
+                                contiguous_label_mapping[label_no]);
                             variables[label_var].lower_bound = 0;
-                            if (verbosity >= utils::Verbosity::DEBUG) {
-                                utils::g_log << "lower-bounding label: " << label_var << endl;
+                            if (log.is_at_least_debug()) {
+                                log << "lower-bounding label: " << label_var << endl;
                             }
                         }
                         have_set_lower_bound = true;
@@ -239,14 +237,14 @@ void OptimalCostPartitioningFactory::create_global_constraints(
     vector<unique_ptr<Abstraction>> &abstractions,
     const vector<vector<int>> &abs_to_contiguous_label_group_mapping,
     const vector<AbstractionInformation> &abstraction_infos,
-    utils::Verbosity verbosity) const {
+    utils::LogProxy &log) const {
     for (size_t label_no = 0; label_no < label_costs.size(); ++label_no) {
         int label_cost = label_costs[label_no];
         if (label_cost != -1) {
             // Add constraint: sum_alpha Cost_alpha(l) <= cost(l)
             lp::LPConstraint constraint(-infinity, label_cost);
-            if (verbosity >= utils::Verbosity::DEBUG) {
-                utils::g_log << "adding global constraint for label " << label_no << ": ";
+            if (log.is_at_least_debug()) {
+                log << "adding global constraint for label " << label_no << ": ";
             }
             if (efficient_cp) {
                 for (size_t i = 0; i < abstraction_infos.size(); ++i) {
@@ -261,8 +259,8 @@ void OptimalCostPartitioningFactory::create_global_constraints(
                     int group_var = abstraction_infos[i].get_local_label_cost_variable(
                         abs_to_contiguous_label_group_mapping[i][group_id]);
                     constraint.insert(group_var, 1);
-                    if (verbosity >= utils::Verbosity::DEBUG) {
-                        utils::g_log << group_var << " + ";
+                    if (log.is_at_least_debug()) {
+                        log << group_var << " + ";
                     }
                 }
             } else {
@@ -277,14 +275,14 @@ void OptimalCostPartitioningFactory::create_global_constraints(
                             abs_to_contiguous_label_group_mapping[i][abs_label]);
                     }
                     constraint.insert(label_var, 1);
-                    if (verbosity >= utils::Verbosity::DEBUG) {
-                        utils::g_log << label_var << " + ";
+                    if (log.is_at_least_debug()) {
+                        log << label_var << " + ";
                     }
                 }
             }
             constraints.push_back(constraint);
-            if (verbosity >= utils::Verbosity::DEBUG) {
-                utils::g_log << " <= " << label_cost << endl;
+            if (log.is_at_least_debug()) {
+                log << " <= " << label_cost << endl;
             }
         }
     }
@@ -332,11 +330,11 @@ int compute_contiguous_label_mapping(
 unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
     vector<int> &&label_costs,
     vector<unique_ptr<Abstraction>> &&abstractions,
-    utils::Verbosity verbosity) {
-    if (verbosity >= utils::Verbosity::DEBUG) {
-        utils::g_log << "Computing OCP over M&S abstractions..." << endl;
-        utils::g_log << "LP peak memory before construct: " << utils::get_peak_memory_in_kb() << endl;
-        utils::g_log << "Original label costs: " << label_costs << endl;
+    utils::LogProxy &log) {
+    if (log.is_at_least_debug()) {
+        log << "Computing OCP over M&S abstractions..." << endl;
+        log << "LP peak memory before construct: " << utils::get_peak_memory_in_kb() << endl;
+        log << "Original label costs: " << label_costs << endl;
     }
 
     // Used for labels or label groups depending on whether efficient_cp is set or not.
@@ -377,31 +375,31 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
     double infinity = lp_solver->get_infinity();
     int num_abstract_states = 0;
     for (size_t i = 0; i < abstractions.size(); ++i) {
-        if (verbosity >= utils::Verbosity::DEBUG) {
-            utils::g_log << endl;
-            utils::g_log << "Building LP for abstraction " << i << endl;
-            utils::g_log << "Label mapping (empty if interleaved): "
-                 << abstractions[i]->label_mapping << endl;
+        if (log.is_at_least_debug()) {
+            log << endl;
+            log << "Building LP for abstraction " << i << endl;
+            log << "Label mapping (empty if interleaved): "
+                         << abstractions[i]->label_mapping << endl;
         }
         AbstractionInformation abstraction_info(
             move(abstractions[i]->merge_and_shrink_representation));
         const TransitionSystem &ts = *abstractions[i]->transition_system;
         num_abstract_states += ts.get_size();
-        if (verbosity >= utils::Verbosity::DEBUG) {
-            utils::g_log << "Number of states: " << num_abstract_states << endl;
-            utils::g_log << "Number of labels/label groups: " << abs_to_num_label_groups[i] << endl;
+        if (log.is_at_least_debug()) {
+            log << "Number of states: " << num_abstract_states << endl;
+            log << "Number of labels/label groups: " << abs_to_num_label_groups[i] << endl;
         }
         create_abstraction_variables(
             variables, infinity, abstraction_info, ts.get_size(),
             abs_to_num_label_groups[i]);
         create_abstraction_constraints(
             variables, constraints, infinity, abstraction_info, ts,
-            abs_to_contiguous_label_group_mapping[i], verbosity);
+            abs_to_contiguous_label_group_mapping[i], log);
         abstraction_infos.push_back(move(abstraction_info));
     }
     create_global_constraints(
         infinity, constraints, label_costs, abstractions,
-        abs_to_contiguous_label_group_mapping, abstraction_infos, verbosity);
+        abs_to_contiguous_label_group_mapping, abstraction_infos, log);
 
     for (auto &abs : abstractions) {
         if (!abs->label_mapping.empty()) {
@@ -410,17 +408,17 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
         }
     }
 
-    if (verbosity >= utils::Verbosity::DEBUG) {
-        utils::g_log << "Abstract states in abstractions: " << num_abstract_states << endl;
-        utils::g_log << "LP variables: " << variables.size() << endl;
-        utils::g_log << "LP constraints: " << constraints.size() << endl;
-        utils::g_log << "LP peak memory before load: " << utils::get_peak_memory_in_kb() << endl;
+    if (log.is_at_least_debug()) {
+        log << "Abstract states in abstractions: " << num_abstract_states << endl;
+        log << "LP variables: " << variables.size() << endl;
+        log << "LP constraints: " << constraints.size() << endl;
+        log << "LP peak memory before load: " << utils::get_peak_memory_in_kb() << endl;
     }
 
-    lp::LinearProgram lp(lp::LPObjectiveSense::MAXIMIZE, move(variables), move(constraints));
+    lp::LinearProgram lp(lp::LPObjectiveSense::MAXIMIZE, move(variables), move(constraints), lp_solver->get_infinity());
     lp_solver->load_problem(lp);
-    if (verbosity >= utils::Verbosity::DEBUG) {
-        utils::g_log << "LP peak memory after load: " << utils::get_peak_memory_in_kb() << endl;
+    if (log.is_at_least_debug()) {
+        log << "LP peak memory after load: " << utils::get_peak_memory_in_kb() << endl;
     }
 
     return utils::make_unique_ptr<OptimalCostPartitioning>(move(abstraction_infos), move(lp_solver));

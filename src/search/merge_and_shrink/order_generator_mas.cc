@@ -24,9 +24,8 @@ OrderGeneratorMAS::OrderGeneratorMAS(const Options &opts) :
 Order OrderGeneratorMAS::compute_order(
     const Abstractions &abstractions,
     const vector<int> &,
-    utils::Verbosity,
+    utils::LogProxy &,
     const vector<int> &) {
-
     // Collect atomic and product abstractions.
     Order atomic_order;
     Order product_order;

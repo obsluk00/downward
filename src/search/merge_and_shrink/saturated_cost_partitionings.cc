@@ -35,9 +35,9 @@ void CostPartitioningHeuristic::add_h_values(
     // filter infinite values before like Jendrik does with the unsolvabiltiy
     // heuristic.
     if (!total_abstraction || any_of(h_values.begin(), h_values.end(), [](int h) {
-                   assert(h != INF);
-                   return h > 0;
-               })) {
+                                         assert(h != INF);
+                                         return h > 0;
+                                     })) {
         lookup_tables.emplace_back(abstraction_id, move(h_values));
     }
 }
@@ -84,7 +84,8 @@ void CostPartitioningHeuristic::mark_useful_abstractions(
 
 static void log_info_about_stored_lookup_tables(
     const Abstractions &abstractions,
-    const vector<CostPartitioningHeuristic> &cp_heuristics) {
+    const vector<CostPartitioningHeuristic> &cp_heuristics,
+    utils::LogProxy &log) {
     int num_abstractions = abstractions.size();
 
     // Print statistics about the number of lookup tables.
@@ -93,10 +94,10 @@ static void log_info_about_stored_lookup_tables(
     for (const auto &cp_heuristic: cp_heuristics) {
         num_stored_lookup_tables += cp_heuristic.get_num_lookup_tables();
     }
-    utils::Log() << "Stored lookup tables: " << num_stored_lookup_tables << "/"
-                 << num_lookup_tables << " = "
-                 << num_stored_lookup_tables / static_cast<double>(num_lookup_tables)
-                 << endl;
+    log << "Stored lookup tables: " << num_stored_lookup_tables << "/"
+        << num_lookup_tables << " = "
+        << num_stored_lookup_tables / static_cast<double>(num_lookup_tables)
+        << endl;
 
     // Print statistics about the number of stored values.
     int num_stored_values = 0;
@@ -108,9 +109,9 @@ static void log_info_about_stored_lookup_tables(
         num_total_values += abstraction->transition_system->get_size();
     }
     num_total_values *= cp_heuristics.size();
-    utils::Log() << "Stored values: " << num_stored_values << "/"
-                 << num_total_values << " = "
-                 << num_stored_values / static_cast<double>(num_total_values) << endl;
+    log << "Stored values: " << num_stored_values << "/"
+        << num_total_values << " = "
+        << num_stored_values / static_cast<double>(num_total_values) << endl;
 }
 
 static vector<unique_ptr<MergeAndShrinkRepresentation>>
@@ -140,31 +141,32 @@ extract_abstraction_functions_from_useful_abstractions(
 
 SaturatedCostPartitionings::SaturatedCostPartitionings(
     std::vector<std::unique_ptr<Abstraction>> &&abstractions,
-    std::vector<CostPartitioningHeuristic> &&cp_heuristics_)
+    std::vector<CostPartitioningHeuristic> &&cp_heuristics_,
+    utils::LogProxy &log)
     : CostPartitioning(),
       cp_heuristics(move(cp_heuristics_)) {
-      log_info_about_stored_lookup_tables(abstractions, cp_heuristics);
+    log_info_about_stored_lookup_tables(abstractions, cp_heuristics, log);
 
-      // We only need abstraction functions during search and no transition systems.
-      abstraction_functions = extract_abstraction_functions_from_useful_abstractions(
-          cp_heuristics, abstractions);
+    // We only need abstraction functions during search and no transition systems.
+    abstraction_functions = extract_abstraction_functions_from_useful_abstractions(
+        cp_heuristics, abstractions);
 
-      int num_abstractions = abstractions.size();
-      int num_useless_abstractions = count(
-          abstraction_functions.begin(), abstraction_functions.end(), nullptr);
-      int num_useful_abstractions = num_abstractions - num_useless_abstractions;
-      utils::Log() << "Useful abstractions: " << num_useful_abstractions << "/"
-                   << num_abstractions << " = "
-                   << static_cast<double>(num_useful_abstractions) / num_abstractions
-                   << endl;
+    int num_abstractions = abstractions.size();
+    int num_useless_abstractions = count(
+        abstraction_functions.begin(), abstraction_functions.end(), nullptr);
+    int num_useful_abstractions = num_abstractions - num_useless_abstractions;
+    log << "Useful abstractions: " << num_useful_abstractions << "/"
+        << num_abstractions << " = "
+        << static_cast<double>(num_useful_abstractions) / num_abstractions
+        << endl;
 
-      // Release copied transition systems if we are in an offline scenario.
-      for (auto &abs : abstractions) {
-          if (!abs->label_mapping.empty()) {
-              delete abs->transition_system;
-              abs->transition_system = nullptr;
-          }
-      }
+    // Release copied transition systems if we are in an offline scenario.
+    for (auto &abs : abstractions) {
+        if (!abs->label_mapping.empty()) {
+            delete abs->transition_system;
+            abs->transition_system = nullptr;
+        }
+    }
 }
 
 static std::vector<int> get_abstract_state_ids(
@@ -238,19 +240,18 @@ CostPartitioningHeuristic compute_scp(
     const Abstractions &abstractions,
     const std::vector<int> &order,
     const std::vector<int> &label_costs) {
-
     assert(abstractions.size() == order.size());
     int num_labels = label_costs.size();
     CostPartitioningHeuristic cp_heuristic;
     vector<int> remaining_costs = label_costs;
-    utils::Verbosity verbosity = utils::Verbosity::SILENT;
+    utils::LogProxy log = utils::get_silent_log();
     for (size_t i = 0; i < order.size(); ++i) {
         int pos = order[i];
         const Abstraction &abstraction = *abstractions[pos];
         vector<int> h_values = compute_goal_distances_for_abstraction(
-            abstraction, remaining_costs, verbosity);
+            abstraction, remaining_costs, log);
         vector<int> saturated_costs = compute_saturated_costs_for_abstraction(
-            abstraction, h_values, num_labels, verbosity);
+            abstraction, h_values, num_labels, log);
         cp_heuristic.add_h_values(
             pos, move(h_values), abstraction.merge_and_shrink_representation->is_total());
         if (i == order.size() - 1) {
@@ -284,10 +285,11 @@ static vector<vector<int>> sample_states_and_return_abstract_state_ids(
     int num_samples,
     int init_h,
     const DeadEndDetector &is_dead_end,
-    double max_sampling_time) {
+    double max_sampling_time,
+    utils::LogProxy &log) {
     assert(num_samples >= 1);
     utils::CountdownTimer sampling_timer(max_sampling_time);
-    utils::Log() << "Start sampling" << endl;
+    log << "Start sampling" << endl;
     vector<vector<int>> abstract_state_ids_by_sample;
     abstract_state_ids_by_sample.push_back(
         get_abstract_state_ids(abstractions, task_proxy.get_initial_state()));
@@ -296,42 +298,42 @@ static vector<vector<int>> sample_states_and_return_abstract_state_ids(
         abstract_state_ids_by_sample.push_back(
             get_abstract_state_ids(abstractions, sampler.sample_state(init_h, is_dead_end)));
     }
-    utils::Log() << "Samples: " << abstract_state_ids_by_sample.size() << endl;
-    utils::Log() << "Sampling time: " << sampling_timer.get_elapsed_time() << endl;
+    log << "Samples: " << abstract_state_ids_by_sample.size() << endl;
+    log << "Sampling time: " << sampling_timer.get_elapsed_time() << endl;
     return abstract_state_ids_by_sample;
 }
 
 unique_ptr<CostPartitioning> single_cp(
     vector<int> &&costs,
-    vector<unique_ptr<Abstraction>> &&abstractions) {
+    vector<unique_ptr<Abstraction>> &&abstractions,
+    utils::LogProxy &log) {
     vector<CostPartitioningHeuristic> cp_heuristics;
     cp_heuristics.reserve(1);
     cp_heuristics.push_back(compute_scp(abstractions, get_default_order(abstractions.size()), costs));
-    return utils::make_unique_ptr<SaturatedCostPartitionings>(move(abstractions), move(cp_heuristics));
+    return utils::make_unique_ptr<SaturatedCostPartitionings>(move(abstractions), move(cp_heuristics), log);
 }
 
 unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
     vector<int> &&costs,
     vector<unique_ptr<Abstraction>> &&abstractions,
-    utils::Verbosity verbosity) {
-    if (verbosity >= utils::Verbosity::DEBUG) {
-        utils::g_log << "Generating multiple SCP M&S heuristics for given abstractions..." << endl;
+    utils::LogProxy &log) {
+    if (log.is_at_least_debug()) {
+        log << "Generating multiple SCP M&S heuristics for given abstractions..." << endl;
     }
 
     if (abstractions.size() == 1) {
-        return single_cp(move(costs), move(abstractions));
+        return single_cp(move(costs), move(abstractions), log);
     }
 
-    utils::Log log;
     utils::CountdownTimer timer(max_time);
     log << "Number of abstractions: " << abstractions.size() << endl;
 
     DeadEndDetector real_is_dead_end =
         [&abstractions](const State &state) {
             vector<int> abstract_state_ids = get_abstract_state_ids(abstractions, state);
-            return any_of(abstract_state_ids.begin(), abstract_state_ids.end(), [](int i){return i == PRUNED_STATE;});
+            return any_of(abstract_state_ids.begin(), abstract_state_ids.end(), [](int i) {return i == PRUNED_STATE;});
         };
-    DeadEndDetector no_is_dead_end = [](const State &) { return false;};
+    DeadEndDetector no_is_dead_end = [](const State &) {return false;};
 
     TaskProxy task_proxy(*task);
     State initial_state = task_proxy.get_initial_state();
@@ -347,7 +349,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
     vector<int> abstract_state_ids_for_init = get_abstract_state_ids(
         abstractions, initial_state);
     Order order_for_init = order_generator->compute_order(
-        abstractions, costs, verbosity, abstract_state_ids_for_init);
+        abstractions, costs, log, abstract_state_ids_for_init);
     CostPartitioningHeuristic cp_for_init = compute_scp(
         abstractions, order_for_init, costs);
     int init_h = cp_for_init.compute_heuristic(abstract_state_ids_for_init);
@@ -368,7 +370,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
         }
         diversifier = utils::make_unique_ptr<Diversifier>(
             sample_states_and_return_abstract_state_ids(
-                task_proxy, abstractions, sampler, num_samples, init_h, is_dead_end, max_sampling_time));
+                task_proxy, abstractions, sampler, num_samples, init_h, is_dead_end, max_sampling_time, log));
     }
 
     DeadEndDetector is_dead_end = no_is_dead_end;
@@ -396,7 +398,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
             abstract_state_ids = get_abstract_state_ids(
                 abstractions, sampler.sample_state(init_h, is_dead_end));
             order = order_generator->compute_order(
-                abstractions, costs, verbosity, abstract_state_ids);
+                abstractions, costs, log, abstract_state_ids);
             cp_heuristic = compute_scp(abstractions, order, costs);
         }
 
@@ -423,10 +425,10 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
         if (!diversifier || diversifier->is_diverse(cp_heuristic)) {
             cp_heuristics.push_back(move(cp_heuristic));
             if (diversifier) {
-                log << "Sum over max h values for " << num_samples
+                log << "Average finite h-value for " << num_samples
                     << " samples after " << timer.get_elapsed_time()
                     << " of diversification: "
-                    << diversifier->compute_sum_portfolio_h_value_for_samples()
+                    << diversifier->compute_avg_finite_sample_h_value()
                     << endl;
             }
         }
@@ -439,7 +441,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
     log << "Time for computing cost partitionings: " << timer.get_elapsed_time()
         << endl;
 
-    return utils::make_unique_ptr<SaturatedCostPartitionings>(move(abstractions), move(cp_heuristics));
+    return utils::make_unique_ptr<SaturatedCostPartitionings>(move(abstractions), move(cp_heuristics), log);
 }
 
 static shared_ptr<SaturatedCostPartitioningsFactory>_parse(OptionParser &parser) {

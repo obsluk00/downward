@@ -30,7 +30,7 @@ Order OrderGeneratorDynamicGreedy::compute_dynamic_greedy_order_for_sample(
     vector<int> remaining_abstractions = get_default_order(abstractions.size());
 
     Order order;
-    utils::Verbosity verbosity = utils::Verbosity::SILENT;
+    utils::LogProxy log = utils::get_silent_log();
     while (!remaining_abstractions.empty()) {
         int num_remaining = remaining_abstractions.size();
         vector<int> current_h_values;
@@ -46,9 +46,9 @@ Order OrderGeneratorDynamicGreedy::compute_dynamic_greedy_order_for_sample(
             int abstract_state_id = abstract_state_ids[abs_id];
             Abstraction &abstraction = *abstractions[abs_id];
             vector<int> h_values = compute_goal_distances_for_abstraction(
-                abstraction, remaining_costs, verbosity);
+                abstraction, remaining_costs, log);
             vector<int> saturated_costs = compute_saturated_costs_for_abstraction(
-                abstraction, h_values, remaining_costs.size(), verbosity);
+                abstraction, h_values, remaining_costs.size(), log);
             assert(utils::in_bounds(abstract_state_id, h_values));
             int h = h_values[abstract_state_id];
             current_h_values.push_back(h);
@@ -81,14 +81,14 @@ Order OrderGeneratorDynamicGreedy::compute_dynamic_greedy_order_for_sample(
 Order OrderGeneratorDynamicGreedy::compute_order(
     const Abstractions &abstractions,
     const vector<int> &costs,
-    utils::Verbosity verbosity,
+    utils::LogProxy &log,
     const vector<int> &abstract_state_ids) {
     utils::Timer greedy_timer;
 
     vector<int> order;
     if (abstract_state_ids.empty()) {
-        if (verbosity >= utils::Verbosity::VERBOSE) {
-            utils::Log() << "No sample given; use initial state." << endl;
+        if (log.is_at_least_verbose()) {
+            log << "No sample given; use initial state." << endl;
         }
         vector<int> init_abstract_state_ids;
         init_abstract_state_ids.reserve(abstractions.size());
@@ -96,15 +96,15 @@ Order OrderGeneratorDynamicGreedy::compute_order(
             init_abstract_state_ids.push_back(abstraction->transition_system->get_init_state());
         }
         order = compute_dynamic_greedy_order_for_sample(
-                    abstractions, init_abstract_state_ids, costs);
+            abstractions, init_abstract_state_ids, costs);
     } else {
         order = compute_dynamic_greedy_order_for_sample(
-                    abstractions, abstract_state_ids, costs);
+            abstractions, abstract_state_ids, costs);
     }
 
-    if (verbosity >= utils::Verbosity::VERBOSE) {
-        utils::Log() << "Time for computing dynamic greedy order: "
-                     << greedy_timer << endl;
+    if (log.is_at_least_verbose()) {
+        log << "Time for computing dynamic greedy order: "
+            << greedy_timer << endl;
     }
 
     assert(order.size() == abstractions.size());
