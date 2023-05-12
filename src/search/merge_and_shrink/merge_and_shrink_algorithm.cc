@@ -195,6 +195,7 @@ void MergeAndShrinkAlgorithm::main_loop(
                 << " (" << msg << ")" << endl;
         };
     int iteration_counter = 0;
+    // TODO: clone all factors for testing here
     while (fts.get_num_active_entries() > 1) {
         // Choose next transition systems to merge
         pair<int, int> merge_indices = merge_strategy->get_next();

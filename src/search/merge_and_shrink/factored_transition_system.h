@@ -102,6 +102,14 @@ public:
 
     // Merge-and-shrink transformations.
     /*
+      Clones the factor specified by the index.
+      TODO: check if this should return the index of the clone
+    */
+    void clone_factor(
+        int index,
+        utils::LogProxy &log);
+
+    /*
       Apply the given label mapping to the factored transition system by
       updating all transitions of all transition systems. Only for the factor
       at combinable_index, the local equivalence relation over labels must be

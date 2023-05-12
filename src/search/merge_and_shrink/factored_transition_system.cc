@@ -108,6 +108,12 @@ void FactoredTransitionSystem::assert_all_components_valid() const {
     }
 }
 
+//TODO: figure out how to implement
+void FactoredTransitionSystem::clone_factor(
+    int index,
+    utils::LogProxy &log) {
+}
+
 void FactoredTransitionSystem::apply_label_mapping(
     const vector<pair<int, vector<int>>> &label_mapping,
     int combinable_index) {
