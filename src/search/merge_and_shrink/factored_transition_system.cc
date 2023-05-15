@@ -108,10 +108,23 @@ void FactoredTransitionSystem::assert_all_components_valid() const {
     }
 }
 
-//TODO: figure out how to implement
+// TODO: figure out how to copy representations, might need to implement a new constructor
+//  verify correctness, does the transitionsystem constructor provide sufficiently deep copies?
+//  improve efficiency, perhaps implementing a copy constructor for distances
 void FactoredTransitionSystem::clone_factor(
-    int index,
-    utils::LogProxy &log) {
+    int index) {
+    assert(is_component_valid(index));
+    new_index = transition_systems.size() - 1;
+    const TransitionSystem copied_system(*transition_systems[index]);
+    transition_systems.push_back(utils::make_unique_ptr<TransitionSystem>(copied_system));
+    const Distances copied_distances(copied_system);
+    distances.push_back(utils::make_unique_ptr<Distances>(copied_distances));
+    if (compute_init_distances || compute_goal_distances) {
+        distances[new_index]->compute_distances(
+                compute_init_distances, compute_goal_distances, log);
+    }
+    ++num_active_entries;
+    assert(is_component_valid(new_index));
 }
 
 void FactoredTransitionSystem::apply_label_mapping(

@@ -103,11 +103,10 @@ public:
     // Merge-and-shrink transformations.
     /*
       Clones the factor specified by the index.
-      TODO: check if this should return the index of the clone
+      TODO: check if we should pass the logproxy
     */
     void clone_factor(
-        int index,
-        utils::LogProxy &log);
+        int index);
 
     /*
       Apply the given label mapping to the factored transition system by
