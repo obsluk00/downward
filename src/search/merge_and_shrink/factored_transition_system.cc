@@ -115,8 +115,8 @@ void FactoredTransitionSystem::clone_factor(
     int index) {
     assert(is_component_valid(index));
     new_index = transition_systems.size() - 1;
-    const TransitionSystem copied_system(*transition_systems[index]);
-    transition_systems.push_back(utils::make_unique_ptr<TransitionSystem>(copied_system));
+    transition_systems.push_back(utils::make_unique_ptr<TransitionSystem>(*transition_systems[index]));
+    // TODO: there shouldnt be any pointers besides to the associated transition system
     const Distances copied_distances(copied_system);
     distances.push_back(utils::make_unique_ptr<Distances>(copied_distances));
     if (compute_init_distances || compute_goal_distances) {
