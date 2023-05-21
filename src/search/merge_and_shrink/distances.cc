@@ -18,6 +18,14 @@ Distances::Distances(const TransitionSystem &transition_system)
     clear_distances();
 }
 
+Distances::Distances(const merge_and_shrink::Distances &other, const merge_and_shrink::TransitionSystem &new_system)
+    : transition_system(new_system),
+      init_distances_computed(other.init_distances_computed),
+      goal_distances_computed(other.goal_distances_computed),
+      init_distances(other.init_distances),
+      goal_distances(other.goal_distances){
+}
+
 void Distances::clear_distances() {
     init_distances_computed = false;
     goal_distances_computed = false;

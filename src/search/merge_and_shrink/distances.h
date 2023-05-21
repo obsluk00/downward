@@ -39,6 +39,7 @@ class Distances {
     void compute_goal_distances_general_cost();
 public:
     explicit Distances(const TransitionSystem &transition_system);
+    explicit Distances(const Distances &other, const TransitionSystem &new_system);
     ~Distances() = default;
 
     bool are_init_distances_computed() const {
