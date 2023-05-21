@@ -114,15 +114,10 @@ void FactoredTransitionSystem::assert_all_components_valid() const {
 void FactoredTransitionSystem::clone_factor(
     int index) {
     assert(is_component_valid(index));
-    new_index = transition_systems.size() - 1;
+    int new_index = transition_systems.size() - 1;
     transition_systems.push_back(utils::make_unique_ptr<TransitionSystem>(*transition_systems[index]));
-    // TODO: there shouldnt be any pointers besides to the associated transition system
-    const Distances copied_distances(copied_system);
-    distances.push_back(utils::make_unique_ptr<Distances>(copied_distances));
-    if (compute_init_distances || compute_goal_distances) {
-        distances[new_index]->compute_distances(
-                compute_init_distances, compute_goal_distances, log);
-    }
+    mas_representations.push_back(mas_representations[index]->clone());
+    distances.push_back(utils::make_unique_ptr<Distances>(*distances[index], *transition_systems[new_index]));
     ++num_active_entries;
     assert(is_component_valid(new_index));
 }

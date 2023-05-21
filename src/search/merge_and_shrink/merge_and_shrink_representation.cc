@@ -35,6 +35,18 @@ MergeAndShrinkRepresentationLeaf::MergeAndShrinkRepresentationLeaf(
     iota(lookup_table.begin(), lookup_table.end(), 0);
 }
 
+// TODO: fix
+MergeAndShrinkRepresentationLeaf::MergeAndShrinkRepresentationLeaf(const MergeAndShrinkRepresentationLeaf &other)
+    : MergeAndShrinkRepresentation(other.domain_size),
+      var_id(other.var_id),
+      lookup_table(other.lookup_table) {
+}
+
+// TODO: fix
+std::unique_ptr<MergeAndShrinkRepresentation> MergeAndShrinkRepresentationLeaf::clone() const {
+    return std::make_unique<MergeAndShrinkRepresentationLeaf>(new MergeAndShrinkRepresentationLeaf(*this));
+}
+
 void MergeAndShrinkRepresentationLeaf::set_distances(
     const Distances &distances) {
     assert(distances.are_goal_distances_computed());
@@ -98,6 +110,19 @@ MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(
             ++counter;
         }
     }
+}
+
+// TODO: fix
+MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(MergeAndShrinkRepresentationMerge &other)
+    : MergeAndShrinkRepresentation(other.domain_size),
+      left_child(move(other.left_child->clone())),
+      right_child(move(other.right_child->clone())),
+      lookup_table(other.lookup_table) {
+}
+
+// TODO: fix
+std::unique_ptr<MergeAndShrinkRepresentation> MergeAndShrinkRepresentationMerge::clone() const {
+    return std::make_unique<MergeAndShrinkRepresentationMerge>(*this);
 }
 
 void MergeAndShrinkRepresentationMerge::set_distances(
