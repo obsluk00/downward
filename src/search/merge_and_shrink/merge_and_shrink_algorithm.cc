@@ -198,7 +198,8 @@ void MergeAndShrinkAlgorithm::main_loop(
 
     // TODO: remove and replace with cloning based on passed parameters
     // clones all factors for testing
-    for (int i = 0; i < fts.get_size(); ++i) {
+    const int size = fts.get_size();
+    for (int i = 0; i < size; ++i) {
         fts.clone_factor(i);
     }
 

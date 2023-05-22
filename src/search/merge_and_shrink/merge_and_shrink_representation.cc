@@ -44,7 +44,7 @@ MergeAndShrinkRepresentationLeaf::MergeAndShrinkRepresentationLeaf(const MergeAn
 
 // TODO: fix
 std::unique_ptr<MergeAndShrinkRepresentation> MergeAndShrinkRepresentationLeaf::clone() const {
-    return std::make_unique<MergeAndShrinkRepresentationLeaf>(new MergeAndShrinkRepresentationLeaf(*this));
+    return make_unique<MergeAndShrinkRepresentationLeaf>(*this);
 }
 
 void MergeAndShrinkRepresentationLeaf::set_distances(
@@ -113,16 +113,16 @@ MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(
 }
 
 // TODO: fix
-MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(MergeAndShrinkRepresentationMerge &other)
+MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(const MergeAndShrinkRepresentationMerge &other)
     : MergeAndShrinkRepresentation(other.domain_size),
-      left_child(move(other.left_child->clone())),
-      right_child(move(other.right_child->clone())),
+      left_child(other.left_child->clone()),
+      right_child(other.right_child->clone()),
       lookup_table(other.lookup_table) {
 }
 
 // TODO: fix
 std::unique_ptr<MergeAndShrinkRepresentation> MergeAndShrinkRepresentationMerge::clone() const {
-    return std::make_unique<MergeAndShrinkRepresentationMerge>(*this);
+    return make_unique<MergeAndShrinkRepresentationMerge>(*this);
 }
 
 void MergeAndShrinkRepresentationMerge::set_distances(

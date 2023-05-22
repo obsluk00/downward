@@ -72,7 +72,7 @@ public:
         std::unique_ptr<MergeAndShrinkRepresentation> left_child,
         std::unique_ptr<MergeAndShrinkRepresentation> right_child);
     // TODO: fix
-    MergeAndShrinkRepresentationMerge(MergeAndShrinkRepresentationMerge &other);
+    MergeAndShrinkRepresentationMerge(const MergeAndShrinkRepresentationMerge &other);
     virtual ~MergeAndShrinkRepresentationMerge() = default;
 
     // TODO: fix
