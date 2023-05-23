@@ -3,6 +3,7 @@
 #include "distances.h"
 #include "factored_transition_system.h"
 #include "merge_and_shrink_algorithm.h"
+#include "non_orthogonal_merge_and_shrink_algorithm.h"
 #include "merge_and_shrink_representation.h"
 #include "transition_system.h"
 #include "types.h"
@@ -23,9 +24,17 @@ namespace merge_and_shrink {
 MergeAndShrinkHeuristic::MergeAndShrinkHeuristic(const plugins::Options &opts)
     : Heuristic(opts) {
     log << "Initializing merge-and-shrink heuristic..." << endl;
-    MergeAndShrinkAlgorithm algorithm(opts);
-    FactoredTransitionSystem fts = algorithm.build_factored_transition_system(task_proxy);
-    extract_factors(fts);
+    if (opts.get<bool>("non_orthogonal")) {
+        log << "Merge-and-shrink heuristic is non-orthogonal." << endl;
+        NonOrthogonalMergeAndShrinkAlgorithm algorithm(opts);
+        FactoredTransitionSystem fts = algorithm.build_factored_transition_system(task_proxy);
+        extract_factors(fts);
+    }
+    else {
+        MergeAndShrinkAlgorithm algorithm(opts);
+        FactoredTransitionSystem fts = algorithm.build_factored_transition_system(task_proxy);
+        extract_factors(fts);
+    }
     log << "Done initializing merge-and-shrink heuristic." << endl << endl;
 }
 
