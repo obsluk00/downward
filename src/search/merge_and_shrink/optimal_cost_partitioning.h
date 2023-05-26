@@ -4,7 +4,7 @@
 #include "cost_partitioning.h"
 
 #include "../algorithms/named_vector.h"
-#include "../option_parser.h"
+#include "../plugins/options.h"
 
 #include "../lp/lp_solver.h"
 
@@ -12,7 +12,6 @@
 
 namespace merge_and_shrink {
 class FactoredTransitionSystem;
-class LabelGroup;
 class Labels;
 class MergeAndShrinkRepresentation;
 class Transition;
@@ -77,7 +76,7 @@ class OptimalCostPartitioningFactory : public CostPartitioningFactory {
         const std::vector<AbstractionInformation> &abstraction_infos,
         utils::LogProxy &log) const;
 public:
-    explicit OptimalCostPartitioningFactory(const Options &opts);
+    explicit OptimalCostPartitioningFactory(const plugins::Options &opts);
     virtual ~OptimalCostPartitioningFactory() = default;
     virtual std::unique_ptr<CostPartitioning> generate(
         std::vector<int> &&label_costs,

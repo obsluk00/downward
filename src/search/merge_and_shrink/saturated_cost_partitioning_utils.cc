@@ -2,7 +2,6 @@
 
 #include "cost_partitioning.h"
 #include "distances.h"
-#include "label_equivalence_relation.h"
 #include "transition_system.h"
 
 #include "../utils/logging.h"
@@ -64,9 +63,9 @@ vector<int> compute_saturated_costs_for_abstraction(
     }
     vector<int> saturated_label_costs(num_labels, -1);
 //    set<int> mapped_labels;
-    for (GroupAndTransitions gat : *abstraction.transition_system) {
-        const LabelGroup &label_group = gat.label_group;
-        const vector<Transition> &transitions = gat.transitions;
+    for (const LocalLabelInfo &local_label_info : *abstraction.transition_system) {
+        const LabelGroup &label_group = local_label_info.get_label_group();
+        const vector<Transition> &transitions = local_label_info.get_transitions();
         int group_saturated_cost = -INF;
         if (log.is_at_least_verbose() && dump_if_empty_transitions && transitions.empty()) {
             dump_if_empty_transitions = false;

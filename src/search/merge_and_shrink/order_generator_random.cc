@@ -3,17 +3,17 @@
 #include "cost_partitioning.h"
 #include "utils.h"
 
-#include "../option_parser.h"
-#include "../plugin.h"
 #include "../task_proxy.h"
 
+#include "../plugins/options.h"
+#include "../plugins/plugin.h"
 #include "../utils/logging.h"
 #include "../utils/rng.h"
 
 using namespace std;
 
 namespace merge_and_shrink {
-OrderGeneratorRandom::OrderGeneratorRandom(const Options &opts) :
+OrderGeneratorRandom::OrderGeneratorRandom(const plugins::Options &opts) :
     OrderGenerator(opts) {
 }
 
@@ -31,17 +31,14 @@ Order OrderGeneratorRandom::compute_order(
 }
 
 
-static shared_ptr<OrderGenerator> _parse_greedy(OptionParser &parser) {
-    parser.document_synopsis(
-        "Random orders",
-        "Shuffle abstractions randomly.");
-    add_common_order_generator_options(parser);
-    Options opts = parser.parse();
-    if (parser.dry_run())
-        return nullptr;
-    else
-        return make_shared<OrderGeneratorRandom>(opts);
-}
+class OrderGeneratorRandomFeature : public plugins::TypedFeature<OrderGenerator, OrderGeneratorRandom> {
+public:
+    OrderGeneratorRandomFeature() : TypedFeature("random_orders") {
+        document_synopsis(
+            "Random orders: Shuffle abstractions randomly.");
+        add_common_order_generator_options(*this);
+    }
+};
 
-static Plugin<OrderGenerator> _plugin_greedy("random_orders", _parse_greedy);
+static plugins::FeaturePlugin<OrderGeneratorRandomFeature> _plugin;
 }

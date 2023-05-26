@@ -20,7 +20,7 @@ class OrderGeneratorMAS : public OrderGenerator {
     const ProductTSOrder product_ts_order;
     const bool atomic_before_product;
 public:
-    explicit OrderGeneratorMAS(const options::Options &opts);
+    explicit OrderGeneratorMAS(const plugins::Options &opts);
 
     virtual void clear_internal_state() override {}
     /*

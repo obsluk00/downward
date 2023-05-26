@@ -11,7 +11,7 @@ class MaxCPMSHeuristic : public Heuristic {
 protected:
     virtual int compute_heuristic(const State &ancestor_state) override;
 public:
-    explicit MaxCPMSHeuristic(const options::Options &opts);
+    explicit MaxCPMSHeuristic(const plugins::Options &opts);
 };
 }
 

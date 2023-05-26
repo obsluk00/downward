@@ -2,16 +2,14 @@
 
 #include "distances.h"
 #include "factored_transition_system.h"
-#include "label_equivalence_relation.h"
 #include "labels.h"
 #include "merge_and_shrink_algorithm.h"
 #include "merge_and_shrink_representation.h"
 #include "transition_system.h"
 #include "types.h"
 
-#include "../option_parser.h"
-#include "../plugin.h"
-
+#include "../plugins/options.h"
+#include "../plugins/plugin.h"
 #include "../utils/logging.h"
 #include "../utils/memory.h"
 #include "../utils/rng.h"
@@ -20,6 +18,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <set>
 
 using namespace std;
 
@@ -90,7 +89,7 @@ int OptimalCostPartitioning::get_number_of_abstractions() const {
 }
 
 OptimalCostPartitioningFactory::OptimalCostPartitioningFactory(
-    const Options &opts)
+    const plugins::Options &opts)
     : CostPartitioningFactory(),
       lp_solver_type(opts.get<lp::LPSolverType>("lpsolver")),
       allow_negative_costs(opts.get<bool>("allow_negative_costs")),
@@ -138,23 +137,23 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
         }
     }
 
-    for (GroupAndTransitions gat : ts) {
+    for (const LocalLabelInfo &local_label_info : ts) {
         if (log.is_at_least_debug()) {
             log << "Label group: [";
-            for (int label : gat.label_group) {
+            for (int label : local_label_info.get_label_group()) {
                 log << label << " ";
             }
             log << "]" << endl;
         }
         if (efficient_cp) {
             // Label group var is the same for the group.
-            int some_label_no = *gat.label_group.begin();
-            int group_id = ts.get_label_equivalence_relation().get_group_id(some_label_no);
+            int some_label_no = local_label_info.get_label_group().front();
+            int group_id = ts.get_local_label_id_for_label(some_label_no);
             int group_var = abstraction_info.get_local_label_cost_variable(
                 contiguous_label_mapping[group_id]);
 
             bool have_set_lower_bound = false;
-            for (const Transition &transition : gat.transitions) {
+            for (const Transition &transition : local_label_info.get_transitions()) {
                 if (transition.src != transition.target) {
                     // Create constraints for state-changing transitions.
                     int source_var = abstraction_info.get_state_cost_variable(transition.src);
@@ -187,12 +186,12 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
             }
         } else {
             bool have_set_lower_bound = false;
-            for (const Transition &transition : gat.transitions) {
+            for (const Transition &transition : local_label_info.get_transitions()) {
                 if (transition.src != transition.target) {
                     // Create constraints for state-changing transitions.
                     int source_var = abstraction_info.get_state_cost_variable(transition.src);
                     int target_var = abstraction_info.get_state_cost_variable(transition.target);
-                    for (int label_no : gat.label_group) {
+                    for (int label_no : local_label_info.get_label_group()) {
                         int label_var = abstraction_info.get_local_label_cost_variable(
                             contiguous_label_mapping[label_no]);
 
@@ -214,7 +213,7 @@ void OptimalCostPartitioningFactory::create_abstraction_constraints(
                           Self loops are a special case of transitions that can be treated more
                           efficiently, because the variables H_alpha(s) and H_alpha(s') cancel out.
                         */
-                        for (int label_no : gat.label_group) {
+                        for (int label_no : local_label_info.get_label_group()) {
                             int label_var = abstraction_info.get_local_label_cost_variable(
                                 contiguous_label_mapping[label_no]);
                             variables[label_var].lower_bound = 0;
@@ -251,10 +250,10 @@ void OptimalCostPartitioningFactory::create_global_constraints(
                     const TransitionSystem &ts = *abstractions[i]->transition_system;
                     int group_id;
                     if (abstractions[i]->label_mapping.empty()) {
-                        group_id = ts.get_label_equivalence_relation().get_group_id(label_no);
+                        group_id = ts.get_local_label_id_for_label(label_no);
                     } else {
                         int abs_label = abstractions[i]->label_mapping[label_no];
-                        group_id = ts.get_label_equivalence_relation().get_group_id(abs_label);
+                        group_id = ts.get_local_label_id_for_label(abs_label);
                     }
                     int group_var = abstraction_infos[i].get_local_label_cost_variable(
                         abs_to_contiguous_label_group_mapping[i][group_id]);
@@ -291,14 +290,13 @@ void OptimalCostPartitioningFactory::create_global_constraints(
 int compute_contiguous_label_group_mapping(
     const Abstraction &abstraction, vector<int> &contiguous_label_group_mapping) {
     const TransitionSystem &ts = *abstraction.transition_system;
-    const LabelEquivalenceRelation &label_equiv_rel = ts.get_label_equivalence_relation();
-    int largest_group_id = label_equiv_rel.get_size();
-    contiguous_label_group_mapping.resize(largest_group_id, -1);
+    contiguous_label_group_mapping.resize(ts.get_num_local_labels(), -1);
     int num_groups = 0;
-    for (int group_id = 0; group_id < largest_group_id; ++group_id) {
-        if (!label_equiv_rel.is_empty_group(group_id)) {
-            contiguous_label_group_mapping[group_id] = num_groups++;
-        }
+    for (const LocalLabelInfo &local_label_info : ts) {
+        const LabelGroup &label_group = local_label_info.get_label_group();
+        assert(!label_group.empty());
+        int group_id = ts.get_local_label_id_for_label(label_group.front());
+        contiguous_label_group_mapping[group_id] = num_groups++;
     }
     return num_groups;
 }
@@ -424,28 +422,21 @@ unique_ptr<CostPartitioning> OptimalCostPartitioningFactory::generate(
     return utils::make_unique_ptr<OptimalCostPartitioning>(move(abstraction_infos), move(lp_solver));
 }
 
-static shared_ptr<OptimalCostPartitioningFactory>_parse(OptionParser &parser) {
-    lp::add_lp_solver_option_to_parser(parser);
-    parser.add_option<bool>(
-        "allow_negative_costs",
-        "general cost partitioning allows positive and negative label costs. "
-        "Set to false for non-negative cost partitioning.",
-        "true");
-    parser.add_option<bool>(
-        "efficient_cp",
-        "use only one constraint per label group rather than per label",
-        "true");
-
-    Options opts = parser.parse();
-    if (parser.help_mode()) {
-        return nullptr;
+class OptimalCostPartitioningFactoryFeature : public plugins::TypedFeature<CostPartitioningFactory, OptimalCostPartitioningFactory> {
+public:
+    OptimalCostPartitioningFactoryFeature() : TypedFeature("ocp") {
+        lp::add_lp_solver_option_to_feature(*this);
+        add_option<bool>(
+            "allow_negative_costs",
+            "general cost partitioning allows positive and negative label costs. "
+            "Set to false for non-negative cost partitioning.",
+            "true");
+        add_option<bool>(
+            "efficient_cp",
+            "use only one constraint per label group rather than per label",
+            "true");
     }
+};
 
-    if (parser.dry_run())
-        return nullptr;
-    else
-        return make_shared<OptimalCostPartitioningFactory>(opts);
-}
-
-static Plugin<CostPartitioningFactory> _plugin("ocp", _parse);
+static plugins::FeaturePlugin<OptimalCostPartitioningFactoryFeature> _plugin;
 }

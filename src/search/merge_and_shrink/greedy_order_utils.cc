@@ -2,8 +2,7 @@
 
 #include "types.h"
 
-#include "../option_parser.h"
-
+#include "../plugins/plugin.h"
 #include "../utils/collections.h"
 #include "../utils/logging.h"
 
@@ -100,11 +99,19 @@ double compute_score(int h, int used_costs, ScoringFunction scoring_function) {
     }
 }
 
-void add_scoring_function_to_parser(OptionParser &parser) {
-    parser.add_enum_option<ScoringFunction>(
+void add_scoring_function_option_to_feature(plugins::Feature &feature) {
+    feature.add_option<ScoringFunction>(
         "scoring_function",
-        {"MAX_HEURISTIC", "MIN_STOLEN_COSTS", "MAX_HEURISTIC_PER_STOLEN_COSTS"},
-        "scoring function",
+        "help",
         "MAX_HEURISTIC_PER_STOLEN_COSTS");
 }
+
+static plugins::TypedEnumPlugin<ScoringFunction> _scoring_function_enum_plugin({
+         {"MAX_HEURISTIC",
+             "MAX_HEURISTIC"},
+         {"MIN_STOLEN_COSTS",
+             "MIN_STOLEN_COSTS"},
+         {"MAX_HEURISTIC_PER_STOLEN_COSTS",
+             "MAX_HEURISTIC_PER_STOLEN_COSTS"}
+     });
 }

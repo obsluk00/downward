@@ -5,7 +5,7 @@
 
 #include <memory>
 
-namespace options {
+namespace plugins {
 class Options;
 }
 
@@ -26,7 +26,7 @@ class MergeScoringFunctionCP : public MergeScoringFunction {
 protected:
     virtual std::string name() const override;
 public:
-    explicit MergeScoringFunctionCP(const options::Options &options);
+    explicit MergeScoringFunctionCP(const plugins::Options &options);
     virtual ~MergeScoringFunctionCP() override = default;
     virtual std::vector<double> compute_scores(
         const FactoredTransitionSystem &fts,

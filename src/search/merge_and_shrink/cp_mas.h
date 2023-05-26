@@ -11,11 +11,6 @@
 class AbstractTask;
 class TaskProxy;
 
-namespace options {
-class OptionParser;
-class Options;
-}
-
 namespace utils {
 class CountdownTimer;
 }
@@ -138,14 +133,16 @@ public:
                    Bitset &factors_modified_since_last_snapshot,
                    const std::unique_ptr<std::vector<int>> &original_to_current_labels);
 public:
-    explicit CPMAS(const options::Options &opts);
+    explicit CPMAS(const plugins::Options &opts);
     ~CPMAS() = default;
     std::vector<std::unique_ptr<CostPartitioning>> compute_cps(
         const std::shared_ptr<AbstractTask> &task);
 };
 
-extern void add_cp_merge_and_shrink_algorithm_options_to_parser(options::OptionParser &parser);
-extern void handle_cp_merge_and_shrink_algorithm_options(options::Options &opts);
+extern void add_cp_merge_and_shrink_algorithm_options_to_feature(
+    plugins::Feature &feature);
+extern void handle_cp_merge_and_shrink_algorithm_options(
+    plugins::Options &opts, const utils::Context &context);
 }
 
 #endif

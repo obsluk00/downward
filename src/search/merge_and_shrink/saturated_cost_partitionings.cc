@@ -8,10 +8,10 @@
 #include "transition_system.h"
 #include "types.h"
 
-#include "../option_parser.h"
-#include "../plugin.h"
 #include "../task_proxy.h"
 
+#include "../plugins/options.h"
+#include "../plugins/plugin.h"
 #include "../task_utils/sampling.h"
 //#include "../task_utils/task_properties.h"
 #include "../utils/collections.h"
@@ -220,7 +220,7 @@ int SaturatedCostPartitionings::get_number_of_abstractions() const {
 }
 
 SaturatedCostPartitioningsFactory::SaturatedCostPartitioningsFactory(
-    const Options &opts)
+    const plugins::Options &opts)
     : CostPartitioningFactory(),
       order_generator(opts.get<shared_ptr<OrderGenerator>>("order_generator")),
       max_orders(opts.get<int>("max_orders")),
@@ -444,74 +444,66 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningsFactory::generate(
     return utils::make_unique_ptr<SaturatedCostPartitionings>(move(abstractions), move(cp_heuristics), log);
 }
 
-static shared_ptr<SaturatedCostPartitioningsFactory>_parse(OptionParser &parser) {
-    parser.add_option<shared_ptr<OrderGenerator>>(
-        "order_generator",
-        "order generator",
-        "greedy_orders()");
-    parser.add_option<int>(
-        "max_orders",
-        "maximum number of orders",
-        "infinity",
-        Bounds("0", "infinity"));
-    parser.add_option<double>(
-        "max_time",
-        "maximum time for finding orders",
-        "200.0",
-        Bounds("0", "infinity"));
-    parser.add_option<bool>(
-        "diversify",
-        "only keep orders that have a higher heuristic value than all previous"
-        " orders for any of the samples",
-        "true");
-    parser.add_option<int>(
-        "samples",
-        "number of samples for diversification",
-        "1000",
-        Bounds("1", "infinity"));
-    parser.add_option<double>(
-        "max_optimization_time",
-        "maximum time for optimizing each order with hill climbing",
-        "2.0",
-        Bounds("0.0", "infinity"));
-    parser.add_option<bool>(
-        "store_unsolvable_states_once",
-        "store unsolvable states once per abstraction, instead of once per order. "
-        "If store_unsolvable_states_once=true, we store unsolvable states in "
-        "UnsolvabilityHeuristic. If store_unsolvable_states_once=false, we "
-        "additionally store them in the lookup tables. In any case, we use "
-        "UnsolvabilityHeuristic to detect unsolvable states. "
-        "(this option only affects the saturated_cost_partitioning() plugin)",
-        "true");
-    utils::add_rng_options(parser);
+class SaturatedCostPartitioningsFactoryFeature : public plugins::TypedFeature<CostPartitioningFactory, SaturatedCostPartitioningsFactory> {
+public:
+    SaturatedCostPartitioningsFactoryFeature() : TypedFeature("scps") {
+        add_option<shared_ptr<OrderGenerator>>(
+            "order_generator",
+            "order generator",
+            "greedy_orders()");
+        add_option<int>(
+            "max_orders",
+            "maximum number of orders",
+            "infinity",
+            plugins::Bounds("0", "infinity"));
+        add_option<double>(
+            "max_time",
+            "maximum time for finding orders",
+            "200.0",
+            plugins::Bounds("0", "infinity"));
+        add_option<bool>(
+            "diversify",
+            "only keep orders that have a higher heuristic value than all previous"
+            " orders for any of the samples",
+            "true");
+        add_option<int>(
+            "samples",
+            "number of samples for diversification",
+            "1000",
+            plugins::Bounds("1", "infinity"));
+        add_option<double>(
+            "max_optimization_time",
+            "maximum time for optimizing each order with hill climbing",
+            "2.0",
+            plugins::Bounds("0.0", "infinity"));
+        add_option<bool>(
+            "store_unsolvable_states_once",
+            "store unsolvable states once per abstraction, instead of once per order. "
+            "If store_unsolvable_states_once=true, we store unsolvable states in "
+            "UnsolvabilityHeuristic. If store_unsolvable_states_once=false, we "
+            "additionally store them in the lookup tables. In any case, we use "
+            "UnsolvabilityHeuristic to detect unsolvable states. "
+            "(this option only affects the saturated_cost_partitioning() plugin)",
+            "true");
+        utils::add_rng_options(*this);
 
-    vector<string> sampling_names;
-    vector<string> sampling_doc;
-    sampling_names.push_back("none");
-    sampling_doc.push_back("no dead-end detector is used");
-    sampling_names.push_back("div");
-    sampling_doc.push_back("only use dead-end detector for diversifier");
-    sampling_names.push_back("opt");
-    sampling_doc.push_back("only use dead-end detector for optimizer");
-    sampling_names.push_back("divandopt");
-    sampling_doc.push_back("use dead-end detector for both diversifier and optimizer");
-    parser.add_enum_option<SamplingWithDeadEnds>(
-        "sampling_with_dead_ends",
-        sampling_names,
-        "Decide if and when to use a dead-end detector for sampling.",
-        "divandopt",
-        sampling_doc);
-
-    Options opts = parser.parse();
-    if (parser.help_mode()) {
-        return nullptr;
+        add_option<SamplingWithDeadEnds>(
+            "sampling_with_dead_ends",
+            "Decide if and when to use a dead-end detector for sampling.",
+            "divandopt");
     }
+};
 
-    if (parser.dry_run())
-        return nullptr;
-    else
-        return make_shared<SaturatedCostPartitioningsFactory>(opts);
-}
+static plugins::FeaturePlugin<SaturatedCostPartitioningsFactoryFeature> _plugin;
 
-static Plugin<CostPartitioningFactory> _plugin("scps", _parse);
+static plugins::TypedEnumPlugin<SamplingWithDeadEnds> _sampling_with_dead_ends_enum_plugin({
+        {"none",
+            "no dead-end detector is used"},
+        {"div",
+            "only use dead-end detector for diversifier"},
+        {"opt",
+            "only use dead-end detector for optimizer"},
+        {"divandopt",
+            "use dead-end detector for both diversifier and optimizer"}
+    });
 }

@@ -4,10 +4,6 @@
 #include "greedy_order_utils.h"
 #include "order_generator.h"
 
-namespace options {
-class Options;
-}
-
 namespace merge_and_shrink {
 class OrderGeneratorDynamicGreedy : public OrderGenerator {
     const ScoringFunction scoring_function;
@@ -18,7 +14,7 @@ class OrderGeneratorDynamicGreedy : public OrderGenerator {
         std::vector<int> remaining_costs) const;
 
 public:
-    explicit OrderGeneratorDynamicGreedy(const options::Options &opts);
+    explicit OrderGeneratorDynamicGreedy(const plugins::Options &opts);
 
     virtual void clear_internal_state() override {}
     virtual Order compute_order(

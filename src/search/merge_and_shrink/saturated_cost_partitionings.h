@@ -5,9 +5,11 @@
 
 #include "types.h"
 
-#include "../option_parser.h"
-
 #include <vector>
+
+namespace plugins {
+class Options;
+}
 
 namespace utils {
 class RandomNumberGenerator;
@@ -125,7 +127,7 @@ class SaturatedCostPartitioningsFactory : public CostPartitioningFactory {
         const std::vector<int> order,
         utils::LogProxy &log) const;
 public:
-    explicit SaturatedCostPartitioningsFactory(const Options &opts);
+    explicit SaturatedCostPartitioningsFactory(const plugins::Options &opts);
     virtual ~SaturatedCostPartitioningsFactory() = default;
     virtual void initialize(const std::shared_ptr<AbstractTask> &task) override;
     virtual std::unique_ptr<CostPartitioning> generate(

@@ -2,7 +2,7 @@
 
 #include "merge_and_shrink_representation.h"
 
-#include "../plugin.h"
+#include "../plugins/plugin.h"
 
 using namespace std;
 
@@ -23,7 +23,13 @@ unique_ptr<MergeAndShrinkRepresentation> Abstraction::extract_abstraction_functi
     return move(merge_and_shrink_representation);
 }
 
-static options::PluginTypePlugin<CostPartitioningFactory> _type_plugin(
-    "CostPartitioning",
-    "This page describes the various cost partitioning generation methods.");
+static class CostPartitioningFactoryCategoryPlugin : public plugins::TypedCategoryPlugin<CostPartitioningFactory> {
+public:
+    CostPartitioningFactoryCategoryPlugin() : TypedCategoryPlugin("CostPartitioning") {
+        document_synopsis(
+            "This page describes the various cost partitioning generation "
+            "methods.");
+    }
+}
+_category_plugin;
 }

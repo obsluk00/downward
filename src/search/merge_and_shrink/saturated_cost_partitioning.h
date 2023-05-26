@@ -3,9 +3,11 @@
 
 #include "cost_partitioning.h"
 
-#include "../option_parser.h"
-
 #include <vector>
+
+namespace plugins {
+class Options;
+}
 
 namespace merge_and_shrink {
 class MergeAndShrinkRepresentation;
@@ -34,7 +36,7 @@ class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
         const std::vector<int> &order,
         utils::LogProxy &log) const;
 public:
-    explicit SaturatedCostPartitioningFactory(const Options &opts);
+    explicit SaturatedCostPartitioningFactory(const plugins::Options &opts);
     virtual ~SaturatedCostPartitioningFactory() = default;
     virtual std::unique_ptr<CostPartitioning> generate(
         std::vector<int> &&label_costs,

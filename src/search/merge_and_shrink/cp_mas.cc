@@ -15,8 +15,8 @@
 #include "types.h"
 #include "utils.h"
 
-#include "../options/option_parser.h"
-#include "../options/options.h"
+#include "../plugins/options.h"
+#include "../plugins/plugin.h"
 
 #include "../tasks/root_task.h"
 #include "../task_utils/task_properties.h"
@@ -36,9 +36,6 @@
 #include <vector>
 
 using namespace std;
-using options::Bounds;
-using options::OptionParser;
-using options::Options;
 using utils::ExitCode;
 
 namespace merge_and_shrink {
@@ -46,7 +43,7 @@ static void log_progress(const utils::Timer &timer, string msg, utils::LogProxy 
     log << "M&S algorithm timer: " << timer << " (" << msg << ")" << endl;
 }
 
-CPMAS::CPMAS(const Options &opts) :
+CPMAS::CPMAS(const plugins::Options &opts) :
     merge_strategy_factory(opts.get<shared_ptr<MergeStrategyFactory>>("merge_strategy")),
     shrink_strategy(opts.get<shared_ptr<ShrinkStrategy>>("shrink_strategy")),
     label_reduction(opts.get<shared_ptr<LabelReduction>>("label_reduction", nullptr)),
@@ -268,12 +265,10 @@ bool CPMAS::NextSnapshot::compute_next_snapshot(double current_time, int current
 
 vector<int> CPMAS::compute_label_costs(
     const Labels &labels) const {
-    int num_labels = labels.get_size();
+    int num_labels = labels.get_num_total_labels();
     vector<int> label_costs(num_labels, -1);
-    for (int label_no = 0; label_no < num_labels; ++label_no) {
-        if (labels.is_current_label(label_no)) {
-            label_costs[label_no] = labels.get_label_cost(label_no);
-        }
+    for (int label_no : labels) {
+        label_costs[label_no] = labels.get_label_cost(label_no);
     }
     return label_costs;
 }
@@ -725,7 +720,7 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
     unique_ptr<vector<int>> original_to_current_labels = nullptr;
     if (offline_cps) {
         original_to_current_labels = utils::make_unique_ptr<vector<int>>();
-        original_to_current_labels->resize(fts.get_labels().get_size());
+        original_to_current_labels->resize(fts.get_labels().get_num_total_labels());
         iota(original_to_current_labels->begin(), original_to_current_labels->end(), 0);
     }
 
@@ -866,69 +861,68 @@ vector<unique_ptr<CostPartitioning>> CPMAS::compute_cps(
     return move(cost_partitionings);
 }
 
-void add_cp_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
-    add_merge_and_shrink_algorithm_options_to_parser(parser);
+void add_cp_merge_and_shrink_algorithm_options_to_feature(plugins::Feature &feature) {
+    add_merge_and_shrink_algorithm_options_to_feature(feature);
 
     // Cost partitioning options
-    parser.add_option<bool>(
+    feature.add_option<bool>(
         "compute_atomic_snapshot",
         "Include a snapshot over the atomic FTS.",
         "false");
-    parser.add_option<int>(
+    feature.add_option<int>(
         "main_loop_target_num_snapshots",
         "The aimed number of SCP heuristics to be computed over the main loop.",
         "0",
-        Bounds("0", "infinity"));
-    parser.add_option<int>(
+        plugins::Bounds("0", "infinity"));
+    feature.add_option<int>(
         "main_loop_snapshot_each_iteration",
         "A number of iterations after which an SCP heuristic is computed over "
         "the current FTS.",
         "0",
-        Bounds("0", "infinity"));
+        plugins::Bounds("0", "infinity"));
 
-    vector<string> snapshot_moment;
-    vector<string> snapshot_moment_doc;
-    snapshot_moment.push_back("after_label_reduction");
-    snapshot_moment_doc.push_back("after 'label reduction before shrinking'");
-    snapshot_moment.push_back("after_shrinking");
-    snapshot_moment_doc.push_back("after shrinking");
-    snapshot_moment.push_back("after_merging");
-    snapshot_moment_doc.push_back("after merging");
-    snapshot_moment.push_back("after_pruning");
-    snapshot_moment_doc.push_back("after pruning, i.e., at end of iteration");
-    parser.add_enum_option<SnapshotMoment>(
+    feature.add_option<SnapshotMoment>(
         "snapshot_moment",
-        snapshot_moment,
         "the point in one iteration at which a snapshot should be computed",
-        "after_label_reduction",
-        snapshot_moment_doc);
+        "after_label_reduction");
 
-    parser.add_option<bool>(
+    feature.add_option<bool>(
         "filter_trivial_factors",
         "If true, do not consider trivial factors for computing CPs. Should "
         "be set to true when computing SCPs.");
 
-    parser.add_option<bool>(
+    feature.add_option<bool>(
         "statistics_only",
         "If true, compute a CP and the maximum over all factors "
         "after each transformation.",
         "false");
 
-    parser.add_option<bool>(
+    feature.add_option<bool>(
         "offline_cps",
         "If true, collect all modified abstractions of each snapshot over the"
         "entire M&S algorithm run and then compue one or several CPs over them. "
         "Otherwise, compute a CP for each snapshot during the M&S algorithm. ",
         "true");
 
-    parser.add_option<shared_ptr<CostPartitioningFactory>>(
+    feature.add_option<shared_ptr<CostPartitioningFactory>>(
         "cost_partitioning",
         "A method for computing cost partitionings over intermediate "
         "'snapshots' of the factored transition system.");
 }
 
-void handle_cp_merge_and_shrink_algorithm_options(Options &opts) {
-    handle_shrink_limit_options_defaults(opts);
+static plugins::TypedEnumPlugin<SnapshotMoment> _snapshot_moment_enum_plugin({
+        {"after_label_reduction",
+         "after 'label reduction before shrinking'"},
+        {"after_shrinking",
+         "after shrinking"},
+        {"after_merging",
+         "after merging"},
+        {"after_pruning",
+         "after pruning, i.e., at end of iteration"}
+    });
+
+void handle_cp_merge_and_shrink_algorithm_options(plugins::Options &opts, const utils::Context &context) {
+    handle_shrink_limit_options_defaults(opts, context);
 
     int main_loop_target_num_snapshots = opts.get<int>("main_loop_target_num_snapshots");
     int main_loop_snapshot_each_iteration =

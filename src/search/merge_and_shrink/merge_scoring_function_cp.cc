@@ -12,9 +12,8 @@
 
 #include "../task_proxy.h"
 
-#include "../options/option_parser.h"
-#include "../options/options.h"
-#include "../options/plugin.h"
+#include "../plugins/options.h"
+#include "../plugins/plugin.h"
 
 #include "../tasks/root_task.h"
 
@@ -25,7 +24,7 @@ using namespace std;
 
 namespace merge_and_shrink {
 MergeScoringFunctionCP::MergeScoringFunctionCP(
-    const options::Options &options)
+    const plugins::Options &options)
     : shrink_strategy(options.get<shared_ptr<ShrinkStrategy>>("shrink_strategy")),
       max_states(options.get<int>("max_states")),
       max_states_before_merge(options.get<int>("max_states_before_merge")),
@@ -36,12 +35,10 @@ MergeScoringFunctionCP::MergeScoringFunctionCP(
 
 vector<int> compute_label_costs(
     const Labels &labels) {
-    int num_labels = labels.get_size();
+    int num_labels = labels.get_num_total_labels();
     vector<int> label_costs(num_labels, -1);
-    for (int label_no = 0; label_no < num_labels; ++label_no) {
-        if (labels.is_current_label(label_no)) {
-            label_costs[label_no] = labels.get_label_cost(label_no);
-        }
+    for (int label_no : labels) {
+        label_costs[label_no] = labels.get_label_cost(label_no);
     }
     return label_costs;
 }
@@ -140,37 +137,34 @@ string MergeScoringFunctionCP::name() const {
     return "sf_cp";
 }
 
-static shared_ptr<MergeScoringFunction>_parse(options::OptionParser &parser) {
-    // TODO: use shrink strategy and limit options from MergeAndShrinkHeuristic
-    // instead of having the identical options here again.
-    parser.add_option<shared_ptr<ShrinkStrategy>>(
-        "shrink_strategy",
-        "We recommend setting this to match the shrink strategy configuration "
-        "given to {{{merge_and_shrink}}}, see note below.");
-    add_transition_system_size_limit_options_to_parser(parser);
+class MergeScoringFunctionCPFeature : public plugins::TypedFeature<MergeScoringFunction, MergeScoringFunctionCP> {
+public:
+    MergeScoringFunctionCPFeature() : TypedFeature("sf_cp") {
+        // TODO: use shrink strategy and limit options from MergeAndShrinkHeuristic
+        // instead of having the identical options here again.
+        add_option<shared_ptr<ShrinkStrategy>>(
+            "shrink_strategy",
+            "We recommend setting this to match the shrink strategy configuration "
+            "given to {{{merge_and_shrink}}}, see note below.");
+        add_transition_system_size_limit_options_to_feature(*this);
 
-    parser.add_option<shared_ptr<CostPartitioningFactory>>(
-        "cost_partitioning",
-        "A method for computing cost partitionings over intermediate "
-        "'snapshots' of the factored transition system.");
-    parser.add_option<bool>(
-        "filter_trivial_factors",
-        "If true, do not consider trivial factors for computing CPs. Should "
-        "be set to true when computing SCPs.");
-
-    options::Options options = parser.parse();
-    if (parser.help_mode()) {
-        return nullptr;
+        add_option<shared_ptr<CostPartitioningFactory>>(
+            "cost_partitioning",
+            "A method for computing cost partitionings over intermediate "
+            "'snapshots' of the factored transition system.");
+        add_option<bool>(
+            "filter_trivial_factors",
+            "If true, do not consider trivial factors for computing CPs. Should "
+            "be set to true when computing SCPs.");
     }
 
-    handle_shrink_limit_options_defaults(options);
-
-    if (parser.dry_run()) {
-        return nullptr;
-    } else {
-        return make_shared<MergeScoringFunctionCP>(options);
+    virtual shared_ptr<MergeScoringFunctionCP> create_component(
+        const plugins::Options &options, const utils::Context &context) const override {
+        plugins::Options options_copy(options);
+        handle_shrink_limit_options_defaults(options_copy, context);
+        return make_shared<MergeScoringFunctionCP>(options_copy);
     }
-}
+};
 
-static options::Plugin<MergeScoringFunction> _plugin("sf_cp", _parse);
+static plugins::FeaturePlugin<MergeScoringFunctionCPFeature> _plugin;
 }

@@ -1,8 +1,7 @@
 #include "order_generator.h"
 
-#include "../option_parser.h"
-#include "../plugin.h"
-
+#include "../plugins/options.h"
+#include "../plugins/plugin.h"
 #include "../utils/rng_options.h"
 
 #include <numeric>
@@ -16,15 +15,20 @@ Order get_default_order(int num_abstractions) {
     return indices;
 }
 
-OrderGenerator::OrderGenerator(const options::Options &opts)
+OrderGenerator::OrderGenerator(const plugins::Options &opts)
     : rng(utils::parse_rng_from_options(opts)) {
 }
 
-void add_common_order_generator_options(OptionParser &parser) {
-    utils::add_rng_options(parser);
+void add_common_order_generator_options(plugins::Feature &feature) {
+    utils::add_rng_options(feature);
 }
 
-static PluginTypePlugin<OrderGenerator> _type_plugin(
-    "OrderGenerator",
-    "Generate heuristic orders.");
+static class OrderGeneratorCategoryPlugin : public plugins::TypedCategoryPlugin<OrderGenerator> {
+public:
+    OrderGeneratorCategoryPlugin() : TypedCategoryPlugin("OrderGenerator") {
+        document_synopsis(
+            "Generate heuristic orders.");
+    }
+}
+_category_plugin;
 }

@@ -4,17 +4,17 @@
 #include "transition_system.h"
 #include "utils.h"
 
-#include "../option_parser.h"
-#include "../plugin.h"
 #include "../task_proxy.h"
 
+#include "../plugins/options.h"
+#include "../plugins/plugin.h"
 #include "../utils/logging.h"
 #include "../utils/rng.h"
 
 using namespace std;
 
 namespace merge_and_shrink {
-OrderGeneratorMAS::OrderGeneratorMAS(const Options &opts) :
+OrderGeneratorMAS::OrderGeneratorMAS(const plugins::Options &opts) :
     OrderGenerator(opts),
     atomic_ts_order(opts.get<AtomicTSOrder>("atomic_ts_order")),
     product_ts_order(opts.get<ProductTSOrder>("product_ts_order")),
@@ -69,54 +69,27 @@ Order OrderGeneratorMAS::compute_order(
 }
 
 
-static shared_ptr<OrderGenerator> _parse_greedy(OptionParser &parser) {
-    vector<string> atomic_ts_order;
-    vector<string> atomic_ts_order_documentation;
-    atomic_ts_order.push_back("reverse_level");
-    atomic_ts_order_documentation.push_back(
-        "the variable order of Fast Downward");
-    atomic_ts_order.push_back("level");
-    atomic_ts_order_documentation.push_back("opposite of reverse_level");
-    atomic_ts_order.push_back("random");
-    atomic_ts_order_documentation.push_back("a randomized order");
-    parser.add_enum_option<AtomicTSOrder>(
-        "atomic_ts_order",
-        atomic_ts_order,
-        "The order in which atomic transition systems are considered when "
-        "considering pairs of potential merges.",
-        "reverse_level",
-        atomic_ts_order_documentation);
+class OrderGeneratorMASFeature : public plugins::TypedFeature<OrderGenerator, OrderGeneratorMAS> {
+public:
+    OrderGeneratorMASFeature() : TypedFeature("fixed_orders") {
+        add_option<AtomicTSOrder>(
+            "atomic_ts_order",
+            "The order in which atomic transition systems are considered when "
+            "considering pairs of potential merges.",
+            "reverse_level");
+        add_option<ProductTSOrder>(
+            "product_ts_order",
+            "The order in which product transition systems are considered when "
+            "considering pairs of potential merges.",
+            "new_to_old");
+        add_option<bool>(
+            "atomic_before_product",
+            "Consider atomic transition systems before product ones iff true.",
+            "false");
 
-    vector<string> product_ts_order;
-    vector<string> product_ts_order_documentation;
-    product_ts_order.push_back("old_to_new");
-    product_ts_order_documentation.push_back(
-        "consider product transition systems from most recent to oldest, "
-        "that is in decreasing index order");
-    product_ts_order.push_back("new_to_old");
-    product_ts_order_documentation.push_back("opposite of old_to_new");
-    product_ts_order.push_back("random");
-    product_ts_order_documentation.push_back("a randomized order");
-    parser.add_enum_option<ProductTSOrder>(
-        "product_ts_order",
-        product_ts_order,
-        "The order in which product transition systems are considered when "
-        "considering pairs of potential merges.",
-        "new_to_old",
-        product_ts_order_documentation);
+        add_common_order_generator_options(*this);
+    }
+};
 
-    parser.add_option<bool>(
-        "atomic_before_product",
-        "Consider atomic transition systems before product ones iff true.",
-        "false");
-
-    add_common_order_generator_options(parser);
-    Options opts = parser.parse();
-    if (parser.dry_run())
-        return nullptr;
-    else
-        return make_shared<OrderGeneratorMAS>(opts);
-}
-
-static Plugin<OrderGenerator> _plugin_greedy("fixed_orders", _parse_greedy);
+static plugins::FeaturePlugin<OrderGeneratorMASFeature> _plugin;
 }

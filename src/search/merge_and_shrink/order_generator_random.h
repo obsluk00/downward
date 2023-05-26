@@ -6,7 +6,7 @@
 namespace merge_and_shrink {
 class OrderGeneratorRandom : public OrderGenerator {
 public:
-    explicit OrderGeneratorRandom(const options::Options &opts);
+    explicit OrderGeneratorRandom(const plugins::Options &opts);
 
     virtual void clear_internal_state() override {}
     virtual Order compute_order(

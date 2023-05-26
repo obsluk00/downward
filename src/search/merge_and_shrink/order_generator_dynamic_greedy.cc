@@ -5,8 +5,8 @@
 #include "transition_system.h"
 #include "utils.h"
 
-#include "../option_parser.h"
-#include "../plugin.h"
+#include "../plugins/options.h"
+#include "../plugins/plugin.h"
 
 #include "../utils/collections.h"
 #include "../utils/logging.h"
@@ -17,7 +17,7 @@
 using namespace std;
 
 namespace merge_and_shrink {
-OrderGeneratorDynamicGreedy::OrderGeneratorDynamicGreedy(const Options &opts)
+OrderGeneratorDynamicGreedy::OrderGeneratorDynamicGreedy(const plugins::Options &opts)
     : OrderGenerator(opts),
       scoring_function(opts.get<ScoringFunction>("scoring_function")) {
 }
@@ -111,17 +111,13 @@ Order OrderGeneratorDynamicGreedy::compute_order(
     return order;
 }
 
+class OrderGeneratorDynamicGreedyFeature : public plugins::TypedFeature<OrderGenerator, OrderGeneratorDynamicGreedy> {
+public:
+    OrderGeneratorDynamicGreedyFeature() : TypedFeature("dynamic_greedy_orders") {
+        add_scoring_function_option_to_feature(*this);
+        add_common_order_generator_options(*this);
+    }
+};
 
-static shared_ptr<OrderGenerator> _parse_greedy(OptionParser &parser) {
-    add_scoring_function_to_parser(parser);
-    add_common_order_generator_options(parser);
-    Options opts = parser.parse();
-    if (parser.dry_run())
-        return nullptr;
-    else
-        return make_shared<OrderGeneratorDynamicGreedy>(opts);
-}
-
-static Plugin<OrderGenerator> _plugin_greedy(
-    "dynamic_greedy_orders", _parse_greedy);
+static plugins::FeaturePlugin<OrderGeneratorDynamicGreedyFeature> _plugin;
 }

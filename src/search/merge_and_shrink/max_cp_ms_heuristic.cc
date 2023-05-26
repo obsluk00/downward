@@ -4,8 +4,8 @@
 #include "cost_partitioning.h"
 #include "types.h"
 
-#include "../option_parser.h"
-#include "../plugin.h"
+#include "../plugins/options.h"
+#include "../plugins/plugin.h"
 
 #include <iostream>
 #include <utility>
@@ -14,7 +14,7 @@ using namespace std;
 using utils::ExitCode;
 
 namespace merge_and_shrink {
-MaxCPMSHeuristic::MaxCPMSHeuristic(const options::Options &opts)
+MaxCPMSHeuristic::MaxCPMSHeuristic(const plugins::Options &opts)
     : Heuristic(opts) {
     CPMAS algorithm(opts);
     cost_partitionings = algorithm.compute_cps(task);
@@ -37,27 +37,23 @@ int MaxCPMSHeuristic::compute_heuristic(const State &ancestor_state) {
     return max_h;
 }
 
-static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
-    parser.document_synopsis(
-        "Maximum CP merge-and-shrink heuristic",
-        "The maximum heuristic computed over CP heuristics computed over "
-        "M&S abstractions.");
+class MaxCPMSHeuristicFeature : public plugins::TypedFeature<Evaluator, MaxCPMSHeuristic> {
+public:
+    MaxCPMSHeuristicFeature() : TypedFeature("max_cp_ms") {
+        document_synopsis(
+            "Maximum CP merge-and-shrink heuristic. The maximum heuristic "
+            "computed over CP heuristics computed over M&S abstractions.");
 
-    Heuristic::add_options_to_parser(parser);
-    add_cp_merge_and_shrink_algorithm_options_to_parser(parser);
-    options::Options opts = parser.parse();
-    if (parser.help_mode()) {
-        return nullptr;
+        Heuristic::add_options_to_feature(*this);
+        add_cp_merge_and_shrink_algorithm_options_to_feature(*this);
     }
 
-    handle_cp_merge_and_shrink_algorithm_options(opts);
-
-    if (parser.dry_run()) {
-        return nullptr;
-    } else {
-        return make_shared<MaxCPMSHeuristic>(opts);
+    virtual shared_ptr<MaxCPMSHeuristic> create_component(const plugins::Options &options, const utils::Context &context) const override {
+        plugins::Options options_copy(options);
+        handle_cp_merge_and_shrink_algorithm_options(options_copy, context);
+        return make_shared<MaxCPMSHeuristic>(options_copy);
     }
-}
+};
 
-static options::Plugin<Evaluator> _plugin("max_cp_ms", _parse);
+static plugins::FeaturePlugin<MaxCPMSHeuristicFeature> _plugin;
 }

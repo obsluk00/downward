@@ -6,10 +6,10 @@
 #include "transition_system.h"
 #include "types.h"
 
-#include "../option_parser.h"
-#include "../plugin.h"
 #include "../task_proxy.h"
 
+#include "../plugins/options.h"
+#include "../plugins/plugin.h"
 #include "../utils/logging.h"
 #include "../utils/memory.h"
 #include "../utils/rng.h"
@@ -51,7 +51,7 @@ int SaturatedCostPartitioning::get_number_of_abstractions() const {
 }
 
 SaturatedCostPartitioningFactory::SaturatedCostPartitioningFactory(
-    const Options &opts)
+    const plugins::Options &opts)
     : CostPartitioningFactory(),
       order_generator(
           opts.get<shared_ptr<OrderGenerator>>("order_generator")) {
@@ -146,22 +146,15 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate(
     return generate_for_order(move(label_costs), move(abstractions), order, log);
 }
 
-static shared_ptr<SaturatedCostPartitioningFactory>_parse(OptionParser &parser) {
-    parser.add_option<shared_ptr<OrderGenerator>>(
-        "order_generator",
-        "order generator",
-        "mas_orders()");
-
-    Options opts = parser.parse();
-    if (parser.help_mode()) {
-        return nullptr;
+class SaturatedCostPartitioningFactoryFeature : public plugins::TypedFeature<CostPartitioningFactory, SaturatedCostPartitioningFactory> {
+public:
+    SaturatedCostPartitioningFactoryFeature() : TypedFeature("scp") {
+        add_option<shared_ptr<OrderGenerator>>(
+            "order_generator",
+            "order generator",
+            "mas_orders()");
     }
+};
 
-    if (parser.dry_run())
-        return nullptr;
-    else
-        return make_shared<SaturatedCostPartitioningFactory>(opts);
-}
-
-static Plugin<CostPartitioningFactory> _plugin("scp", _parse);
+static plugins::FeaturePlugin<SaturatedCostPartitioningFactoryFeature> _plugin;
 }

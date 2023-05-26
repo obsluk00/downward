@@ -4,7 +4,7 @@
 #include "order_generator.h"
 #include "greedy_order_utils.h"
 
-namespace options {
+namespace plugins {
 class Options;
 }
 
@@ -26,7 +26,7 @@ class OrderGeneratorGreedy : public OrderGenerator {
         const std::vector<int> &costs,
         utils::LogProxy &log);
 public:
-    explicit OrderGeneratorGreedy(const options::Options &opts);
+    explicit OrderGeneratorGreedy(const plugins::Options &opts);
 
     virtual void clear_internal_state() override;
     virtual Order compute_order(
