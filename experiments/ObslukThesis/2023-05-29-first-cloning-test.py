@@ -20,13 +20,12 @@ else:
     ENV = project.LocalEnvironment(processes=2)
 
 CONFIGS = [
-    (f"mas", ["--search", f"astar(merge_and_shrink(verbosity=normal,  shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_sccs(order_of_sccs=topological,merge_selector=score_based_filtering(scoring_functions=[single_random(random_seed=42)])),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1))"])
-
+    (f"mas", ["--search", "let(h, merge_and_shrink(verbosity=normal, non_orthogonal = false, shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_sccs(order_of_sccs=topological,merge_selector=score_based_filtering(scoring_functions=[single_random(random_seed=42)])),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1), astar(h))"])
 ]
 BUILD_OPTIONS = []
 DRIVER_OPTIONS = ["--overall-time-limit", "30m"]
 REVS = [
-    ("main", "main"),
+    ("8f1d346", "clone")
 ]
 ATTRIBUTES = [
     "error",
@@ -72,24 +71,5 @@ if not project.REMOTE:
 project.add_absolute_report(
     exp, attributes=ATTRIBUTES, filter=[project.add_evaluations_per_time]
 )
-
-attributes = ["expansions"]
-pairs = [
-    ("20.06:01-cg", "20.06:02-ff"),
-]
-suffix = "-rel" if project.RELATIVE else ""
-for algo1, algo2 in pairs:
-    for attr in attributes:
-        exp.add_report(
-            project.ScatterPlotReport(
-                relative=project.RELATIVE,
-                get_category=None if project.TEX else lambda run1, run2: run1["domain"],
-                attributes=[attr],
-                filter_algorithm=[algo1, algo2],
-                filter=[project.add_evaluations_per_time],
-                format="tex" if project.TEX else "png",
-            ),
-            name=f"{exp.name}-{algo1}-vs-{algo2}-{attr}{suffix}",
-        )
 
 exp.run_steps()
