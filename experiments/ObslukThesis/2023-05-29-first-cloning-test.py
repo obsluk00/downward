@@ -14,7 +14,7 @@ REMOTE_REPOS_DIR = "/infai/seipp/projects"
 REVISION_CACHE = os.environ.get("DOWNWARD_REVISION_CACHE")
 if project.REMOTE:
     SUITE = project.SUITE_OPTIMAL_STRIPS
-    ENV = project.BaselSlurmEnvironment(email="luka.obser@unibas.ch")
+    ENV = project.BaselSlurmEnvironment(email="luka.obser@unibas.ch", partition="infai_2")
 else:
     SUITE = ["depot:p01.pddl", "grid:prob01.pddl", "gripper:prob01.pddl"]
     ENV = project.LocalEnvironment(processes=2)
