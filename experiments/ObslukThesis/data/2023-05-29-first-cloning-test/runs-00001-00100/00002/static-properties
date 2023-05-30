@@ -1,0 +1,29 @@
+{
+  "algorithm": "main:mas",
+  "build_options": [],
+  "component_options": [
+    "--search",
+    "astar(merge_and_shrink(verbosity=normal,  shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_sccs(order_of_sccs=topological,merge_selector=score_based_filtering(scoring_functions=[single_random(random_seed=42)])),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1))"
+  ],
+  "domain": "grid",
+  "driver_options": [
+    "--validate",
+    "--overall-time-limit",
+    "30m",
+    "--overall-memory-limit",
+    "3584M",
+    "--overall-time-limit",
+    "30m"
+  ],
+  "experiment_name": "2023-05-29-first-cloning-test",
+  "global_revision": "a80d46767301cbda270fa823af235024b24560e8",
+  "id": [
+    "main:mas",
+    "grid",
+    "prob01.pddl"
+  ],
+  "local_revision": "main",
+  "problem": "prob01.pddl",
+  "repo": "/home/luka/Thesis/downward",
+  "run_dir": "runs-00001-00100/00002"
+}

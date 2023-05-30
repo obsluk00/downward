@@ -1,0 +1,13 @@
+2023-05-29 17:19:25,465 INFO     node: luka-ubuntu
+2023-05-29 17:19:25,798 INFO     planner wall-clock time: 0.33s
+2023-05-29 17:19:25,799 INFO     planner exit code: 36
+2023-05-29 17:19:25,893 INFO     exitcode_parser wall-clock time: 0.09s
+2023-05-29 17:19:25,894 INFO     exitcode_parser exit code: 0
+2023-05-29 17:19:25,990 INFO     translator_parser wall-clock time: 0.09s
+2023-05-29 17:19:25,990 INFO     translator_parser exit code: 0
+2023-05-29 17:19:26,099 INFO     single_search_parser wall-clock time: 0.11s
+2023-05-29 17:19:26,099 INFO     single_search_parser exit code: 0
+2023-05-29 17:19:26,207 INFO     parser wall-clock time: 0.10s
+2023-05-29 17:19:26,207 INFO     parser exit code: 0
+2023-05-29 17:19:26,328 INFO     planner_parser wall-clock time: 0.12s
+2023-05-29 17:19:26,329 INFO     planner_parser exit code: 0

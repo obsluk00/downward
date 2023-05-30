@@ -1,0 +1,15 @@
+{
+  "algorithms": [
+    "main:01-cg",
+    "main:02-ff"
+  ],
+  "experiment_file": "2020-09-11-A-cg-vs-ff.py",
+  "runs": 6,
+  "suite": {
+    "/home/luka/Thesis/downward-benchmarks": [
+      "depot:p01.pddl",
+      "grid:prob01.pddl",
+      "gripper:prob01.pddl"
+    ]
+  }
+}

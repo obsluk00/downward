@@ -1,0 +1,29 @@
+{
+  "algorithm": "main:02-ff",
+  "build_options": [],
+  "component_options": [
+    "--search",
+    "eager_greedy([ff(transform=adapt_costs(one))])"
+  ],
+  "domain": "gripper",
+  "driver_options": [
+    "--validate",
+    "--overall-time-limit",
+    "30m",
+    "--overall-memory-limit",
+    "3584M",
+    "--overall-time-limit",
+    "5m"
+  ],
+  "experiment_name": "2020-09-11-A-cg-vs-ff",
+  "global_revision": "a80d46767301cbda270fa823af235024b24560e8",
+  "id": [
+    "main:02-ff",
+    "gripper",
+    "prob01.pddl"
+  ],
+  "local_revision": "main",
+  "problem": "prob01.pddl",
+  "repo": "/home/luka/Thesis/downward",
+  "run_dir": "runs-00001-00100/00006"
+}
