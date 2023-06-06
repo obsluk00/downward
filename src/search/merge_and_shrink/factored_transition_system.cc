@@ -114,10 +114,13 @@ void FactoredTransitionSystem::assert_all_components_valid() const {
 void FactoredTransitionSystem::clone_factor(
     int index) {
     assert(is_component_valid(index));
-    int new_index = transition_systems.size() - 1;
-    transition_systems.push_back(utils::make_unique_ptr<TransitionSystem>(*transition_systems[index]));
-    mas_representations.push_back(mas_representations[index]->clone());
-    distances.push_back(utils::make_unique_ptr<Distances>(*distances[index], *transition_systems[new_index]));
+    const TransitionSystem &old_system = *transition_systems[index];
+    transition_systems.push_back(utils::make_unique_ptr<TransitionSystem>(old_system));
+    const MergeAndShrinkRepresentation &old_representation = *mas_representations[index];
+    mas_representations.push_back(old_representation.clone());
+    const TransitionSystem &new_ts = *transition_systems.back();
+    const Distances &original_distances = *distances[index];
+    distances.push_back(utils::make_unique_ptr<Distances>(original_distances, new_ts));
     ++num_active_entries;
     assert(is_component_valid(new_index));
 }
