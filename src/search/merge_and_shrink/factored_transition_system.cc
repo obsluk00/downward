@@ -115,14 +115,14 @@ void FactoredTransitionSystem::clone_factor(
     int index) {
     assert(is_component_valid(index));
     const TransitionSystem &old_system = *transition_systems[index];
-    transition_systems.push_back(utils::make_unique_ptr<TransitionSystem>(old_system));
+    const Distances &original_distances = *distances[index];
     const MergeAndShrinkRepresentation &old_representation = *mas_representations[index];
+    transition_systems.push_back(utils::make_unique_ptr<TransitionSystem>(old_system));
     mas_representations.push_back(old_representation.clone());
     const TransitionSystem &new_ts = *transition_systems.back();
-    const Distances &original_distances = *distances[index];
     distances.push_back(utils::make_unique_ptr<Distances>(original_distances, new_ts));
     ++num_active_entries;
-    assert(is_component_valid(new_index));
+    assert(is_component_valid(transition_systems.size() - 1));
 }
 
 void FactoredTransitionSystem::apply_label_mapping(

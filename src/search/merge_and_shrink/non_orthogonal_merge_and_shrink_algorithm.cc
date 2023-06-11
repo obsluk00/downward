@@ -176,6 +176,16 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
                 << main_loop_max_time << "s." << endl;
         }
     }
+
+    // TODO: remove and replace with cloning based on passed parameters
+    // clones all factors for testing
+    if (non_orthogonal) {
+        const int size = fts.get_size();
+        for (int i = 0; i < size; ++i) {
+            fts.clone_factor(1);
+        }
+    }
+
     int maximum_intermediate_size = 0;
     for (int i = 0; i < fts.get_size(); ++i) {
         int size = fts.get_transition_system(i).get_size();
@@ -198,15 +208,6 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         };
     int iteration_counter = 0;
 
-    // TODO: remove and replace with cloning based on passed parameters
-    // clones all factors for testing
-    if (non_orthogonal) {
-        const int size = fts.get_size();
-        for (int i = 0; i < size; ++i) {
-            fts.clone_factor(i);
-        }
-    }
-
     while (fts.get_num_active_entries() > 1) {
         // Choose next transition systems to merge
         pair<int, int> merge_indices = merge_strategy->get_next();
@@ -225,6 +226,8 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
             }
             log_main_loop_progress("after computation of next merge");
         }
+
+        // TODO: clone adhoc here
 
         // Label reduction (before shrinking)
         if (label_reduction && label_reduction->reduce_before_shrinking()) {
