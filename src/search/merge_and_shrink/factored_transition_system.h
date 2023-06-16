@@ -108,6 +108,8 @@ public:
     void clone_factor(
         int index);
 
+    void remove_factor(int index);
+
     /*
       Apply the given label mapping to the factored transition system by
       updating all transitions of all transition systems. Only for the factor
