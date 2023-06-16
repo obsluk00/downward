@@ -177,15 +177,6 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         }
     }
 
-    // TODO: remove and replace with cloning based on passed parameters
-    // clones all factors for testing
-    if (non_orthogonal) {
-        const int size = fts.get_size();
-        for (int i = 0; i < size; ++i) {
-            fts.clone_factor(1);
-        }
-    }
-
     int maximum_intermediate_size = 0;
     for (int i = 0; i < fts.get_size(); ++i) {
         int size = fts.get_transition_system(i).get_size();
@@ -208,14 +199,40 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         };
     int iteration_counter = 0;
 
+    // TODO: pass as option
+    int clone_tokens = 100;
+    // TODO: maybe a better solution to determining adhoc cloning factors
+    if (non_orthogonal) {
+        fts.clone_factor(0);
+        fts.remove_factor(0);
+    }
+
     while (fts.get_num_active_entries() > 1) {
         // Choose next transition systems to merge
         pair<int, int> merge_indices = merge_strategy->get_next();
         if (ran_out_of_time(timer)) {
             break;
         }
+
         int merge_index1 = merge_indices.first;
         int merge_index2 = merge_indices.second;
+
+        // Translate and clone indices if the strategy informs us that the returned ones occur multiple times
+        if (merge_index1 < 0) {
+            merge_index1 = merge_index1 * -1;
+            if (non_orthogonal && clone_tokens > 0) {
+                fts.clone_factor(merge_index1);
+                clone_tokens -= 1;
+            }
+        }
+        if (merge_index2 < 0) {
+            merge_index2 = merge_index2 * -1;
+            if (non_orthogonal && clone_tokens > 0) {
+                fts.clone_factor(merge_index2);
+                clone_tokens -= 1;
+            }
+        }
+
         assert(merge_index1 != merge_index2);
         if (log.is_at_least_normal()) {
             log << "Next pair of indices: ("
@@ -226,8 +243,6 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
             }
             log_main_loop_progress("after computation of next merge");
         }
-
-        // TODO: clone adhoc here
 
         // Label reduction (before shrinking)
         if (label_reduction && label_reduction->reduce_before_shrinking()) {
