@@ -128,6 +128,7 @@ void FactoredTransitionSystem::remove_factor(
     distances[index] = nullptr;
     transition_systems[index] = nullptr;
     mas_representations[index] = nullptr;
+    --num_active_entries;
 }
 
 void FactoredTransitionSystem::apply_label_mapping(
