@@ -219,14 +219,14 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
 
         // Translate and clone indices if the strategy informs us that the returned ones occur multiple times
         if (merge_index1 < 0) {
-            merge_index1 = merge_index1 * -1;
+            merge_index1 = abs(merge_index1);
             if (non_orthogonal && clone_tokens > 0) {
                 fts.clone_factor(merge_index1);
                 clone_tokens -= 1;
             }
         }
         if (merge_index2 < 0) {
-            merge_index2 = merge_index2 * -1;
+            merge_index2 = abs(merge_index2);
             if (non_orthogonal && clone_tokens > 0) {
                 fts.clone_factor(merge_index2);
                 clone_tokens -= 1;

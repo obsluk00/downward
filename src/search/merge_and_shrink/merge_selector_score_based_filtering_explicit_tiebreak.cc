@@ -55,27 +55,30 @@ pair<int, int> MergeSelectorScoreBasedFilteringExplicitTiebreak::select_merge(
     }
 
     if (merge_candidates.size() > 1) {
-        bool clone_first = false;
-        bool clone_second = false;
-        // TODO: fix bug here
+        vector<pair<int, int>> filtered_candidates;
         for (pair<int, int> candidate : merge_candidates) {
+            bool clone_first = false;
+            bool clone_second = false;
+            int index1 = candidate.first;
+            int index2 = candidate.second;
             for (pair<int, int> other_candidate : merge_candidates) {
-                if (other_candidate.first == candidate.first && other_candidate.second == candidate.second)
+                if (abs(other_candidate.first) == abs(candidate.first) && abs(other_candidate.second) == abs(candidate.second))
                     continue;
-                if (!clone_first && (other_candidate.first == (candidate.first || (-1 * candidate.first)) || other_candidate.second == (candidate.first || (-1 * candidate.first)))) {
+                if (!clone_first && (abs(candidate.first) == abs(other_candidate.first) || abs(candidate.first) == abs(other_candidate.second))) {
                     clone_first = true;
-                    candidate.first = candidate.first * -1;
+                    index1 = candidate.first * -1;
                 }
-                if (!clone_second && (other_candidate.first == (candidate.second || (-1 * candidate.second)) || other_candidate.second == (candidate.second || (-1 * candidate.second)))) {
+                if (!clone_second && (abs(candidate.second) == abs(other_candidate.first) || abs(candidate.second) == abs(other_candidate.second))) {
                     clone_second = true;
-                    candidate.second = candidate.second * -1;
+                    index2 = candidate.second * -1;
                 }
                 if (clone_first && clone_second)
                     break;
             }
+            filtered_candidates.emplace_back(index1, index2);
         }
         vector<double> scores = tiebreaking_scoring_function->compute_scores(
-                fts, merge_candidates);
+                fts, filtered_candidates);
         merge_candidates = get_remaining_candidates(merge_candidates, scores);
     }
 
