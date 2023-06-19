@@ -54,6 +54,11 @@ def main():
         r"New best heuristic value for .+: (\d+)\n",
         type=int,
     )
+    parser.add_patern(
+        "times_cloned",
+        r"Times cloned: (\d)",
+        type=int,
+    )
     parser.parse()
 
 
