@@ -26,7 +26,7 @@ CONFIGS = [
 BUILD_OPTIONS = []
 DRIVER_OPTIONS = ["--overall-time-limit", "30m"]
 REVS = [
-    ("fd921c7", "clone")
+    ("aa1394c", "clone")
 ]
 ATTRIBUTES = [
     "error",
