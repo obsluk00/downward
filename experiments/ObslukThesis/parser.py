@@ -56,7 +56,7 @@ def main():
     )
     parser.add_pattern(
         "times_cloned",
-        r"Times cloned: (\d)",
+        r"Times cloned: (\d+)\n",
         type=int,
     )
     parser.parse()

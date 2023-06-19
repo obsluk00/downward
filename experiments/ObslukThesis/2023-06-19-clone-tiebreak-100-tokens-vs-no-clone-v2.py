@@ -4,6 +4,7 @@ import os
 import shutil
 
 import project
+from lab.reports import Attribute
 
 
 REPO = project.get_repo_base()
@@ -28,6 +29,8 @@ DRIVER_OPTIONS = ["--overall-time-limit", "30m"]
 REVS = [
     ("aa1394c", "clone")
 ]
+
+times_cloned = Attribute("times_cloned", absolute=True)
 ATTRIBUTES = [
     "error",
     "run_dir",
@@ -38,7 +41,7 @@ ATTRIBUTES = [
     "coverage",
     "expansions",
     "memory",
-    "times_cloned",
+    times_cloned,
     project.EVALUATIONS_PER_TIME,
 ]
 
