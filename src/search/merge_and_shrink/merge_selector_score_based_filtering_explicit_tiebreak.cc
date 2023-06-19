@@ -79,7 +79,8 @@ pair<int, int> MergeSelectorScoreBasedFilteringExplicitTiebreak::select_merge(
         }
         vector<double> scores = tiebreaking_scoring_function->compute_scores(
                 fts, filtered_candidates);
-        merge_candidates = get_remaining_candidates(merge_candidates, scores);
+        filtered_candidates = get_remaining_candidates(filtered_candidates, scores);
+        return filtered_candidates.front();
     }
 
     return merge_candidates.front();
