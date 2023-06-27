@@ -350,7 +350,7 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
     log << "Main loop runtime: " << timer.get_elapsed_time() << endl;
     log << "Maximum intermediate abstraction size: "
         << maximum_intermediate_size << endl;
-    log << "Times cloned: " << 100 - clone_tokens << endl;
+    log << "Times cloned: " << tokens - clone_tokens << endl;
     shrink_strategy = nullptr;
     label_reduction = nullptr;
 }
