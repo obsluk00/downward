@@ -30,7 +30,7 @@ CONFIGS = [
 BUILD_OPTIONS = []
 DRIVER_OPTIONS = ["--overall-time-limit", "30m"]
 REVS = [
-    ("ea8ad45", "clone")
+    ("89bba12", "clone")
 ]
 
 times_cloned = Attribute("times_cloned", absolute=True)
