@@ -47,7 +47,7 @@ NonOrthogonalMergeAndShrinkAlgorithm::NonOrthogonalMergeAndShrinkAlgorithm(const
     shrink_threshold_before_merge(opts.get<int>("threshold_before_merge")),
     prune_unreachable_states(opts.get<bool>("prune_unreachable_states")),
     prune_irrelevant_states(opts.get<bool>("prune_irrelevant_states")),
-    non_orthogonal(opts.get<bool>("non_orthogonal")),
+    tokens(opts.get<int>("tokens")),
     log(utils::get_log_from_options(opts)),
     main_loop_max_time(opts.get<double>("main_loop_max_time")),
     starting_peak_memory(0) {
@@ -200,12 +200,10 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
     int iteration_counter = 0;
 
     // TODO: pass as option
-    int clone_tokens = 100;
+    int clone_tokens = tokens;
     // TODO: maybe a better solution to determining adhoc cloning factors
-    if (non_orthogonal) {
-        fts.clone_factor(0);
-        fts.remove_factor(0);
-    }
+    fts.clone_factor(0);
+    fts.remove_factor(0);
 
     while (fts.get_num_active_entries() > 1) {
         // Choose next transition systems to merge
