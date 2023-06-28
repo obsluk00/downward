@@ -35,17 +35,8 @@ REVS = [
 
 times_cloned = Attribute("times_cloned", absolute=True)
 ATTRIBUTES = [
-    "error",
-    "run_dir",
-    "search_start_time",
-    "search_start_memory",
-    "total_time",
-    "h_values",
-    "coverage",
-    "expansions",
-    "memory",
+            "cost",        "coverage",        "error",        "evaluations",        "expansions",        "expansions_until_last_jump",        "generated",        "memory",        "planner_memory",        "planner_time",        "quality",        "run_dir",        "score_evaluations",        "score_expansions",        "score_generated",        "score_memory",        "score_search_time",        "score_total_time",        "search_time",        "total_time",
     times_cloned,
-    project.EVALUATIONS_PER_TIME,
 ]
 
 exp = project.FastDownwardExperiment(environment=ENV, revision_cache=REVISION_CACHE)
