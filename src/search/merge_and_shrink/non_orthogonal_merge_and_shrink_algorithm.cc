@@ -346,6 +346,8 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         ++iteration_counter;
     }
 
+    // TODO: (mas reps variable counts sum -#var)/#var
+
     log << "End of merge-and-shrink algorithm, statistics:" << endl;
     log << "Main loop runtime: " << timer.get_elapsed_time() << endl;
     log << "Maximum intermediate abstraction size: "
