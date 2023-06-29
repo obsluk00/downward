@@ -346,13 +346,16 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         ++iteration_counter;
     }
 
-    // TODO: (mas reps variable counts sum -#var)/#var
+    int leaf_count = fts.total_leaf_count();
+    int variables = task_proxy.get_variables().size();
+    double non_orthogonality = (leaf_count - variables) / variables;
 
     log << "End of merge-and-shrink algorithm, statistics:" << endl;
     log << "Main loop runtime: " << timer.get_elapsed_time() << endl;
     log << "Maximum intermediate abstraction size: "
         << maximum_intermediate_size << endl;
     log << "Times cloned: " << tokens - clone_tokens << endl;
+    log << "Non-orthogonality: " << non_orthogonality << endl;
     shrink_strategy = nullptr;
     label_reduction = nullptr;
 }

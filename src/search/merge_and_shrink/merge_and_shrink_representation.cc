@@ -26,7 +26,6 @@ int MergeAndShrinkRepresentation::get_domain_size() const {
     return domain_size;
 }
 
-
 MergeAndShrinkRepresentationLeaf::MergeAndShrinkRepresentationLeaf(
     int var_id, int domain_size)
     : MergeAndShrinkRepresentation(domain_size),
@@ -35,14 +34,16 @@ MergeAndShrinkRepresentationLeaf::MergeAndShrinkRepresentationLeaf(
     iota(lookup_table.begin(), lookup_table.end(), 0);
 }
 
-// TODO: fix
 MergeAndShrinkRepresentationLeaf::MergeAndShrinkRepresentationLeaf(const MergeAndShrinkRepresentationLeaf &other)
     : MergeAndShrinkRepresentation(other.domain_size),
       var_id(other.var_id),
       lookup_table(other.lookup_table) {
 }
 
-// TODO: fix
+int MergeAndShrinkRepresentationLeaf::leaf_count() {
+    return 1;
+}
+
 std::unique_ptr<MergeAndShrinkRepresentation> MergeAndShrinkRepresentationLeaf::clone() const {
     return make_unique<MergeAndShrinkRepresentationLeaf>(*this);
 }
@@ -112,7 +113,6 @@ MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(
     }
 }
 
-// TODO: fix
 MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(const MergeAndShrinkRepresentationMerge &other)
     : MergeAndShrinkRepresentation(other.domain_size),
       left_child(other.left_child->clone()),
@@ -120,7 +120,10 @@ MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(const Merge
       lookup_table(other.lookup_table) {
 }
 
-// TODO: fix
+int MergeAndShrinkRepresentationMerge::leaf_count() {
+    return left_child->leaf_count() + right_child->leaf_count();
+}
+
 std::unique_ptr<MergeAndShrinkRepresentation> MergeAndShrinkRepresentationMerge::clone() const {
     return make_unique<MergeAndShrinkRepresentationMerge>(*this);
 }

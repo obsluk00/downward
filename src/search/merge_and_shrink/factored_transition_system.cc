@@ -147,6 +147,8 @@ void FactoredTransitionSystem::apply_label_mapping(
         }
     }
     assert_all_components_valid();
+int leaf_count();
+
 }
 
 bool FactoredTransitionSystem::apply_abstraction(
@@ -271,5 +273,14 @@ bool FactoredTransitionSystem::is_factor_trivial(int index) const {
 bool FactoredTransitionSystem::is_active(int index) const {
     assert_index_valid(index);
     return transition_systems[index] != nullptr;
+}
+
+int FactoredTransitionSystem::total_leaf_count() {
+    int res = 0;
+    for (unique_ptr<MergeAndShrinkRepresentation> &representation : mas_representations) {
+        if (representation != nullptr)
+        res += representation->leaf_count();
+    }
+    return res;
 }
 }

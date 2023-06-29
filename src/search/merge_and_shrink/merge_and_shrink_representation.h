@@ -22,7 +22,7 @@ public:
 
     int get_domain_size() const;
 
-    // TODO: fix
+    virtual int leaf_count() = 0;
     virtual std::unique_ptr<MergeAndShrinkRepresentation> clone() const = 0;
     // Store distances instead of abstract state numbers.
     virtual void set_distances(const Distances &) = 0;
@@ -48,11 +48,10 @@ class MergeAndShrinkRepresentationLeaf : public MergeAndShrinkRepresentation {
     std::vector<int> lookup_table;
 public:
     MergeAndShrinkRepresentationLeaf(int var_id, int domain_size);
-    // TODO: fix
     MergeAndShrinkRepresentationLeaf(const MergeAndShrinkRepresentationLeaf &other);
     virtual ~MergeAndShrinkRepresentationLeaf() = default;
 
-    // TODO: fix
+    int leaf_count();
     std::unique_ptr<MergeAndShrinkRepresentation> clone() const override;
     virtual void set_distances(const Distances &) override;
     virtual void apply_abstraction_to_lookup_table(
@@ -71,11 +70,11 @@ public:
     MergeAndShrinkRepresentationMerge(
         std::unique_ptr<MergeAndShrinkRepresentation> left_child,
         std::unique_ptr<MergeAndShrinkRepresentation> right_child);
-    // TODO: fix
+
     MergeAndShrinkRepresentationMerge(const MergeAndShrinkRepresentationMerge &other);
     virtual ~MergeAndShrinkRepresentationMerge() = default;
 
-    // TODO: fix
+    int leaf_count();
     std::unique_ptr<MergeAndShrinkRepresentation> clone() const override;
     virtual void set_distances(const Distances &distances) override;
     virtual void apply_abstraction_to_lookup_table(

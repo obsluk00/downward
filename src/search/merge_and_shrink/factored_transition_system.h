@@ -212,6 +212,8 @@ public:
     }
 
     bool is_active(int index) const;
+    // counts how many variables are represented in the mas_representations by counting their leaves. relevant for cloning
+    int total_leaf_count();
 };
 }
 
