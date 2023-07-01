@@ -83,4 +83,22 @@ project.add_absolute_report(
     exp, attributes=ATTRIBUTES, filter=[project.add_evaluations_per_time]
 )
 
+attributes = ["expansions_until_last_jump"]
+pairs = [
+    ("clone:orthogonal", "clone:non_orthogonal"),
+]
+suffix = "-rel" if project.RELATIVE else ""
+for algo1, algo2 in pairs:
+    for attr in attributes:
+        exp.add_report(
+            project.ScatterPlotReport(
+                relative=project.RELATIVE,
+                get_category=None if project.TEX else lambda run1, run2: run1["domain"],
+                attributes=[attr],
+                filter_algorithm=[algo1, algo2],
+                format="tex" if project.TEX else "png",
+            ),
+            name=f"{exp.name}-{algo1}-vs-{algo2}-{attr}{suffix}",
+        )
+
 exp.run_steps()
