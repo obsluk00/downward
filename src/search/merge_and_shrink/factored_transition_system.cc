@@ -218,6 +218,59 @@ int FactoredTransitionSystem::merge(
     return new_index;
 }
 
+int FactoredTransitionSystem::cloning_merge(
+        int index1,
+        int index2,
+        bool clone1,
+        bool clone2,
+        utils::LogProxy &log) {
+    assert(is_component_valid(index1));
+    assert(is_component_valid(index2));
+    transition_systems.push_back(
+            TransitionSystem::merge(
+                    *labels,
+                    *transition_systems[index1],
+                    *transition_systems[index2],
+                    log));
+    mas_representations.push_back(
+            utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
+                    mas_representations[index1]->clone(),
+                    mas_representations[index2]->clone()));
+
+    const TransitionSystem &new_ts = *transition_systems.back();
+    distances.push_back(utils::make_unique_ptr<Distances>(new_ts));
+    int new_index = transition_systems.size() - 1;
+    // Restore the invariant that distances are computed.
+    if (compute_init_distances || compute_goal_distances) {
+        distances[new_index]->compute_distances(
+                compute_init_distances, compute_goal_distances, log);
+    }
+    ++num_active_entries;
+    assert(is_component_valid(new_index));
+    // Check which factors, if any, to remove
+    if (!clone1) {
+        distances[index1] = nullptr;
+        transition_systems[index1] = nullptr;
+        mas_representations[index1] = nullptr;
+        --num_active_entries;
+        if (log.is_at_least_verbose()) {
+            log << "Cloned index " << index1;
+        }
+    }
+    if (!clone2) {
+        distances[index2] = nullptr;
+        transition_systems[index2] = nullptr;
+        mas_representations[index2] = nullptr;
+        --num_active_entries;
+        if (log.is_at_least_verbose()) {
+            log << "Cloned index " << index2;
+        }
+    }
+
+    return new_index;
+}
+
+
 pair<unique_ptr<MergeAndShrinkRepresentation>, unique_ptr<Distances>>
 FactoredTransitionSystem::extract_factor(int index) {
     assert(is_component_valid(index));

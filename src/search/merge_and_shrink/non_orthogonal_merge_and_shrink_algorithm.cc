@@ -199,7 +199,6 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         };
     int iteration_counter = 0;
 
-    // TODO: pass as option
     int clone_tokens = tokens;
     // TODO: maybe a better solution to determining adhoc cloning factors
     fts.clone_factor(0);
@@ -214,18 +213,20 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
 
         int merge_index1 = merge_indices.first;
         int merge_index2 = merge_indices.second;
+        bool clone_first = false;
+        bool clone_second = false;
         // Translate and clone indices if the strategy informs us that the returned ones occur multiple times
         if (merge_index1 < 0) {
             merge_index1 = abs(merge_index1);
             if (clone_tokens > 0) {
-                fts.clone_factor(merge_index1);
+                clone_first = true;
                 clone_tokens -= 1;
             }
         }
         if (merge_index2 < 0) {
             merge_index2 = abs(merge_index2);
             if (clone_tokens > 0) {
-                fts.clone_factor(merge_index2);
+                clone_second = true;
                 clone_tokens -= 1;
             }
         }
@@ -284,7 +285,7 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         }
 
         // Merging
-        int merged_index = fts.merge(merge_index1, merge_index2, log);
+        int merged_index = fts.cloning_merge(merge_index1, merge_index2, clone_first, clone_second, log);
         int abs_size = fts.get_transition_system(merged_index).get_size();
         if (abs_size > maximum_intermediate_size) {
             maximum_intermediate_size = abs_size;

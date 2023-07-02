@@ -145,6 +145,16 @@ public:
         utils::LogProxy &log);
 
     /*
+       Clone specified factors and merge them.
+     */
+    int cloning_merge(
+            int index1,
+            int index2,
+            bool clone1,
+            bool clone2,
+            utils::LogProxy &log);
+
+    /*
       Extract the factor at the given index, rendering the FTS invalid.
     */
     std::pair<std::unique_ptr<MergeAndShrinkRepresentation>,
