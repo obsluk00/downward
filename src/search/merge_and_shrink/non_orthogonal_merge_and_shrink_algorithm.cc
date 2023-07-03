@@ -359,7 +359,7 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
 
     int leaf_count = fts.total_leaf_count();
     int variables = task_proxy.get_variables().size();
-    double non_orthogonality = (leaf_count - variables) / variables;
+    double non_orthogonality = (1.0) * (leaf_count - variables) / variables;
 
     int times_cloned = tokens - clone_tokens;
     if (times_cloned > 0)
