@@ -201,7 +201,7 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
 
     int clone_tokens = tokens;
     int largest_clone = 0;
-    double average_clone = 0;
+    double average_clone = 0.0;
     // TODO: maybe a better solution to determining adhoc cloning factors
     fts.clone_factor(0);
     fts.remove_factor(0);
