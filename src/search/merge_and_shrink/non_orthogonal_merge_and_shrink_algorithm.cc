@@ -362,7 +362,8 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
     double non_orthogonality = (leaf_count - variables) / variables;
 
     int times_cloned = tokens - clone_tokens;
-    average_clone = average_clone / times_cloned;
+    if (times_cloned > 0)
+        average_clone = average_clone / times_cloned;
     log << "End of merge-and-shrink algorithm, statistics:" << endl;
     log << "Main loop runtime: " << timer.get_elapsed_time() << endl;
     log << "Maximum intermediate abstraction size: "
