@@ -200,6 +200,8 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
     int iteration_counter = 0;
 
     int clone_tokens = tokens;
+    int largest_clone = 0;
+    double average_clone = 0;
     // TODO: maybe a better solution to determining adhoc cloning factors
     fts.clone_factor(0);
     fts.remove_factor(0);
@@ -219,6 +221,10 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         if (merge_index1 < 0) {
             merge_index1 = abs(merge_index1);
             if (clone_tokens > 0) {
+                int variables_cloned = fts.leaf_count(merge_index1);
+                average_clone += variables_cloned;
+                if (variables_cloned > largest_clone)
+                    largest_clone = variables_cloned;
                 clone_first = true;
                 clone_tokens -= 1;
             }
@@ -226,6 +232,10 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         if (merge_index2 < 0) {
             merge_index2 = abs(merge_index2);
             if (clone_tokens > 0) {
+                int variables_cloned = fts.leaf_count(merge_index2);
+                average_clone += variables_cloned;
+                if (variables_cloned > largest_clone)
+                    largest_clone = variables_cloned;
                 clone_second = true;
                 clone_tokens -= 1;
             }
@@ -351,11 +361,15 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
     int variables = task_proxy.get_variables().size();
     double non_orthogonality = (leaf_count - variables) / variables;
 
+    int times_cloned = tokens - clone_tokens;
+    average_clone = average_clone / times_cloned;
     log << "End of merge-and-shrink algorithm, statistics:" << endl;
     log << "Main loop runtime: " << timer.get_elapsed_time() << endl;
     log << "Maximum intermediate abstraction size: "
         << maximum_intermediate_size << endl;
-    log << "Times cloned: " << tokens - clone_tokens << endl;
+    log << "Times cloned: " << times_cloned << endl;
+    log << "Average amount of variables cloned: " << average_clone << endl;
+    log << "Largest amount of variables cloned: " << largest_clone << endl;
     log << "Non-orthogonality: " << non_orthogonality << endl;
     shrink_strategy = nullptr;
     label_reduction = nullptr;

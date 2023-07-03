@@ -336,4 +336,7 @@ int FactoredTransitionSystem::total_leaf_count() {
     }
     return res;
 }
+int FactoredTransitionSystem::leaf_count(int index) {
+    return mas_representations[index]->leaf_count();
+}
 }
