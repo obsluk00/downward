@@ -55,8 +55,23 @@ def main():
         type=int,
     )
     parser.add_pattern(
+        "non_orthogonality",
+        r"Non-orthogonality: (\d+)\n",
+        type=float,
+    )
+    parser.add_pattern(
         "times_cloned",
         r"Times cloned: (\d+)\n",
+        type=int,
+    )
+    parser.add_pattern(
+        "average_cloned",
+        r"Average amount of variables cloned: (\d+)\n",
+        type=float,
+    )
+    parser.add_pattern(
+        "largest_cloned",
+        r"Largest amount of variables cloned: (\d+)\n",
         type=int,
     )
     parser.parse()
