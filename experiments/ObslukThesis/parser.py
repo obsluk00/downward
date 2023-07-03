@@ -56,7 +56,7 @@ def main():
     )
     parser.add_pattern(
         "non_orthogonality",
-        r"Non-orthogonality: (\.+)\n",
+        r"Non-orthogonality: (\d*\.*\d+)\n",
         type=float,
     )
     parser.add_pattern(
@@ -66,7 +66,7 @@ def main():
     )
     parser.add_pattern(
         "average_cloned",
-        r"Average amount of variables cloned: (\.+)\n",
+        r"Average amount of variables cloned: (\d*\.*\d+)\n",
         type=float,
     )
     parser.add_pattern(
