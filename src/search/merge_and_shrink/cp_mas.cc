@@ -345,6 +345,7 @@ static vector<int> compute_non_trivial_factors(
         }
     }
     assert(!considered_factors.empty());
+    return considered_factors;
 }
 
 void CPMAS::handle_snapshot(
