@@ -30,14 +30,14 @@ public:
 
 class SaturatedCostPartitioningFactory : public CostPartitioningFactory {
     std::shared_ptr<OrderGenerator> order_generator;
+public:
+    explicit SaturatedCostPartitioningFactory(const plugins::Options &opts);
+    virtual ~SaturatedCostPartitioningFactory() = default;
     std::unique_ptr<CostPartitioning> generate_for_order(
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,
         const std::vector<int> &order,
         utils::LogProxy &log) const;
-public:
-    explicit SaturatedCostPartitioningFactory(const plugins::Options &opts);
-    virtual ~SaturatedCostPartitioningFactory() = default;
     virtual std::unique_ptr<CostPartitioning> generate(
         std::vector<int> &&label_costs,
         std::vector<std::unique_ptr<Abstraction>> &&abstractions,

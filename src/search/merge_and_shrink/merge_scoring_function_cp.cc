@@ -1,11 +1,13 @@
 #include "merge_scoring_function_cp.h"
 
+#include "cp_utils.h"
 #include "cost_partitioning.h"
 #include "distances.h"
 #include "factored_transition_system.h"
 #include "labels.h"
 #include "merge_and_shrink_algorithm.h"
 #include "merge_and_shrink_representation.h"
+#include "saturated_cost_partitioning.h"
 #include "shrink_strategy.h"
 #include "transition_system.h"
 #include "merge_scoring_function_miasm_utils.h"
@@ -31,38 +33,6 @@ MergeScoringFunctionCP::MergeScoringFunctionCP(
       shrink_threshold_before_merge(options.get<int>("threshold_before_merge")),
       cp_factory(options.get<shared_ptr<CostPartitioningFactory>>("cost_partitioning")),
       filter_trivial_factors(options.get<bool>("filter_trivial_factors")) {
-}
-
-vector<int> compute_label_costs(
-    const Labels &labels) {
-    int num_labels = labels.get_num_total_labels();
-    vector<int> label_costs(num_labels, -1);
-    for (int label_no : labels) {
-        label_costs[label_no] = labels.get_label_cost(label_no);
-    }
-    return label_costs;
-}
-
-vector<unique_ptr<Abstraction>> MergeScoringFunctionCP::compute_abstractions_over_fts(
-    const FactoredTransitionSystem &fts,
-    const vector<int> &considered_factors) const {
-    vector<unique_ptr<Abstraction>> abstractions;
-    abstractions.reserve(considered_factors.size());
-    for (int index : considered_factors) {
-        const TransitionSystem *transition_system = fts.get_transition_system_raw_ptr(index);
-        unique_ptr<MergeAndShrinkRepresentation> mas_representation = nullptr;
-        if (dynamic_cast<const MergeAndShrinkRepresentationLeaf *>(fts.get_mas_representation_raw_ptr(index))) {
-            mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationLeaf>(
-                dynamic_cast<const MergeAndShrinkRepresentationLeaf *>
-                (fts.get_mas_representation_raw_ptr(index)));
-        } else {
-            mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
-                dynamic_cast<const MergeAndShrinkRepresentationMerge *>(
-                    fts.get_mas_representation_raw_ptr(index)));
-        }
-        abstractions.push_back(utils::make_unique_ptr<Abstraction>(transition_system, move(mas_representation)));
-    }
-    return abstractions;
 }
 
 vector<double> MergeScoringFunctionCP::compute_scores(
@@ -114,17 +84,37 @@ vector<double> MergeScoringFunctionCP::compute_scores(
         distances->compute_distances(compute_init_distances, compute_goal_distances, log);
         int product_init_h = distances->get_goal_distance(product->get_init_state());
 
-        // Compute the CP over the product.
-        unique_ptr<CostPartitioning> cp = cp_factory->generate(
-            compute_label_costs(fts.get_labels()),
-            compute_abstractions_over_fts(fts, {index1, index2}),
-            log);
+
         // TODO: this is a hack that we could avoid by being able to have a
         // cost partitioning that works for abstract states rather than
         // concrete states. By doing so we could actually avoid copying mas
         // representations.
-        int cp_init_h = cp->compute_value(
-            State(*tasks::g_root_task, tasks::g_root_task->get_initial_state_values()));
+        State init_state(*tasks::g_root_task, tasks::g_root_task->get_initial_state_values());
+        int cp_init_h = -1;
+
+        // Compute the init h-value of the CP(s) over the product.
+        if (dynamic_cast<SaturatedCostPartitioningFactory *>(cp_factory.get())) {
+            // Compute SCPs for both orders.
+            SaturatedCostPartitioningFactory *scp_factory = dynamic_cast<SaturatedCostPartitioningFactory *>(cp_factory.get());
+            unique_ptr<CostPartitioning> cp1 = scp_factory->generate_for_order(
+                compute_label_costs(fts.get_labels()),
+                compute_abstractions_for_factors(fts, {index1, index2}),
+                {0, 1},
+                log);
+            unique_ptr<CostPartitioning> cp2 = scp_factory->generate_for_order(
+                compute_label_costs(fts.get_labels()),
+                compute_abstractions_for_factors(fts, {index1, index2}),
+                {1, 0},
+                log);
+            cp_init_h = max(cp1->compute_value(init_state), cp2->compute_value(init_state));
+        } else {
+            // Compute OCP.
+            unique_ptr<CostPartitioning> cp = cp_factory->generate(
+                compute_label_costs(fts.get_labels()),
+                compute_abstractions_for_factors(fts, {index1, index2}),
+                log);
+            cp_init_h = cp->compute_value(init_state);
+        }
 
         double score = cp_init_h - product_init_h;
         assert(score <= 0);

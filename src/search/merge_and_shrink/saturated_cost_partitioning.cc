@@ -68,6 +68,7 @@ unique_ptr<CostPartitioning> SaturatedCostPartitioningFactory::generate_for_orde
     abstraction_infos.reserve(abstractions.size());
     for (size_t i = 0; i < order.size(); ++i) {
         int index = order[i];
+        assert(utils::in_bounds(index, abstractions));
         Abstraction &abstraction = *abstractions[index];
         if (log.is_at_least_debug()) {
             log << endl;

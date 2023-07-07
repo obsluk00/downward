@@ -1,6 +1,7 @@
 #include "cp_mas.h"
 
 #include "cost_partitioning.h"
+#include "cp_utils.h"
 #include "distances.h"
 #include "factored_transition_system.h"
 #include "fts_factory.h"
@@ -263,16 +264,6 @@ bool CPMAS::NextSnapshot::compute_next_snapshot(double current_time, int current
     return compute;
 }
 
-vector<int> CPMAS::compute_label_costs(
-    const Labels &labels) const {
-    int num_labels = labels.get_num_total_labels();
-    vector<int> label_costs(num_labels, -1);
-    for (int label_no : labels) {
-        label_costs[label_no] = labels.get_label_cost(label_no);
-    }
-    return label_costs;
-}
-
 vector<unique_ptr<Abstraction>> CPMAS::extract_unsolvable_abstraction(
     FactoredTransitionSystem &fts, int unsolvable_index) const {
     vector<unique_ptr<Abstraction>> abstractions;
@@ -296,37 +287,6 @@ void CPMAS::handle_unsolvable_snapshot(
     cost_partitionings.push_back(
         cp_factory->generate(
             compute_label_costs(fts.get_labels()), move(new_abstractions), log));
-}
-
-vector<unique_ptr<Abstraction>> CPMAS::compute_abstractions_for_interleaved_cp(
-    const FactoredTransitionSystem &fts) const {
-    vector<int> considered_factors;
-    considered_factors.reserve(fts.get_num_active_entries());
-    for (int index : fts) {
-        if (!filter_trivial_factors || !fts.is_factor_trivial(index)) {
-            considered_factors.push_back(index);
-        }
-    }
-    assert(!considered_factors.empty());
-
-    vector<unique_ptr<Abstraction>> abstractions;
-    abstractions.reserve(considered_factors.size());
-    for (int index : considered_factors) {
-        assert(fts.is_active(index));
-        const TransitionSystem *transition_system = fts.get_transition_system_raw_ptr(index);
-        unique_ptr<MergeAndShrinkRepresentation> mas_representation = nullptr;
-        if (dynamic_cast<const MergeAndShrinkRepresentationLeaf *>(fts.get_mas_representation_raw_ptr(index))) {
-            mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationLeaf>(
-                dynamic_cast<const MergeAndShrinkRepresentationLeaf *>
-                (fts.get_mas_representation_raw_ptr(index)));
-        } else {
-            mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
-                dynamic_cast<const MergeAndShrinkRepresentationMerge *>(
-                    fts.get_mas_representation_raw_ptr(index)));
-        }
-        abstractions.push_back(utils::make_unique_ptr<Abstraction>(transition_system, move(mas_representation)));
-    }
-    return abstractions;
 }
 
 bool any(const Bitset &bitset) {
@@ -375,6 +335,18 @@ vector<unique_ptr<Abstraction>> CPMAS::compute_abstractions_for_offline_cp(
     return abstractions;
 }
 
+static vector<int> compute_non_trivial_factors(
+    const FactoredTransitionSystem &fts, bool filter_trivial_factors) {
+    vector<int> considered_factors;
+    considered_factors.reserve(fts.get_num_active_entries());
+    for (int index : fts) {
+        if (!filter_trivial_factors || !fts.is_factor_trivial(index)) {
+            considered_factors.push_back(index);
+        }
+    }
+    assert(!considered_factors.empty());
+}
+
 void CPMAS::handle_snapshot(
     const FactoredTransitionSystem &fts,
     Bitset &factors_modified_since_last_snapshot,
@@ -392,7 +364,7 @@ void CPMAS::handle_snapshot(
         }
     } else if (any(factors_modified_since_last_snapshot)) {
         cost_partitionings.push_back(cp_factory->generate(
-                                         compute_label_costs(fts.get_labels()), compute_abstractions_for_interleaved_cp(fts), log));
+            compute_label_costs(fts.get_labels()), compute_abstractions_for_factors(fts, compute_non_trivial_factors(fts, filter_trivial_factors)), log));
     }
     factors_modified_since_last_snapshot.reset();
 }
@@ -401,7 +373,7 @@ void CPMAS::compute_cp_and_print_statistics(
     const FactoredTransitionSystem &fts,
     int iteration) const {
     std::unique_ptr<CostPartitioning> cp = cp_factory->generate(
-        compute_label_costs(fts.get_labels()), compute_abstractions_for_interleaved_cp(fts), log);
+        compute_label_costs(fts.get_labels()), compute_abstractions_for_factors(fts, compute_non_trivial_factors(fts, filter_trivial_factors)), log);
     log << "CP value in iteration " << iteration << ": "
         << cp->compute_value(
         State(*tasks::g_root_task,

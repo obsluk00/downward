@@ -16,7 +16,7 @@ class CountdownTimer;
 }
 
 namespace merge_and_shrink {
-class Abstraction;
+struct Abstraction;
 class CostPartitioning;
 class CostPartitioningFactory;
 class FactoredTransitionSystem;
@@ -109,7 +109,6 @@ public:
     void dump_options() const;
     void warn_on_unusual_options() const;
     bool ran_out_of_time(const utils::CountdownTimer &timer) const;
-    std::vector<int> compute_label_costs(const Labels &labels) const;
     std::vector<std::unique_ptr<Abstraction>> extract_unsolvable_abstraction(
         FactoredTransitionSystem &fts, int unsolvable_index) const;
     void handle_unsolvable_snapshot(
@@ -118,9 +117,7 @@ public:
         const FactoredTransitionSystem &fts,
         Bitset &factors_modified_since_last_snapshot,
         const std::unique_ptr<std::vector<int>> &original_to_current_labels);
-    // TODO: the following two methods could be split further and party combined.
-    std::vector<std::unique_ptr<Abstraction>> compute_abstractions_for_interleaved_cp(
-        const FactoredTransitionSystem &fts) const;
+    // TODO: the method could be split further and partly combined with the function cp_utils
     std::vector<std::unique_ptr<Abstraction>> compute_abstractions_for_offline_cp(
         const FactoredTransitionSystem &fts,
         const Bitset &factors_modified_since_last_snapshot,
