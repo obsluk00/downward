@@ -48,6 +48,7 @@ NonOrthogonalMergeAndShrinkAlgorithm::NonOrthogonalMergeAndShrinkAlgorithm(const
     prune_unreachable_states(opts.get<bool>("prune_unreachable_states")),
     prune_irrelevant_states(opts.get<bool>("prune_irrelevant_states")),
     tokens(opts.get<int>("tokens")),
+    max_clone_size(opts.get<int>("max_clone_size")),
     log(utils::get_log_from_options(opts)),
     main_loop_max_time(opts.get<double>("main_loop_max_time")),
     starting_peak_memory(0) {
@@ -200,6 +201,14 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
     int iteration_counter = 0;
 
     int clone_tokens = tokens;
+    // TODO: better passing of infinite tokens
+    if (clone_tokens < 0)
+        clone_tokens = INF;
+    int max_clone_size_allowed = max_clone_size;
+    if (max_clone_size_allowed < 0) {
+        max_clone_size_allowed = INF;
+    }
+    int times_cloned = 0;
     int largest_clone = 0;
     double average_clone = 0.0;
     // TODO: maybe a better solution to determining adhoc cloning factors
@@ -222,22 +231,28 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
             merge_index1 = abs(merge_index1);
             if (clone_tokens > 0) {
                 int variables_cloned = fts.leaf_count(merge_index1);
-                average_clone += variables_cloned;
-                if (variables_cloned > largest_clone)
-                    largest_clone = variables_cloned;
-                clone_first = true;
-                clone_tokens -= 1;
+                if (variables_cloned <= max_clone_size_allowed) {
+                    average_clone += variables_cloned;
+                    if (variables_cloned > largest_clone)
+                        largest_clone = variables_cloned;
+                    clone_first = true;
+                    clone_tokens -= 1;
+                    times_cloned++;
+                }
             }
         }
         if (merge_index2 < 0) {
             merge_index2 = abs(merge_index2);
             if (clone_tokens > 0) {
                 int variables_cloned = fts.leaf_count(merge_index2);
-                average_clone += variables_cloned;
-                if (variables_cloned > largest_clone)
-                    largest_clone = variables_cloned;
-                clone_second = true;
-                clone_tokens -= 1;
+                if (variables_cloned <= max_clone_size_allowed) {
+                    average_clone += variables_cloned;
+                    if (variables_cloned > largest_clone)
+                        largest_clone = variables_cloned;
+                    clone_second = true;
+                    clone_tokens -= 1;
+                    times_cloned++;
+                }
             }
         }
 
@@ -361,7 +376,6 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
     int variables = task_proxy.get_variables().size();
     double non_orthogonality = (1.0) * (leaf_count - variables) / variables;
 
-    int times_cloned = tokens - clone_tokens;
     if (times_cloned > 0)
         average_clone = average_clone / times_cloned;
     log << "End of merge-and-shrink algorithm, statistics:" << endl;

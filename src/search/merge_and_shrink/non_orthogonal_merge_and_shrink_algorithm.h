@@ -46,6 +46,7 @@ class NonOrthogonalMergeAndShrinkAlgorithm {
 
     // TODO: Options for cloning
     const int tokens;
+    const int max_clone_size;
 
     mutable utils::LogProxy log;
     const double main_loop_max_time;

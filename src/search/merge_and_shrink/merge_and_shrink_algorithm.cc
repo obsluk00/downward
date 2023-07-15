@@ -449,6 +449,10 @@ void add_merge_and_shrink_algorithm_options_to_feature(plugins::Feature &feature
             "tokens",
             "Specify how often the algorithm may clone factors.",
             "0");
+    feature.add_option<int>(
+            "max_clone_size",
+            "Specifies how large in terms of amount of variables the cloned factors may be.",
+            "-1");
 
 
     add_transition_system_size_limit_options_to_feature(feature);
