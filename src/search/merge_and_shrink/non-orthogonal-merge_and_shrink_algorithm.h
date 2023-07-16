@@ -1,5 +1,5 @@
-#ifndef MERGE_AND_SHRINK_MERGE_AND_SHRINK_ALGORITHM_H
-#define MERGE_AND_SHRINK_MERGE_AND_SHRINK_ALGORITHM_H
+#ifndef MERGE_AND_SHRINK_NON_ORTHOGONAL_MERGE_AND_SHRINK_ALGORITHM_H
+#define MERGE_AND_SHRINK_NON_ORTHOGONAL_MERGE_AND_SHRINK_ALGORITHM_H
 
 #include "../utils/logging.h"
 
@@ -23,7 +23,7 @@ class LabelReduction;
 class MergeStrategyFactory;
 class ShrinkStrategy;
 
-class MergeAndShrinkAlgorithm {
+class NonOrthogonalMergeAndShrinkAlgorithm {
     // TODO: when the option parser supports it, the following should become
     // unique pointers.
     std::shared_ptr<MergeStrategyFactory> merge_strategy_factory;
@@ -45,7 +45,6 @@ class MergeAndShrinkAlgorithm {
 
     mutable utils::LogProxy log;
     const double main_loop_max_time;
-    const bool atomic_label_reduction;
 
     long starting_peak_memory;
 
@@ -58,7 +57,7 @@ class MergeAndShrinkAlgorithm {
         FactoredTransitionSystem &fts,
         const TaskProxy &task_proxy);
 public:
-    explicit MergeAndShrinkAlgorithm(const plugins::Options &opts);
+    explicit NonOrthogonalMergeAndShrinkAlgorithm(const plugins::Options &opts);
     FactoredTransitionSystem build_factored_transition_system(const TaskProxy &task_proxy);
 };
 

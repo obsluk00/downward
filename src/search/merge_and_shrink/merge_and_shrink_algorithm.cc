@@ -194,6 +194,12 @@ void MergeAndShrinkAlgorithm::main_loop(
         };
     int iteration_counter = 0;
 
+    // TODO: remove and replace with cloning based on passed parameters
+    // clones all factors for testing
+    for (int i = 0; i < fts.get_size(); ++i) {
+        fts.clone_factor(i);
+    }
+
     while (fts.get_num_active_entries() > 1) {
         // Choose next transition systems to merge
         pair<int, int> merge_indices = merge_strategy->get_next();

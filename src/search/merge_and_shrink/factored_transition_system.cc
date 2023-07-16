@@ -108,6 +108,9 @@ void FactoredTransitionSystem::assert_all_components_valid() const {
     }
 }
 
+// TODO: figure out how to copy representations, might need to implement a new constructor
+//  verify correctness, does the transitionsystem constructor provide sufficiently deep copies?
+//  improve efficiency, perhaps implementing a copy constructor for distances
 void FactoredTransitionSystem::clone_factor(
     int index) {
     assert(is_component_valid(index));
