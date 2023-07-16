@@ -159,6 +159,9 @@ public:
     */
     std::pair<std::unique_ptr<MergeAndShrinkRepresentation>,
               std::unique_ptr<Distances>> extract_factor(int index);
+    std::pair<std::unique_ptr<TransitionSystem>,
+              std::unique_ptr<MergeAndShrinkRepresentation>>
+    extract_ts_and_representation(int index);
 
     void statistics(int index, utils::LogProxy &log) const;
     void dump(int index, utils::LogProxy &log) const;
@@ -167,6 +170,9 @@ public:
     const TransitionSystem &get_transition_system(int index) const {
         return *transition_systems[index];
     }
+
+    const TransitionSystem *get_transition_system_raw_ptr(int index) const;
+    const MergeAndShrinkRepresentation *get_mas_representation_raw_ptr(int index) const;
 
     const Distances &get_distances(int index) const {
         return *distances[index];

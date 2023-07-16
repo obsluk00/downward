@@ -278,6 +278,13 @@ FactoredTransitionSystem::extract_factor(int index) {
                      move(distances[index]));
 }
 
+pair<unique_ptr<TransitionSystem>, unique_ptr<MergeAndShrinkRepresentation>>
+FactoredTransitionSystem::extract_ts_and_representation(int index) {
+    assert(is_component_valid(index));
+    return make_pair(move(transition_systems[index]),
+                     move(mas_representations[index]));
+}
+
 void FactoredTransitionSystem::statistics(int index, utils::LogProxy &log) const {
     if (log.is_at_least_verbose()) {
         assert(is_component_valid(index));
@@ -302,6 +309,14 @@ void FactoredTransitionSystem::dump(utils::LogProxy &log) const {
             dump(index, log);
         }
     }
+}
+
+const TransitionSystem *FactoredTransitionSystem::get_transition_system_raw_ptr(int index) const {
+    return transition_systems[index].get();
+}
+
+const MergeAndShrinkRepresentation *FactoredTransitionSystem::get_mas_representation_raw_ptr(int index) const {
+    return mas_representations[index].get();
 }
 
 bool FactoredTransitionSystem::is_factor_solvable(int index) const {

@@ -6,6 +6,7 @@
 #include "../task_proxy.h"
 
 #include "../utils/logging.h"
+#include "../utils/memory.h"
 
 #include <algorithm>
 #include <cassert>
@@ -34,10 +35,10 @@ MergeAndShrinkRepresentationLeaf::MergeAndShrinkRepresentationLeaf(
     iota(lookup_table.begin(), lookup_table.end(), 0);
 }
 
-MergeAndShrinkRepresentationLeaf::MergeAndShrinkRepresentationLeaf(const MergeAndShrinkRepresentationLeaf &other)
-    : MergeAndShrinkRepresentation(other.domain_size),
-      var_id(other.var_id),
-      lookup_table(other.lookup_table) {
+MergeAndShrinkRepresentationLeaf::MergeAndShrinkRepresentationLeaf(const MergeAndShrinkRepresentationLeaf *other)
+    : MergeAndShrinkRepresentation(other->domain_size),
+      var_id(other->var_id),
+      lookup_table(other->lookup_table) {
 }
 
 int MergeAndShrinkRepresentationLeaf::leaf_count() {
@@ -96,12 +97,12 @@ void MergeAndShrinkRepresentationLeaf::dump(utils::LogProxy &log) const {
 
 
 MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(
-    unique_ptr<MergeAndShrinkRepresentation> left_child_,
-    unique_ptr<MergeAndShrinkRepresentation> right_child_)
+    const std::shared_ptr<MergeAndShrinkRepresentation> &left_child_,
+    const std::shared_ptr<MergeAndShrinkRepresentation> &right_child_)
     : MergeAndShrinkRepresentation(left_child_->get_domain_size() *
                                    right_child_->get_domain_size()),
-      left_child(move(left_child_)),
-      right_child(move(right_child_)),
+      left_child(left_child_),
+      right_child(right_child_),
       lookup_table(left_child->get_domain_size(),
                    vector<int>(right_child->get_domain_size())) {
     int counter = 0;
@@ -113,11 +114,11 @@ MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(
     }
 }
 
-MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(const MergeAndShrinkRepresentationMerge &other)
-    : MergeAndShrinkRepresentation(other.domain_size),
-      left_child(other.left_child->clone()),
-      right_child(other.right_child->clone()),
-      lookup_table(other.lookup_table) {
+MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(const MergeAndShrinkRepresentationMerge *other)
+    : MergeAndShrinkRepresentation(other->domain_size),
+      left_child(other->left_child),
+      right_child(other->right_child),
+      lookup_table(other->lookup_table) {
 }
 
 int MergeAndShrinkRepresentationMerge::leaf_count() {

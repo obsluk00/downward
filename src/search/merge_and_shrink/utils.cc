@@ -94,7 +94,7 @@ bool shrink_factor(
     return false;
 }
 
-bool shrink_before_merge_step(
+pair<bool, bool> shrink_before_merge_step(
     FactoredTransitionSystem &fts,
     int index1,
     int index2,
@@ -140,7 +140,7 @@ bool shrink_before_merge_step(
     if (shrunk2) {
         fts.statistics(index2, log);
     }
-    return shrunk1 || shrunk2;
+    return make_pair(shrunk1, shrunk2);
 }
 
 bool prune_step(
