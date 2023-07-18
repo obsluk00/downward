@@ -46,7 +46,7 @@ namespace merge_and_shrink {
     class MergeScoringFunctionAvoidExistingFeature : public plugins::TypedFeature<MergeScoringFunction, MergeScoringFunctionAvoidExisting> {
     public:
         MergeScoringFunctionAvoidExistingFeature() : TypedFeature("avoid_existing") {
-            document_title("Goal relevance scoring");
+            document_title( "Avoid Existing");
             document_synopsis(
                     "This scoring function assigns a merge candidate a value of 0 iff the "
                     "union of the variable sets of their factors is not identical to the "
