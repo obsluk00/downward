@@ -30,16 +30,7 @@ vector<unique_ptr<Abstraction>> compute_abstractions_for_factors(
     for (int index : considered_factors) {
         assert(fts.is_active(index));
         const TransitionSystem *transition_system = fts.get_transition_system_raw_ptr(index);
-        unique_ptr<MergeAndShrinkRepresentation> mas_representation = nullptr;
-        if (dynamic_cast<const MergeAndShrinkRepresentationLeaf *>(fts.get_mas_representation_raw_ptr(index))) {
-            mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationLeaf>(
-                dynamic_cast<const MergeAndShrinkRepresentationLeaf *>
-                (fts.get_mas_representation_raw_ptr(index)));
-        } else {
-            mas_representation = utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
-                dynamic_cast<const MergeAndShrinkRepresentationMerge *>(
-                    fts.get_mas_representation_raw_ptr(index)));
-        }
+        unique_ptr<MergeAndShrinkRepresentation> mas_representation = fts.get_mas_representation_raw_ptr(index)->clone();
         abstractions.push_back(utils::make_unique_ptr<Abstraction>(transition_system, move(mas_representation)));
     }
     return abstractions;
