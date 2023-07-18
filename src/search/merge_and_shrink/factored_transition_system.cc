@@ -256,18 +256,14 @@ int FactoredTransitionSystem::cloning_merge(
         transition_systems[index1] = nullptr;
         mas_representations[index1] = nullptr;
         --num_active_entries;
-        if (log.is_at_least_verbose()) {
-            log << "Cloned index " << index1;
-        }
+        log << "Cloned factor at index: " << index1 << endl;
     }
     if (!clone2) {
         distances[index2] = nullptr;
         transition_systems[index2] = nullptr;
         mas_representations[index2] = nullptr;
         --num_active_entries;
-        if (log.is_at_least_verbose()) {
-            log << "Cloned index " << index2;
-        }
+        log << "Cloned factor at index: " << index2 << endl;
     }
 
     return new_index;
