@@ -18,13 +18,14 @@ namespace merge_and_shrink {
 MaxCPMSHeuristic::MaxCPMSHeuristic(const plugins::Options &opts)
     : Heuristic(opts) {
     if (opts.get<bool>("non_orthogonal")) {
-        CPMAS algorithm(opts);
+        CPMASNonOrthogonal algorithm(opts);
         cost_partitionings = algorithm.compute_cps(task);
         if (cost_partitionings.empty()) {
             cerr << "Got 0 cost partitionings" << endl;
             utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
         }
     } else {
+        // TODO: the orthogonal variant is segfaulting likely due to the changes of how copying of mas_representations is handled
         CPMAS algorithm(opts);
         cost_partitionings = algorithm.compute_cps(task);
         if (cost_partitionings.empty()) {

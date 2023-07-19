@@ -45,7 +45,7 @@ namespace merge_and_shrink {
         log << "M&S algorithm timer: " << timer << " (" << msg << ")" << endl;
     }
 
-    CPMASNO::CPMASNO(const plugins::Options &opts) :
+    CPMASNonOrthogonal::CPMASNonOrthogonal(const plugins::Options &opts) :
             merge_strategy_factory(opts.get<shared_ptr<MergeStrategyFactory>>("merge_strategy")),
             shrink_strategy(opts.get<shared_ptr<ShrinkStrategy>>("shrink_strategy")),
             label_reduction(opts.get<shared_ptr<LabelReduction>>("label_reduction", nullptr)),
@@ -73,7 +73,7 @@ namespace merge_and_shrink {
         assert(shrink_threshold_before_merge <= max_states_before_merge);
     }
 
-    void CPMASNO::report_peak_memory_delta(bool final) const {
+    void CPMASNonOrthogonal::report_peak_memory_delta(bool final) const {
         if (final)
             log << "Final";
         else
@@ -83,7 +83,7 @@ namespace merge_and_shrink {
             << endl;
     }
 
-    void CPMASNO::dump_options() const {
+    void CPMASNonOrthogonal::dump_options() const {
         if (log.is_at_least_normal()) {
             if (merge_strategy_factory) { // deleted after merge strategy extraction
                 merge_strategy_factory->dump_options();
@@ -117,7 +117,7 @@ namespace merge_and_shrink {
         }
     }
 
-    void CPMASNO::warn_on_unusual_options() const {
+    void CPMASNonOrthogonal::warn_on_unusual_options() const {
         string dashes(79, '=');
         if (!label_reduction) {
             if (log.is_warning()) {
@@ -166,7 +166,7 @@ namespace merge_and_shrink {
         }
     }
 
-    bool CPMASNO::ran_out_of_time(
+    bool CPMASNonOrthogonal::ran_out_of_time(
             const utils::CountdownTimer &timer) const {
         if (timer.is_expired()) {
             if (log.is_at_least_normal()) {
@@ -178,7 +178,7 @@ namespace merge_and_shrink {
         return false;
     }
 
-    void CPMASNO::NextSnapshot::compute_next_snapshot_time(double current_time) {
+    void CPMASNonOrthogonal::NextSnapshot::compute_next_snapshot_time(double current_time) {
         int num_remaining_snapshots = main_loop_target_num_snapshots - num_main_loop_snapshots;
         // safeguard against having num_remaining_snapshots = 0
         if (num_remaining_snapshots <= 0) {
@@ -194,7 +194,7 @@ namespace merge_and_shrink {
         next_time_to_compute_snapshot = current_time + time_offset;
     }
 
-    void CPMASNO::NextSnapshot::compute_next_snapshot_iteration(int current_iteration) {
+    void CPMASNonOrthogonal::NextSnapshot::compute_next_snapshot_iteration(int current_iteration) {
         if (main_loop_target_num_snapshots) {
             int num_remaining_snapshots = main_loop_target_num_snapshots - num_main_loop_snapshots;
             // safeguard against having num_remaining_snapshots = 0
@@ -215,7 +215,7 @@ namespace merge_and_shrink {
         }
     }
 
-    CPMASNO::NextSnapshot::NextSnapshot(
+    CPMASNonOrthogonal::NextSnapshot::NextSnapshot(
             double max_time,
             int max_iterations,
             int main_loop_target_num_snapshots,
@@ -238,7 +238,7 @@ namespace merge_and_shrink {
         }
     }
 
-    bool CPMASNO::NextSnapshot::compute_next_snapshot(double current_time, int current_iteration) {
+    bool CPMASNonOrthogonal::NextSnapshot::compute_next_snapshot(double current_time, int current_iteration) {
         if (!main_loop_target_num_snapshots && !main_loop_snapshot_each_iteration) {
             return false;
         }
@@ -267,7 +267,7 @@ namespace merge_and_shrink {
         return compute;
     }
 
-    vector<unique_ptr<Abstraction>> CPMASNO::extract_unsolvable_abstraction(
+    vector<unique_ptr<Abstraction>> CPMASNonOrthogonal::extract_unsolvable_abstraction(
             FactoredTransitionSystem &fts, int unsolvable_index) const {
         vector<unique_ptr<Abstraction>> abstractions;
         abstractions.reserve(1);
@@ -277,7 +277,7 @@ namespace merge_and_shrink {
         return abstractions;
     }
 
-    void CPMASNO::handle_unsolvable_snapshot(
+    void CPMASNonOrthogonal::handle_unsolvable_snapshot(
             FactoredTransitionSystem &fts, int unsolvable_index) {
         vector<unique_ptr<Abstraction>> new_abstractions = extract_unsolvable_abstraction(fts, unsolvable_index);
         assert(new_abstractions.size() == 1);
@@ -292,7 +292,8 @@ namespace merge_and_shrink {
                         compute_label_costs(fts.get_labels()), move(new_abstractions), log));
     }
 
-    bool any(const Bitset &bitset) {
+    // TODO: fix code duplication, perhaps move to a utils class?
+    bool any_cp_mas_no(const Bitset &bitset) {
         for (size_t index = 0; index < bitset.size(); ++index) {
             if (bitset.test(index)) {
                 return true;
@@ -301,7 +302,7 @@ namespace merge_and_shrink {
         return false;
     }
 
-    vector<unique_ptr<Abstraction>> CPMASNO::compute_abstractions_for_offline_cp(
+    vector<unique_ptr<Abstraction>> CPMASNonOrthogonal::compute_abstractions_for_offline_cp(
             const FactoredTransitionSystem &fts,
             const Bitset &factors_modified_since_last_snapshot,
             const vector<int> &original_to_current_labels) const {
@@ -342,7 +343,7 @@ namespace merge_and_shrink {
         return considered_factors;
     }
 
-    void CPMASNO::handle_snapshot(
+    void CPMASNonOrthogonal::handle_snapshot(
             const FactoredTransitionSystem &fts,
             Bitset &factors_modified_since_last_snapshot,
             const unique_ptr<vector<int>> &original_to_current_labels) {
@@ -357,14 +358,14 @@ namespace merge_and_shrink {
             if (log.is_at_least_debug()) {
                 log << "Number of abstractions: " << abstractions.size() << endl;
             }
-        } else if (any(factors_modified_since_last_snapshot)) {
+        } else if (any_cp_mas_no(factors_modified_since_last_snapshot)) {
             cost_partitionings.push_back(cp_factory->generate(
                     compute_label_costs(fts.get_labels()), compute_abstractions_for_factors(fts, compute_non_trivial_factors(fts, filter_trivial_factors)), log));
         }
         factors_modified_since_last_snapshot.reset();
     }
 
-    void CPMASNO::compute_cp_and_print_statistics(
+    void CPMASNonOrthogonal::compute_cp_and_print_statistics(
             const FactoredTransitionSystem &fts,
             int iteration) const {
         std::unique_ptr<CostPartitioning> cp = cp_factory->generate(
@@ -383,7 +384,7 @@ namespace merge_and_shrink {
         log << "Max value in iteration " << iteration << ": " << max_h << endl;
     }
 
-    bool CPMASNO::main_loop(
+    bool CPMASNonOrthogonal::main_loop(
             FactoredTransitionSystem &fts,
             const TaskProxy &task_proxy,
             Bitset &factors_modified_since_last_snapshot,
@@ -707,7 +708,7 @@ namespace merge_and_shrink {
         return unsolvable;
     }
 
-    vector<unique_ptr<CostPartitioning>> CPMASNO::compute_cps(
+    vector<unique_ptr<CostPartitioning>> CPMASNonOrthogonal::compute_cps(
             const shared_ptr<AbstractTask> &task) {
         if (starting_peak_memory) {
             cerr << "Using this factory twice is not supported!" << endl;
@@ -827,14 +828,14 @@ namespace merge_and_shrink {
             }
 
             if (!unsolvable) {
-                if (!any(factors_modified_since_last_snapshot)) {
+                if (!any_cp_mas_no(factors_modified_since_last_snapshot)) {
                     assert((offline_cps && !abstractions.empty()) || (!offline_cps && !cost_partitionings.empty()));
                 }
 
-                if (any(factors_modified_since_last_snapshot) ||
+                if (any_cp_mas_no(factors_modified_since_last_snapshot) ||
                     (offline_cps && abstractions.empty()) ||
                     (!offline_cps && cost_partitionings.empty())) {
-                    assert(any(factors_modified_since_last_snapshot));
+                    assert(any_cp_mas_no(factors_modified_since_last_snapshot));
                     handle_snapshot(
                             fts, factors_modified_since_last_snapshot, original_to_current_labels);
 
@@ -886,79 +887,5 @@ namespace merge_and_shrink {
         log << "Merge-and-shrink algorithm runtime: " << timer << endl;
         log << endl;
         return move(cost_partitionings);
-    }
-
-    void add_cp_merge_and_shrink_algorithm_options_to_feature(plugins::Feature &feature) {
-        add_merge_and_shrink_algorithm_options_to_feature(feature);
-
-        // Cost partitioning options
-        feature.add_option<bool>(
-                "compute_atomic_snapshot",
-                "Include a snapshot over the atomic FTS.",
-                "false");
-        feature.add_option<int>(
-                "main_loop_target_num_snapshots",
-                "The aimed number of SCP heuristics to be computed over the main loop.",
-                "0",
-                plugins::Bounds("0", "infinity"));
-        feature.add_option<int>(
-                "main_loop_snapshot_each_iteration",
-                "A number of iterations after which an SCP heuristic is computed over "
-                "the current FTS.",
-                "0",
-                plugins::Bounds("0", "infinity"));
-
-        feature.add_option<SnapshotMoment>(
-                "snapshot_moment",
-                "the point in one iteration at which a snapshot should be computed",
-                "after_label_reduction");
-
-        feature.add_option<bool>(
-                "filter_trivial_factors",
-                "If true, do not consider trivial factors for computing CPs. Should "
-                "be set to true when computing SCPs.");
-
-        feature.add_option<bool>(
-                "statistics_only",
-                "If true, compute a CP and the maximum over all factors "
-                "after each transformation.",
-                "false");
-
-        feature.add_option<bool>(
-                "offline_cps",
-                "If true, collect all modified abstractions of each snapshot over the"
-                "entire M&S algorithm run and then compue one or several CPs over them. "
-                "Otherwise, compute a CP for each snapshot during the M&S algorithm. ",
-                "true");
-
-        feature.add_option<shared_ptr<CostPartitioningFactory>>(
-                "cost_partitioning",
-                "A method for computing cost partitionings over intermediate "
-                "'snapshots' of the factored transition system.");
-    }
-
-    static plugins::TypedEnumPlugin<SnapshotMoment> _snapshot_moment_enum_plugin({
-                                                                                         {"after_label_reduction",
-                                                                                                 "after 'label reduction before shrinking'"},
-                                                                                         {"after_shrinking",
-                                                                                                 "after shrinking"},
-                                                                                         {"after_merging",
-                                                                                                 "after merging"},
-                                                                                         {"after_pruning",
-                                                                                                 "after pruning, i.e., at end of iteration"}
-                                                                                 });
-
-    void handle_cp_merge_and_shrink_algorithm_options(plugins::Options &opts, const utils::Context &context) {
-        handle_shrink_limit_options_defaults(opts, context);
-
-        int main_loop_target_num_snapshots = opts.get<int>("main_loop_target_num_snapshots");
-        int main_loop_snapshot_each_iteration =
-                opts.get<int>("main_loop_snapshot_each_iteration");
-        if (main_loop_target_num_snapshots && main_loop_snapshot_each_iteration) {
-            cerr << "Can't set both the number of snapshots and the iteration "
-                    "offset in which snapshots are computed."
-                 << endl;
-            utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
-        }
     }
 }

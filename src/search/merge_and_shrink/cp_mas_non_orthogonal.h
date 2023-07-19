@@ -29,7 +29,7 @@ namespace merge_and_shrink {
 
     using Bitset = dynamic_bitset::DynamicBitset<unsigned short>;
 
-    class CPMASNO {
+    class CPMASNonOrthogonal {
     protected:
         // TODO: when the option parser supports it, the following should become
         // unique pointers.
@@ -129,16 +129,12 @@ namespace merge_and_shrink {
                        Bitset &factors_modified_since_last_snapshot,
                        const std::unique_ptr<std::vector<int>> &original_to_current_labels);
     public:
-        explicit CPMASNO(const plugins::Options &opts);
-        ~CPMASNO() = default;
+        explicit CPMASNonOrthogonal(const plugins::Options &opts);
+        ~CPMASNonOrthogonal() = default;
         std::vector<std::unique_ptr<CostPartitioning>> compute_cps(
                 const std::shared_ptr<AbstractTask> &task);
     };
 
-    extern void add_cp_merge_and_shrink_algorithm_options_to_feature(
-            plugins::Feature &feature);
-    extern void handle_cp_merge_and_shrink_algorithm_options(
-            plugins::Options &opts, const utils::Context &context);
 }
 
 #endif
