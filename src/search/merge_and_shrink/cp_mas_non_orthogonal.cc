@@ -55,7 +55,7 @@ namespace merge_and_shrink {
             prune_unreachable_states(opts.get<bool>("prune_unreachable_states")),
             prune_irrelevant_states(opts.get<bool>("prune_irrelevant_states")),
             tokens(opts.get<int>("tokens")),
-            max_clone_size(opts.get<int>("max_clone_size")),
+            max_clone_size_factor(opts.get<double>("max_clone_size_factor")),
             log(utils::get_log_from_options(opts)),
             main_loop_max_time(opts.get<double>("main_loop_max_time")),
             atomic_label_reduction(opts.get<bool>("atomic_label_reduction")),
@@ -422,7 +422,7 @@ namespace merge_and_shrink {
         // TODO: better passing of infinite tokens
         if (clone_tokens < 0)
             clone_tokens = INF;
-        int max_clone_size_allowed = max_clone_size;
+        double max_clone_size_allowed = max_clone_size_factor * task_proxy.get_variables().size();
         if (max_clone_size_allowed < 0) {
             max_clone_size_allowed = INF;
         }
