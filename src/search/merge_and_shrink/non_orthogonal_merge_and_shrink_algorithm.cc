@@ -280,7 +280,7 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         }
 
         // Shrinking
-        bool shrunk = shrink_before_merge_step(
+        pair<bool, bool> shrunk = shrink_before_merge_step(
             fts,
             merge_index1,
             merge_index2,
@@ -289,7 +289,7 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
             shrink_threshold_before_merge,
             *shrink_strategy,
             log);
-        if (log.is_at_least_normal() && shrunk) {
+        if (log.is_at_least_normal() && (shrunk.first || shrunk.second)) {
             log_main_loop_progress("after shrinking");
         }
 

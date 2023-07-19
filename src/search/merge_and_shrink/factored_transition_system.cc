@@ -108,6 +108,9 @@ void FactoredTransitionSystem::assert_all_components_valid() const {
     }
 }
 
+// TODO: figure out how to copy representations, might need to implement a new constructor
+//  verify correctness, does the transitionsystem constructor provide sufficiently deep copies?
+//  improve efficiency, perhaps implementing a copy constructor for distances
 void FactoredTransitionSystem::clone_factor(
     int index) {
     assert(is_component_valid(index));
@@ -253,18 +256,14 @@ int FactoredTransitionSystem::cloning_merge(
         transition_systems[index1] = nullptr;
         mas_representations[index1] = nullptr;
         --num_active_entries;
-        if (log.is_at_least_verbose()) {
-            log << "Cloned index " << index1;
-        }
+        log << "Cloned factor at index: " << index1 << endl;
     }
     if (!clone2) {
         distances[index2] = nullptr;
         transition_systems[index2] = nullptr;
         mas_representations[index2] = nullptr;
         --num_active_entries;
-        if (log.is_at_least_verbose()) {
-            log << "Cloned index " << index2;
-        }
+        log << "Cloned factor at index: " << index2 << endl;
     }
 
     return new_index;
@@ -276,6 +275,13 @@ FactoredTransitionSystem::extract_factor(int index) {
     assert(is_component_valid(index));
     return make_pair(move(mas_representations[index]),
                      move(distances[index]));
+}
+
+pair<unique_ptr<TransitionSystem>, unique_ptr<MergeAndShrinkRepresentation>>
+FactoredTransitionSystem::extract_ts_and_representation(int index) {
+    assert(is_component_valid(index));
+    return make_pair(move(transition_systems[index]),
+                     move(mas_representations[index]));
 }
 
 void FactoredTransitionSystem::statistics(int index, utils::LogProxy &log) const {
@@ -302,6 +308,14 @@ void FactoredTransitionSystem::dump(utils::LogProxy &log) const {
             dump(index, log);
         }
     }
+}
+
+const TransitionSystem *FactoredTransitionSystem::get_transition_system_raw_ptr(int index) const {
+    return transition_systems[index].get();
+}
+
+const MergeAndShrinkRepresentation *FactoredTransitionSystem::get_mas_representation_raw_ptr(int index) const {
+    return mas_representations[index].get();
 }
 
 bool FactoredTransitionSystem::is_factor_solvable(int index) const {

@@ -80,9 +80,18 @@ public:
         return goal_distances[state];
     }
 
+    const std::vector<int> &get_goal_distances() const {
+        return goal_distances;
+    }
+
     void dump(utils::LogProxy &log) const;
     void statistics(utils::LogProxy &log) const;
 };
+
+extern std::vector<int> compute_goal_distances(
+    const TransitionSystem &transition_system,
+    const std::vector<int> &label_costs,
+    utils::LogProxy &log);
 }
 
 #endif

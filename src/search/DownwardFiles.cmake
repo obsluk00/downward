@@ -664,11 +664,18 @@ fast_downward_plugin(
     NAME MAS_HEURISTIC
     HELP "The Merge-and-Shrink heuristic"
     SOURCES
+        merge_and_shrink/cp_mas
+        merge_and_shrink/cp_mas_non_orthogonal
+        merge_and_shrink/cp_utils
+        merge_and_shrink/cost_partitioning
         merge_and_shrink/distances
+        merge_and_shrink/diversifier
         merge_and_shrink/factored_transition_system
         merge_and_shrink/fts_factory
+        merge_and_shrink/greedy_order_utils
         merge_and_shrink/label_reduction
         merge_and_shrink/labels
+        merge_and_shrink/max_cp_ms_heuristic
         merge_and_shrink/merge_and_shrink_algorithm
         merge_and_shrink/non_orthogonal_merge_and_shrink_algorithm
         merge_and_shrink/merge_and_shrink_heuristic
@@ -679,6 +686,7 @@ fast_downward_plugin(
         merge_and_shrink/merge_scoring_function_avoid_existing
         merge_and_shrink/merge_scoring_function_miasm
         merge_and_shrink/merge_scoring_function_miasm_utils
+        merge_and_shrink/merge_scoring_function_cp
         merge_and_shrink/merge_scoring_function_single_random
         merge_and_shrink/merge_scoring_function_total_order
         merge_and_shrink/merge_selector
@@ -695,6 +703,16 @@ fast_downward_plugin(
         merge_and_shrink/merge_tree
         merge_and_shrink/merge_tree_factory
         merge_and_shrink/merge_tree_factory_linear
+        merge_and_shrink/order_generator
+        merge_and_shrink/order_generator_dynamic_greedy
+        merge_and_shrink/order_generator_greedy
+        merge_and_shrink/order_generator_mas
+        merge_and_shrink/order_generator_random
+        merge_and_shrink/order_optimizer
+        merge_and_shrink/optimal_cost_partitioning
+        merge_and_shrink/saturated_cost_partitioning
+        merge_and_shrink/saturated_cost_partitionings
+        merge_and_shrink/saturated_cost_partitioning_utils
         merge_and_shrink/shrink_bisimulation
         merge_and_shrink/shrink_bucket_based
         merge_and_shrink/shrink_fh

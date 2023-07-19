@@ -275,6 +275,15 @@ public:
     const std::vector<int> &get_incorporated_variables() const {
         return incorporated_variables;
     }
+
+    // Expose internals for optimal cost partitioning.
+    int get_local_label_id_for_label(int label) const {
+        return label_to_local_label[label];
+    }
+
+    int get_num_local_labels() const {
+        return label_to_local_label.size();
+    }
 };
 }
 

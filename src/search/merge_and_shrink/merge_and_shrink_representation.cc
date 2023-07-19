@@ -6,6 +6,7 @@
 #include "../task_proxy.h"
 
 #include "../utils/logging.h"
+#include "../utils/memory.h"
 
 #include <algorithm>
 #include <cassert>
@@ -15,178 +16,178 @@
 using namespace std;
 
 namespace merge_and_shrink {
-MergeAndShrinkRepresentation::MergeAndShrinkRepresentation(int domain_size)
-    : domain_size(domain_size) {
-}
-
-MergeAndShrinkRepresentation::~MergeAndShrinkRepresentation() {
-}
-
-int MergeAndShrinkRepresentation::get_domain_size() const {
-    return domain_size;
-}
-
-MergeAndShrinkRepresentationLeaf::MergeAndShrinkRepresentationLeaf(
-    int var_id, int domain_size)
-    : MergeAndShrinkRepresentation(domain_size),
-      var_id(var_id),
-      lookup_table(domain_size) {
-    iota(lookup_table.begin(), lookup_table.end(), 0);
-}
-
-MergeAndShrinkRepresentationLeaf::MergeAndShrinkRepresentationLeaf(const MergeAndShrinkRepresentationLeaf &other)
-    : MergeAndShrinkRepresentation(other.domain_size),
-      var_id(other.var_id),
-      lookup_table(other.lookup_table) {
-}
-
-int MergeAndShrinkRepresentationLeaf::leaf_count() {
-    return 1;
-}
-
-std::unique_ptr<MergeAndShrinkRepresentation> MergeAndShrinkRepresentationLeaf::clone() const {
-    return make_unique<MergeAndShrinkRepresentationLeaf>(*this);
-}
-
-void MergeAndShrinkRepresentationLeaf::set_distances(
-    const Distances &distances) {
-    assert(distances.are_goal_distances_computed());
-    for (int &entry : lookup_table) {
-        if (entry != PRUNED_STATE) {
-            entry = distances.get_goal_distance(entry);
-        }
+    MergeAndShrinkRepresentation::MergeAndShrinkRepresentation(int domain_size)
+            : domain_size(domain_size) {
     }
-}
 
-void MergeAndShrinkRepresentationLeaf::apply_abstraction_to_lookup_table(
-    const vector<int> &abstraction_mapping) {
-    int new_domain_size = 0;
-    for (int &entry : lookup_table) {
-        if (entry != PRUNED_STATE) {
-            entry = abstraction_mapping[entry];
-            new_domain_size = max(new_domain_size, entry + 1);
-        }
+    MergeAndShrinkRepresentation::~MergeAndShrinkRepresentation() {
     }
-    domain_size = new_domain_size;
-}
 
-int MergeAndShrinkRepresentationLeaf::get_value(const State &state) const {
-    int value = state[var_id].get_value();
-    return lookup_table[value];
-}
-
-bool MergeAndShrinkRepresentationLeaf::is_total() const {
-    for (int entry : lookup_table) {
-        if (entry == PRUNED_STATE) {
-            return false;
-        }
+    int MergeAndShrinkRepresentation::get_domain_size() const {
+        return domain_size;
     }
-    return true;
-}
 
-void MergeAndShrinkRepresentationLeaf::dump(utils::LogProxy &log) const {
-    if (log.is_at_least_debug()) {
-        log << "lookup table (leaf): ";
-        for (const auto &value : lookup_table) {
-            log << value << ", ";
-        }
-        log << endl;
+    MergeAndShrinkRepresentationLeaf::MergeAndShrinkRepresentationLeaf(
+            int var_id, int domain_size)
+            : MergeAndShrinkRepresentation(domain_size),
+              var_id(var_id),
+              lookup_table(domain_size) {
+        iota(lookup_table.begin(), lookup_table.end(), 0);
     }
-}
 
-
-MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(
-    unique_ptr<MergeAndShrinkRepresentation> left_child_,
-    unique_ptr<MergeAndShrinkRepresentation> right_child_)
-    : MergeAndShrinkRepresentation(left_child_->get_domain_size() *
-                                   right_child_->get_domain_size()),
-      left_child(move(left_child_)),
-      right_child(move(right_child_)),
-      lookup_table(left_child->get_domain_size(),
-                   vector<int>(right_child->get_domain_size())) {
-    int counter = 0;
-    for (vector<int> &row : lookup_table) {
-        for (int &entry : row) {
-            entry = counter;
-            ++counter;
-        }
+    MergeAndShrinkRepresentationLeaf::MergeAndShrinkRepresentationLeaf(const MergeAndShrinkRepresentationLeaf &other)
+            : MergeAndShrinkRepresentation(other.domain_size),
+              var_id(other.var_id),
+              lookup_table(other.lookup_table) {
     }
-}
 
-MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(const MergeAndShrinkRepresentationMerge &other)
-    : MergeAndShrinkRepresentation(other.domain_size),
-      left_child(other.left_child->clone()),
-      right_child(other.right_child->clone()),
-      lookup_table(other.lookup_table) {
-}
+    int MergeAndShrinkRepresentationLeaf::leaf_count() {
+        return 1;
+    }
 
-int MergeAndShrinkRepresentationMerge::leaf_count() {
-    return left_child->leaf_count() + right_child->leaf_count();
-}
+    std::unique_ptr<MergeAndShrinkRepresentation> MergeAndShrinkRepresentationLeaf::clone() const {
+        return make_unique<MergeAndShrinkRepresentationLeaf>(*this);
+    }
 
-std::unique_ptr<MergeAndShrinkRepresentation> MergeAndShrinkRepresentationMerge::clone() const {
-    return make_unique<MergeAndShrinkRepresentationMerge>(*this);
-}
-
-void MergeAndShrinkRepresentationMerge::set_distances(
-    const Distances &distances) {
-    assert(distances.are_goal_distances_computed());
-    for (vector<int> &row : lookup_table) {
-        for (int &entry : row) {
+    void MergeAndShrinkRepresentationLeaf::set_distances(
+            const Distances &distances) {
+        assert(distances.are_goal_distances_computed());
+        for (int &entry : lookup_table) {
             if (entry != PRUNED_STATE) {
                 entry = distances.get_goal_distance(entry);
             }
         }
     }
-}
 
-void MergeAndShrinkRepresentationMerge::apply_abstraction_to_lookup_table(
-    const vector<int> &abstraction_mapping) {
-    int new_domain_size = 0;
-    for (vector<int> &row : lookup_table) {
-        for (int &entry : row) {
+    void MergeAndShrinkRepresentationLeaf::apply_abstraction_to_lookup_table(
+            const vector<int> &abstraction_mapping) {
+        int new_domain_size = 0;
+        for (int &entry : lookup_table) {
             if (entry != PRUNED_STATE) {
                 entry = abstraction_mapping[entry];
                 new_domain_size = max(new_domain_size, entry + 1);
             }
         }
+        domain_size = new_domain_size;
     }
-    domain_size = new_domain_size;
-}
 
-int MergeAndShrinkRepresentationMerge::get_value(
-    const State &state) const {
-    int state1 = left_child->get_value(state);
-    int state2 = right_child->get_value(state);
-    if (state1 == PRUNED_STATE || state2 == PRUNED_STATE)
-        return PRUNED_STATE;
-    return lookup_table[state1][state2];
-}
+    int MergeAndShrinkRepresentationLeaf::get_value(const State &state) const {
+        int value = state[var_id].get_value();
+        return lookup_table[value];
+    }
 
-bool MergeAndShrinkRepresentationMerge::is_total() const {
-    for (const vector<int> &row : lookup_table) {
-        for (int entry : row) {
+    bool MergeAndShrinkRepresentationLeaf::is_total() const {
+        for (int entry : lookup_table) {
             if (entry == PRUNED_STATE) {
                 return false;
             }
         }
+        return true;
     }
-    return left_child->is_total() && right_child->is_total();
-}
 
-void MergeAndShrinkRepresentationMerge::dump(utils::LogProxy &log) const {
-    if (log.is_at_least_debug()) {
-        log << "lookup table (merge): " << endl;
-        for (const auto &row : lookup_table) {
-            for (const auto &value : row) {
+    void MergeAndShrinkRepresentationLeaf::dump(utils::LogProxy &log) const {
+        if (log.is_at_least_debug()) {
+            log << "lookup table (leaf): ";
+            for (const auto &value : lookup_table) {
                 log << value << ", ";
             }
             log << endl;
         }
-        log << "left child:" << endl;
-        left_child->dump(log);
-        log << "right child:" << endl;
-        right_child->dump(log);
     }
-}
+
+
+    MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(
+            unique_ptr<MergeAndShrinkRepresentation> left_child_,
+            unique_ptr<MergeAndShrinkRepresentation> right_child_)
+            : MergeAndShrinkRepresentation(left_child_->get_domain_size() *
+                                           right_child_->get_domain_size()),
+              left_child(move(left_child_)),
+              right_child(move(right_child_)),
+              lookup_table(left_child->get_domain_size(),
+                           vector<int>(right_child->get_domain_size())) {
+        int counter = 0;
+        for (vector<int> &row : lookup_table) {
+            for (int &entry : row) {
+                entry = counter;
+                ++counter;
+            }
+        }
+    }
+
+    MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(const MergeAndShrinkRepresentationMerge &other)
+            : MergeAndShrinkRepresentation(other.domain_size),
+              left_child(other.left_child->clone()),
+              right_child(other.right_child->clone()),
+              lookup_table(other.lookup_table) {
+    }
+
+    int MergeAndShrinkRepresentationMerge::leaf_count() {
+        return left_child->leaf_count() + right_child->leaf_count();
+    }
+
+    std::unique_ptr<MergeAndShrinkRepresentation> MergeAndShrinkRepresentationMerge::clone() const {
+        return make_unique<MergeAndShrinkRepresentationMerge>(*this);
+    }
+
+    void MergeAndShrinkRepresentationMerge::set_distances(
+            const Distances &distances) {
+        assert(distances.are_goal_distances_computed());
+        for (vector<int> &row : lookup_table) {
+            for (int &entry : row) {
+                if (entry != PRUNED_STATE) {
+                    entry = distances.get_goal_distance(entry);
+                }
+            }
+        }
+    }
+
+    void MergeAndShrinkRepresentationMerge::apply_abstraction_to_lookup_table(
+            const vector<int> &abstraction_mapping) {
+        int new_domain_size = 0;
+        for (vector<int> &row : lookup_table) {
+            for (int &entry : row) {
+                if (entry != PRUNED_STATE) {
+                    entry = abstraction_mapping[entry];
+                    new_domain_size = max(new_domain_size, entry + 1);
+                }
+            }
+        }
+        domain_size = new_domain_size;
+    }
+
+    int MergeAndShrinkRepresentationMerge::get_value(
+            const State &state) const {
+        int state1 = left_child->get_value(state);
+        int state2 = right_child->get_value(state);
+        if (state1 == PRUNED_STATE || state2 == PRUNED_STATE)
+            return PRUNED_STATE;
+        return lookup_table[state1][state2];
+    }
+
+    bool MergeAndShrinkRepresentationMerge::is_total() const {
+        for (const vector<int> &row : lookup_table) {
+            for (int entry : row) {
+                if (entry == PRUNED_STATE) {
+                    return false;
+                }
+            }
+        }
+        return left_child->is_total() && right_child->is_total();
+    }
+
+    void MergeAndShrinkRepresentationMerge::dump(utils::LogProxy &log) const {
+        if (log.is_at_least_debug()) {
+            log << "lookup table (merge): " << endl;
+            for (const auto &row : lookup_table) {
+                for (const auto &value : row) {
+                    log << value << ", ";
+                }
+                log << endl;
+            }
+            log << "left child:" << endl;
+            left_child->dump(log);
+            log << "right child:" << endl;
+            right_child->dump(log);
+        }
+    }
 }
