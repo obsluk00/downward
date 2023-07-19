@@ -1,6 +1,7 @@
 #include "max_cp_ms_heuristic.h"
 
 #include "cp_mas.h"
+#include "cp_mas_non_orthogonal.h"
 #include "cost_partitioning.h"
 #include "types.h"
 
@@ -16,11 +17,20 @@ using utils::ExitCode;
 namespace merge_and_shrink {
 MaxCPMSHeuristic::MaxCPMSHeuristic(const plugins::Options &opts)
     : Heuristic(opts) {
-    CPMAS algorithm(opts);
-    cost_partitionings = algorithm.compute_cps(task);
-    if (cost_partitionings.empty()) {
-        cerr << "Got 0 cost partitionings" << endl;
-        utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+    if (opts.get<bool>("non_orthogonal")) {
+        CPMAS algorithm(opts);
+        cost_partitionings = algorithm.compute_cps(task);
+        if (cost_partitionings.empty()) {
+            cerr << "Got 0 cost partitionings" << endl;
+            utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+        }
+    } else {
+        CPMAS algorithm(opts);
+        cost_partitionings = algorithm.compute_cps(task);
+        if (cost_partitionings.empty()) {
+            cerr << "Got 0 cost partitionings" << endl;
+            utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+        }
     }
 }
 

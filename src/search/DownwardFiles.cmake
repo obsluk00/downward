@@ -665,6 +665,7 @@ fast_downward_plugin(
     HELP "The Merge-and-Shrink heuristic"
     SOURCES
         merge_and_shrink/cp_mas
+        merge_and_shrink/cp_mas_non_orthogonal
         merge_and_shrink/cp_utils
         merge_and_shrink/cost_partitioning
         merge_and_shrink/distances
