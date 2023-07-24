@@ -804,7 +804,7 @@ namespace merge_and_shrink {
 
             // Pos at index i is true iff the factor has been transformed since
             // the last recorded snapshot, excluding label reductions.
-            Bitset factors_modified_since_last_snapshot(fts.get_size() * 2 - 1);
+            Bitset factors_modified_since_last_snapshot(fts.get_size() * 2 - 1 + tokens);
             for (int index = 0; index < fts.get_size(); ++index) {
                 factors_modified_since_last_snapshot.set(index);
             }
