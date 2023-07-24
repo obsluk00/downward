@@ -9,8 +9,8 @@ from lab.reports import Attribute
 
 REPO = project.get_repo_base()
 BENCHMARKS_DIR = os.environ["DOWNWARD_BENCHMARKS"]
-SCP_LOGIN = "obsluk@login-infai.scicore.unibas.ch"
-REMOTE_REPOS_DIR = "/infai/seipp/projects"
+SCP_LOGIN = "obsluk00@login-infai.scicore.unibas.ch"
+REMOTE_REPOS_DIR = ""
 # If REVISION_CACHE is None, the default ./data/revision-cache is used.
 REVISION_CACHE = os.environ.get("DOWNWARD_REVISION_CACHE")
 if project.REMOTE:
@@ -23,13 +23,13 @@ else:
 CONFIGS = [
     (f"0 tokens no cp", ["--search", "let(h, merge_and_shrink(verbosity=normal, non_orthogonal = true, shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_stateless(merge_selector=score_based_filtering_explicit_tiebreak(scoring_functions=[goal_relevance(), dfp(), avoid_existing()], tiebreaking_function=single_random())),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1, tokens=0), astar(h))"]),
     (f"0 tokens scp", ["--search", "let(h, max_cp_ms(verbosity=normal, non_orthogonal = true, shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_stateless(merge_selector=score_based_filtering_explicit_tiebreak(scoring_functions=[goal_relevance(), dfp(), avoid_existing()], tiebreaking_function=single_random())),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1, cost_partitioning=scp(order_generator=random_orders(random_seed=42)),compute_atomic_snapshot=true,main_loop_target_num_snapshots=0,main_loop_snapshot_each_iteration=0,atomic_label_reduction=false,snapshot_moment=after_label_reduction,filter_trivial_factors=false,offline_cps=false, tokens=0), astar(h))"]),
-    (f"200 no cp", ["--search", "let(h, merge_and_shrink(verbosity=normal, non_orthogonal = true, shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_stateless(merge_selector=score_based_filtering_explicit_tiebreak(scoring_functions=[goal_relevance(), dfp(), avoid_existing()], tiebreaking_function=single_random())),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1, tokens=100), astar(h))"]),
-    (f"200 tokens scp", ["--search", "let(h, max_cp_ms(verbosity=normal, non_orthogonal = true, shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_stateless(merge_selector=score_based_filtering_explicit_tiebreak(scoring_functions=[goal_relevance(), dfp(), avoid_existing()], tiebreaking_function=single_random())),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1, cost_partitioning=scp(order_generator=random_orders(random_seed=42)),compute_atomic_snapshot=true,main_loop_target_num_snapshots=0,main_loop_snapshot_each_iteration=0,atomic_label_reduction=false,snapshot_moment=after_label_reduction,filter_trivial_factors=false,offline_cps=false, tokens=100), astar(h))"])
+    (f"200 no cp", ["--search", "let(h, merge_and_shrink(verbosity=normal, non_orthogonal = true, shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_stateless(merge_selector=score_based_filtering_explicit_tiebreak(scoring_functions=[goal_relevance(), dfp(), avoid_existing()], tiebreaking_function=single_random())),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1, tokens=200), astar(h))"]),
+    (f"200 tokens scp", ["--search", "let(h, max_cp_ms(verbosity=normal, non_orthogonal = true, shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_stateless(merge_selector=score_based_filtering_explicit_tiebreak(scoring_functions=[goal_relevance(), dfp(), avoid_existing()], tiebreaking_function=single_random())),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1, cost_partitioning=scp(order_generator=random_orders(random_seed=42)),compute_atomic_snapshot=true,main_loop_target_num_snapshots=0,main_loop_snapshot_each_iteration=0,atomic_label_reduction=false,snapshot_moment=after_label_reduction,filter_trivial_factors=false,offline_cps=false, tokens=200), astar(h))"])
 ]
 BUILD_OPTIONS = []
 DRIVER_OPTIONS = ["--overall-time-limit", "30m"]
 REVS = [
-    ("417ed68", "clone")
+    ("1f812cc", "clone")
 ]
 
 non_orthogonality = Attribute("non_orthogonality", absolute=True)
