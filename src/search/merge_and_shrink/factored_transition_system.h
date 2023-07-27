@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <vector>
+#include <map>
 
 namespace utils {
 class LogProxy;
@@ -103,12 +104,10 @@ public:
     // Merge-and-shrink transformations.
     /*
       Clones the factor specified by the index.
-      TODO: check if we should pass the logproxy
     */
     void clone_factor(
-        int index);
-
-    void remove_factor(int index);
+        int index,
+        utils::LogProxy &log);
 
     /*
       Apply the given label mapping to the factored transition system by
@@ -231,6 +230,9 @@ public:
     // counts how many variables are represented in the mas_representations by counting their leaves. relevant for cloning
     int total_leaf_count();
     int leaf_count(int index);
+
+    void remove_factor(int index,
+                       utils::LogProxy &log);
 };
 }
 

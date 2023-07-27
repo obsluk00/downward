@@ -110,7 +110,8 @@ void FactoredTransitionSystem::assert_all_components_valid() const {
 
 // TODO: include log
 void FactoredTransitionSystem::clone_factor(
-    int index) {
+    int index,
+    utils::LogProxy &log) {
     assert(is_component_valid(index));
     const TransitionSystem &old_system = *transition_systems[index];
     const Distances &original_distances = *distances[index];
@@ -121,15 +122,18 @@ void FactoredTransitionSystem::clone_factor(
     distances.push_back(utils::make_unique_ptr<Distances>(original_distances, new_ts));
     ++num_active_entries;
     assert(is_component_valid(transition_systems.size() - 1));
-}
+    log << "Cloned factor at index: " << index << endl;
+    }
 
 void FactoredTransitionSystem::remove_factor(
-        int index) {
+        int index,
+        utils::LogProxy &log) {
     assert(is_component_valid(index));
     distances[index] = nullptr;
     transition_systems[index] = nullptr;
     mas_representations[index] = nullptr;
     --num_active_entries;
+    log << "Removed factor at index: " << index << endl;
 }
 
 void FactoredTransitionSystem::apply_label_mapping(
@@ -254,15 +258,17 @@ int FactoredTransitionSystem::cloning_merge(
         transition_systems[index1] = nullptr;
         mas_representations[index1] = nullptr;
         --num_active_entries;
-        log << "Cloned factor at index: " << index1 << endl;
     }
     if (!clone2) {
         distances[index2] = nullptr;
         transition_systems[index2] = nullptr;
         mas_representations[index2] = nullptr;
         --num_active_entries;
-        log << "Cloned factor at index: " << index2 << endl;
     }
+    if (clone1)
+        log << "Cloned factor at index: " << index1 << endl;
+    if (clone2)
+        log << "Cloned factor at index: " << index2 << endl;
 
     return new_index;
 }
@@ -348,7 +354,9 @@ int FactoredTransitionSystem::total_leaf_count() {
     }
     return res;
 }
+
 int FactoredTransitionSystem::leaf_count(int index) {
     return mas_representations[index]->leaf_count();
 }
+
 }

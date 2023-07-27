@@ -430,8 +430,8 @@ namespace merge_and_shrink {
         int largest_clone = 0;
         double average_clone = 0.0;
         // TODO: maybe a better solution to determining adhoc cloning factors
-        fts.clone_factor(0);
-        fts.remove_factor(0);
+        fts.clone_factor(0, log);
+        fts.remove_factor(0, log);
 
         unique_ptr<NextSnapshot> next_snapshot = nullptr;
         if (main_loop_target_num_snapshots || main_loop_snapshot_each_iteration) {

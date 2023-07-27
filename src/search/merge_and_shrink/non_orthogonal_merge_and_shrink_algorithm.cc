@@ -16,6 +16,7 @@
 
 #include "../plugins/plugin.h"
 #include "../task_utils/task_properties.h"
+#include "../task_utils/causal_graph.h"
 #include "../utils/countdown_timer.h"
 #include "../utils/markup.h"
 #include "../utils/math.h"
@@ -48,6 +49,7 @@ NonOrthogonalMergeAndShrinkAlgorithm::NonOrthogonalMergeAndShrinkAlgorithm(const
     prune_unreachable_states(opts.get<bool>("prune_unreachable_states")),
     prune_irrelevant_states(opts.get<bool>("prune_irrelevant_states")),
     tokens(opts.get<int>("tokens")),
+    preclone(opts.get<int>("preclone")),
     max_clone_size_factor(opts.get<double>("max_clone_size_factor")),
     log(utils::get_log_from_options(opts)),
     main_loop_max_time(opts.get<double>("main_loop_max_time")),
@@ -193,15 +195,8 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         merge_strategy_factory->compute_merge_strategy(task_proxy, fts);
     merge_strategy_factory = nullptr;
 
-    auto log_main_loop_progress = [&timer, this](const string &msg) {
-            log << "M&S algorithm main loop timer: "
-                << timer.get_elapsed_time()
-                << " (" << msg << ")" << endl;
-        };
-    int iteration_counter = 0;
-
     int clone_tokens = tokens;
-    // TODO: better passing of infinite tokens
+    // TODO: better passing of infinite tokens or update doc
     if (clone_tokens < 0)
         clone_tokens = INF;
     double max_clone_size_allowed = max_clone_size_factor * task_proxy.get_variables().size();
@@ -211,9 +206,56 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
     int times_cloned = 0;
     int largest_clone = 0;
     double average_clone = 0.0;
-    // TODO: maybe a better solution to determining adhoc cloning factors
-    fts.clone_factor(0);
-    fts.remove_factor(0);
+
+    // TODO: move this to a separate merge strategy factory down the line
+    // pairs specifying how many successors each variable has
+    vector<pair<int, int>> causal_graph_successors;
+    vector<pair<int, int>> causal_graph_predecessors;
+    causal_graph::CausalGraph cg = task_proxy.get_causal_graph();
+    for (VariableProxy var : task_proxy.get_variables()) {
+        int var_id = var.get_id();
+        int successor_count = cg.get_successors(var_id).size();
+        int predecessor_count = cg.get_predecessors(var_id).size();
+        causal_graph_successors.push_back(pair<int, int> (var_id, successor_count));
+        causal_graph_predecessors.push_back(pair<int, int> (var_id, predecessor_count));
+    }
+
+    // clean this up when moving to factory, one big if to determine whether we normalize
+    if (tokens < 0 && (preclone == 1 || preclone == 3)) {
+        clone_tokens = 0;
+        log << "Cloning for each successor in the causal graph." << endl;
+        for (pair<int, int> var_succ : causal_graph_successors) {
+            for (int i = 0; i < var_succ.second - 1; i++) {
+                fts.clone_factor(var_succ.first, log);
+                times_cloned += 1;
+            }
+        }
+    }
+    if (tokens < 0 && (preclone == 2 || preclone == 3)) {
+        clone_tokens = 0;
+        log << "Cloning for each predecessor in the causal graph." << endl;
+        for (pair<int, int> var_pre : causal_graph_predecessors) {
+            for (int i = 0; i < var_pre.second - 1; i++) {
+                fts.clone_factor(var_pre.first, log);
+                times_cloned += 1;
+            }
+            if (preclone == 3 || var_pre.second > 0) {
+                fts.clone_factor(var_pre.first, log);
+                times_cloned += 1;
+            }
+        }
+    }
+
+    // TODO: find a better solution for this
+    fts.clone_factor(0, log);
+    fts.remove_factor(0, log);
+
+    auto log_main_loop_progress = [&timer, this](const string &msg) {
+            log << "M&S algorithm main loop timer: "
+                << timer.get_elapsed_time()
+                << " (" << msg << ")" << endl;
+        };
+    int iteration_counter = 0;
 
     while (fts.get_num_active_entries() > 1) {
         // Choose next transition systems to merge
