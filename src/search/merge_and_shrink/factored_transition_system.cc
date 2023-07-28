@@ -108,7 +108,6 @@ void FactoredTransitionSystem::assert_all_components_valid() const {
     }
 }
 
-// TODO: include log
 void FactoredTransitionSystem::clone_factor(
     int index,
     utils::LogProxy &log) {
@@ -122,7 +121,8 @@ void FactoredTransitionSystem::clone_factor(
     distances.push_back(utils::make_unique_ptr<Distances>(original_distances, new_ts));
     ++num_active_entries;
     assert(is_component_valid(transition_systems.size() - 1));
-    log << "Cloned factor at index: " << index << endl;
+    if (log.is_at_least_verbose())
+        log << "Cloned factor at index: " << index << endl;
     }
 
 void FactoredTransitionSystem::remove_factor(
@@ -133,7 +133,8 @@ void FactoredTransitionSystem::remove_factor(
     transition_systems[index] = nullptr;
     mas_representations[index] = nullptr;
     --num_active_entries;
-    log << "Removed factor at index: " << index << endl;
+    if (log.is_at_least_verbose())
+        log << "Removed factor at index: " << index << endl;
 }
 
 void FactoredTransitionSystem::apply_label_mapping(
@@ -265,9 +266,9 @@ int FactoredTransitionSystem::cloning_merge(
         mas_representations[index2] = nullptr;
         --num_active_entries;
     }
-    if (clone1)
+    if (clone1 && log.is_at_least_verbose())
         log << "Cloned factor at index: " << index1 << endl;
-    if (clone2)
+    if (clone2 && log.is_at_least_verbose())
         log << "Cloned factor at index: " << index2 << endl;
 
     return new_index;
