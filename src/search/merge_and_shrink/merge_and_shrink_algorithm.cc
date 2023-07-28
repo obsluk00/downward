@@ -463,7 +463,7 @@ void add_merge_and_shrink_algorithm_options_to_feature(plugins::Feature &feature
             "false");
     feature.add_option<int>(
             "tokens",
-            "Specify how often the algorithm may clone factors.",
+            "Specify how often the algorithm may clone factors. If negative, the algorithm may clone unlimited times.",
             "0");
     //TODO: fix this one
     feature.add_option<int>(

@@ -29,6 +29,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <math.h>
 
 using namespace std;
 using plugins::Bounds;
@@ -196,7 +197,6 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
     merge_strategy_factory = nullptr;
 
     int clone_tokens = tokens;
-    // TODO: better passing of infinite tokens or update doc
     if (clone_tokens < 0)
         clone_tokens = INF;
     double max_clone_size_allowed = max_clone_size_factor * task_proxy.get_variables().size();
@@ -208,47 +208,104 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
     double average_clone = 0.0;
 
     // TODO: move this to a separate merge strategy factory down the line
-    // pairs specifying how many successors each variable has
-    vector<pair<int, int>> causal_graph_successors;
-    vector<pair<int, int>> causal_graph_predecessors;
     causal_graph::CausalGraph cg = task_proxy.get_causal_graph();
-    for (VariableProxy var : task_proxy.get_variables()) {
-        int var_id = var.get_id();
-        int successor_count = cg.get_successors(var_id).size();
-        int predecessor_count = cg.get_predecessors(var_id).size();
-        causal_graph_successors.push_back(pair<int, int> (var_id, successor_count));
-        causal_graph_predecessors.push_back(pair<int, int> (var_id, predecessor_count));
-    }
 
-    // clean this up when moving to factory, one big if to determine whether we normalize
-    if (tokens < 0 && (preclone == 1 || preclone == 3)) {
-        clone_tokens = 0;
-        log << "Cloning for each successor in the causal graph." << endl;
-        for (pair<int, int> var_succ : causal_graph_successors) {
-            for (int i = 0; i < var_succ.second - 1; i++) {
-                fts.clone_factor(var_succ.first, log);
-                times_cloned += 1;
+    if (preclone > 0) {
+        vector<pair<int, int>> causal_graph_successors;
+        vector<pair<int, int>> causal_graph_predecessors;
+        for (VariableProxy var : task_proxy.get_variables()) {
+            int var_id = var.get_id();
+            int successor_count = cg.get_successors(var_id).size();
+            int predecessor_count = cg.get_predecessors(var_id).size();
+            causal_graph_successors.push_back(pair<int, int> (var_id, successor_count));
+            causal_graph_predecessors.push_back(pair<int, int> (var_id, predecessor_count));
+        }
+        if (preclone == 1 || preclone == 3) {
+            log << "Cloning for each successor in the causal graph." << endl;
+            for (pair<int, int> var_succ : causal_graph_successors) {
+                for (int i = 0; i < var_succ.second - 1; i++) {
+                    fts.clone_factor(var_succ.first, log);
+                    times_cloned += 1;
+                }
+            }
+        }
+        if (preclone == 2 || preclone == 3) {
+            log << "Cloning for each predecessor in the causal graph." << endl;
+            for (pair<int, int> var_pre : causal_graph_predecessors) {
+                for (int i = 0; i < var_pre.second - 1; i++) {
+                    fts.clone_factor(var_pre.first, log);
+                    times_cloned += 1;
+                }
+                if (preclone == 3 || var_pre.second > 0) {
+                    fts.clone_factor(var_pre.first, log);
+                    times_cloned += 1;
+                }
+            }
+        }
+    } else if (preclone < 0) {
+        vector<pair<int, int>> causal_graph_successors;
+        vector<pair<int, int>> causal_graph_predecessors;
+        int sum_successors = 0;
+        int sum_predecessors = 0;
+        for (VariableProxy var : task_proxy.get_variables()) {
+            int var_id = var.get_id();
+            int successor_count = cg.get_successors(var_id).size();
+            int predecessor_count = cg.get_predecessors(var_id).size();
+            causal_graph_successors.push_back(pair<int, int> (var_id, successor_count));
+            causal_graph_predecessors.push_back(pair<int, int> (var_id, predecessor_count));
+            sum_successors += successor_count;
+            sum_predecessors += predecessor_count;
+        }
+        if (preclone == -1) {
+            log << "Cloning for successors in the causal graph based on weight." << endl;
+            for (pair<int, int> var_succ : causal_graph_successors) {
+                double weight = (double)var_succ.second / sum_successors;
+                double times_to_clone = weight * clone_tokens;
+                if (log.is_at_least_debug())
+                    log << "Variable " << var_succ.first << " is being cloned " << times_to_clone << " times." << endl;
+                for (int i = 0; i < floor(times_to_clone); i++) {
+                    fts.clone_factor(var_succ.first, log);
+                    times_cloned += 1;
+                }
+            }
+        } else if (preclone == -2) {
+            log << "Cloning for predecessors in the causal graph based on weight." << endl;
+            for (pair<int, int> var_pre : causal_graph_predecessors) {
+                double weight = (double)var_pre.second / sum_predecessors;
+                double times_to_clone = weight * clone_tokens;
+                if (log.is_at_least_debug())
+                    log << "Variable " << var_pre.first << " is being cloned " << times_to_clone << " times." << endl;
+                for (int i = 0; i < floor(times_to_clone); i++) {
+                    fts.clone_factor(var_pre.first, log);
+                    times_cloned += 1;
+                }
+            }
+        } else if (preclone == -3) {
+            log << "Cloning for both successors and predecessors in the causal graph based on weight." << endl;
+            for (VariableProxy var : task_proxy.get_variables()) {
+                // TODO: optimize to avoid duplicate code when moving to factory
+                int var_id = var.get_id();
+                int successor_count = cg.get_successors(var_id).size();
+                int predecessor_count = cg.get_predecessors(var_id).size();
+                int total_degree = successor_count + predecessor_count;
+                double weight = (double)total_degree / (sum_successors + sum_predecessors);
+                double times_to_clone = weight * clone_tokens;
+                if (log.is_at_least_debug())
+                    log << "Variable " << var_id << " is being cloned " << times_to_clone << " times." << endl;
+                for (int i = 0; i < floor(times_to_clone); i++) {
+                    fts.clone_factor(var_id, log);
+                    times_cloned += 1;
+                }
             }
         }
     }
-    if (tokens < 0 && (preclone == 2 || preclone == 3)) {
+    if (preclone != 0)
         clone_tokens = 0;
-        log << "Cloning for each predecessor in the causal graph." << endl;
-        for (pair<int, int> var_pre : causal_graph_predecessors) {
-            for (int i = 0; i < var_pre.second - 1; i++) {
-                fts.clone_factor(var_pre.first, log);
-                times_cloned += 1;
-            }
-            if (preclone == 3 || var_pre.second > 0) {
-                fts.clone_factor(var_pre.first, log);
-                times_cloned += 1;
-            }
-        }
+    // only necessary if cloning is still an option
+    if (clone_tokens > 0) {
+        fts.clone_factor(0, log);
+        fts.remove_factor(0, log);
     }
-
-    // TODO: find a better solution for this
-    fts.clone_factor(0, log);
-    fts.remove_factor(0, log);
 
     auto log_main_loop_progress = [&timer, this](const string &msg) {
             log << "M&S algorithm main loop timer: "
