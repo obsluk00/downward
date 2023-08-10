@@ -38,13 +38,18 @@ class FactoredTransitionSystem;
   because we always perform the next "left-most" merge in the merge tree.
   See also the documentation in merge_tree.h.
 */
+struct NextMerge {
+    std::pair<int, int> indices;
+    bool stop {false};
+    std::pair<bool, bool> clone {false, false};
+};
 class MergeStrategy {
 protected:
     const FactoredTransitionSystem &fts;
 public:
     explicit MergeStrategy(const FactoredTransitionSystem &fts);
     virtual ~MergeStrategy() = default;
-    virtual std::pair<int, int> get_next() = 0;
+    virtual NextMerge get_next() = 0;
 };
 }
 

@@ -208,98 +208,11 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
     int largest_clone = 0;
     double average_clone = 0.0;
 
-    // TODO: move this to a separate merge strategy factory down the line
-    causal_graph::CausalGraph cg = task_proxy.get_causal_graph();
-    map<int, int> var_tokens;
-    if (preclone > 0) {
-        vector<pair<int, int>> causal_graph_successors;
-        vector<pair<int, int>> causal_graph_predecessors;
-        for (VariableProxy var : task_proxy.get_variables()) {
-            int var_id = var.get_id();
-            int successor_count = cg.get_successors(var_id).size();
-            int predecessor_count = cg.get_predecessors(var_id).size();
-            causal_graph_successors.push_back(pair<int, int> (var_id, successor_count));
-            causal_graph_predecessors.push_back(pair<int, int> (var_id, predecessor_count));
-        }
-        if (preclone == 1 || preclone == 3) {
-            log << "Cloning for each successor in the causal graph." << endl;
-            for (pair<int, int> var_succ : causal_graph_successors) {
-                for (int i = 0; i < var_succ.second - 1; i++) {
-                    fts.clone_factor(var_succ.first, log);
-                    times_cloned += 1;
-                }
-            }
-        }
-        if (preclone == 2 || preclone == 3) {
-            log << "Cloning for each predecessor in the causal graph." << endl;
-            for (pair<int, int> var_pre : causal_graph_predecessors) {
-                for (int i = 0; i < var_pre.second - 1; i++) {
-                    fts.clone_factor(var_pre.first, log);
-                    times_cloned += 1;
-                }
-                if (preclone == 3 || var_pre.second > 0) {
-                    fts.clone_factor(var_pre.first, log);
-                    times_cloned += 1;
-                }
-            }
-        }
-    } else if (preclone < 0) {
-        vector<pair<int, int>> causal_graph_successors;
-        vector<pair<int, int>> causal_graph_predecessors;
-        int sum_successors = 0;
-        int sum_predecessors = 0;
-        for (VariableProxy var : task_proxy.get_variables()) {
-            int var_id = var.get_id();
-            int successor_count = cg.get_successors(var_id).size();
-            int predecessor_count = cg.get_predecessors(var_id).size();
-            causal_graph_successors.push_back(pair<int, int> (var_id, successor_count));
-            causal_graph_predecessors.push_back(pair<int, int> (var_id, predecessor_count));
-            sum_successors += successor_count;
-            sum_predecessors += predecessor_count;
-        }
-        if (preclone == -1) {
-            log << "Cloning for successors in the causal graph based on weight." << endl;
-            for (pair<int, int> var_succ : causal_graph_successors) {
-                double weight = (double)var_succ.second / sum_successors;
-                double times_to_clone = weight * clone_tokens;
-                if (log.is_at_least_debug())
-                    log << "Variable " << var_succ.first << " is assigned " << floor(times_to_clone) << " tokens." << endl;
-                var_tokens[var_succ.first] = floor(times_to_clone);
-            }
-        } else if (preclone == -2) {
-            log << "Cloning for predecessors in the causal graph based on weight." << endl;
-            for (pair<int, int> var_pre : causal_graph_predecessors) {
-                double weight = (double)var_pre.second / sum_predecessors;
-                double times_to_clone = weight * clone_tokens;
-                if (log.is_at_least_debug())
-                    log << "Variable " << var_pre.first << " is assigned " << floor(times_to_clone) << " tokens." << endl;
-                var_tokens[var_pre.first] = floor(times_to_clone);
-
-            }
-        } else if (preclone == -3) {
-            log << "Cloning for both successors and predecessors in the causal graph based on weight." << endl;
-            for (VariableProxy var : task_proxy.get_variables()) {
-                // TODO: optimize to avoid duplicate code when moving to factory
-                int var_id = var.get_id();
-                int successor_count = cg.get_successors(var_id).size();
-                int predecessor_count = cg.get_predecessors(var_id).size();
-                int total_degree = successor_count + predecessor_count;
-                double weight = (double)total_degree / (sum_successors + sum_predecessors);
-                double times_to_clone = weight * clone_tokens;
-                if (log.is_at_least_debug())
-                    log << "Variable " << var_id << " is assigned " << floor(times_to_clone) << " tokens." << endl;
-                var_tokens[var_id] = floor(times_to_clone);
-            }
-        }
-    }
-    if (preclone != 0)
-        clone_tokens = 0;
     // only necessary if cloning is still an option
     if (clone_tokens > 0) {
         fts.clone_factor(0, log);
         fts.remove_factor(0, log);
     }
-
     auto log_main_loop_progress = [&timer, this](const string &msg) {
             log << "M&S algorithm main loop timer: "
                 << timer.get_elapsed_time()
@@ -321,12 +234,8 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         // Translate and clone indices if the strategy informs us that the returned ones occur multiple times
         if (merge_index1 < 0) {
             merge_index1 = abs(merge_index1);
-            // TODO remove or clean up
-            if (preclone < 0 && var_tokens[merge_index1] > 0) {
-                clone_first = true;
-                var_tokens[merge_index1]--;
-                times_cloned++;
-            }
+            clone_first = true;
+            times_cloned++;
             if (clone_tokens > 0) {
                 int variables_cloned = fts.leaf_count(merge_index1);
                 if (variables_cloned <= max_clone_size_allowed) {
@@ -341,12 +250,8 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         }
         if (merge_index2 < 0) {
             merge_index2 = abs(merge_index2);
-            // TODO remove or clean up
-            if (preclone < 0 && var_tokens[merge_index2] > 0) {
-                clone_second = true;
-                var_tokens[merge_index2]--;
-                times_cloned++;
-            }
+            clone_second = true;
+            times_cloned++;
             if (clone_tokens > 0) {
                 int variables_cloned = fts.leaf_count(merge_index2);
                 if (variables_cloned <= max_clone_size_allowed) {
