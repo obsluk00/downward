@@ -448,11 +448,13 @@ namespace merge_and_shrink {
         while (fts.get_num_active_entries() > 1) {
             ++iteration_counter;
             // Choose next transition systems to merge
-            pair<int, int> merge_indices = merge_strategy->get_next();
-            if (ran_out_of_time(timer)) {
+            NextMerge next_merge = merge_strategy->get_next();
+            pair<int, int> merge_indices = next_merge.indices;
+            if (ran_out_of_time(timer) || next_merge.stop) {
                 break;
             }
 
+            //TODO: remove legacy, merge with cp_mas
             int merge_index1 = merge_indices.first;
             int merge_index2 = merge_indices.second;
             bool clone_first = false;

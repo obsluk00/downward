@@ -196,7 +196,8 @@ void MergeAndShrinkAlgorithm::main_loop(
 
     while (fts.get_num_active_entries() > 1) {
         // Choose next transition systems to merge
-        pair<int, int> merge_indices = merge_strategy->get_next();
+        // TODO: break condition -> merge this with cost partitioning and cloning main loop perhaps
+        pair<int, int> merge_indices = merge_strategy->get_next().indices;
         if (ran_out_of_time(timer)) {
             break;
         }
