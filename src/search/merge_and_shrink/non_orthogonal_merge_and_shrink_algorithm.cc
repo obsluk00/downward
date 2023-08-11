@@ -50,9 +50,6 @@ NonOrthogonalMergeAndShrinkAlgorithm::NonOrthogonalMergeAndShrinkAlgorithm(const
     shrink_threshold_before_merge(opts.get<int>("threshold_before_merge")),
     prune_unreachable_states(opts.get<bool>("prune_unreachable_states")),
     prune_irrelevant_states(opts.get<bool>("prune_irrelevant_states")),
-    tokens(opts.get<int>("tokens")),
-    preclone(opts.get<int>("preclone")),
-    max_clone_size_factor(opts.get<double>("max_clone_size_factor")),
     log(utils::get_log_from_options(opts)),
     main_loop_max_time(opts.get<double>("main_loop_max_time")),
     starting_peak_memory(0) {
@@ -197,22 +194,10 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         merge_strategy_factory->compute_merge_strategy(task_proxy, fts);
     merge_strategy_factory = nullptr;
 
-    int clone_tokens = tokens;
-    if (clone_tokens < 0)
-        clone_tokens = INF;
-    double max_clone_size_allowed = max_clone_size_factor * task_proxy.get_variables().size();
-    if (max_clone_size_allowed < 0) {
-        max_clone_size_allowed = INF;
-    }
     int times_cloned = 0;
     int largest_clone = 0;
     double average_clone = 0.0;
 
-    // only necessary if cloning is still an option
-    if (clone_tokens > 0) {
-        fts.clone_factor(0, log);
-        fts.remove_factor(0, log);
-    }
     auto log_main_loop_progress = [&timer, this](const string &msg) {
             log << "M&S algorithm main loop timer: "
                 << timer.get_elapsed_time()
@@ -222,52 +207,34 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
 
     while (fts.get_num_active_entries() > 1) {
         // Choose next transition systems to merge
-        pair<int, int> merge_indices = merge_strategy->get_next().indices;
-        if (ran_out_of_time(timer)) {
+        NextMerge next_merge = merge_strategy->get_next();
+        if (ran_out_of_time(timer) || next_merge.stop) {
             break;
         }
 
-        int merge_index1 = merge_indices.first;
-        int merge_index2 = merge_indices.second;
-        bool clone_first = false;
-        bool clone_second = false;
+        int merge_index1 = next_merge.indices.first;
+        int merge_index2 = next_merge.indices.second;
         // Translate and clone indices if the strategy informs us that the returned ones occur multiple times
-        if (merge_index1 < 0) {
-            merge_index1 = abs(merge_index1);
-            clone_first = true;
+        if (next_merge.clone.first) {
             times_cloned++;
-            if (clone_tokens > 0) {
-                int variables_cloned = fts.leaf_count(merge_index1);
-                if (variables_cloned <= max_clone_size_allowed) {
-                    average_clone += variables_cloned;
-                    if (variables_cloned > largest_clone)
-                        largest_clone = variables_cloned;
-                    clone_first = true;
-                    clone_tokens -= 1;
-                    times_cloned++;
-                }
-            }
+            next_merge.indices.first = fts.clone_factor(merge_index1,log);
+            int variables_cloned = fts.leaf_count(merge_index1);
+            average_clone += variables_cloned;
+            if (variables_cloned > largest_clone)
+                largest_clone = variables_cloned;
         }
-        if (merge_index2 < 0) {
-            merge_index2 = abs(merge_index2);
-            clone_second = true;
+        if (next_merge.clone.second) {
             times_cloned++;
-            if (clone_tokens > 0) {
-                int variables_cloned = fts.leaf_count(merge_index2);
-                if (variables_cloned <= max_clone_size_allowed) {
-                    average_clone += variables_cloned;
-                    if (variables_cloned > largest_clone)
-                        largest_clone = variables_cloned;
-                    clone_second = true;
-                    clone_tokens -= 1;
-                    times_cloned++;
-                }
-            }
+            next_merge.indices.second = fts.clone_factor(merge_index2,log);
+            int variables_cloned = fts.leaf_count(merge_index2);
+            average_clone += variables_cloned;
+            if (variables_cloned > largest_clone)
+                largest_clone = variables_cloned;
         }
 
-        assert(merge_index1 != merge_index2);
+        assert(merge_index1 != merge_index2 && next_merge.indices.first != next_merge.indices.second);
         if (log.is_at_least_normal()) {
-            log << "Next pair of indices: ("
+            log << "Next pair of (uncloned) indices: ("
                 << merge_index1 << ", " << merge_index2 << ")" << endl;
             if (log.is_at_least_verbose()) {
                 fts.statistics(merge_index1, log);
@@ -278,7 +245,7 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
 
         // Label reduction (before shrinking)
         if (label_reduction && label_reduction->reduce_before_shrinking()) {
-            bool reduced = label_reduction->reduce(merge_indices, fts, log);
+            bool reduced = label_reduction->reduce(next_merge.indices, fts, log);
             if (log.is_at_least_normal() && reduced) {
                 log_main_loop_progress("after label reduction");
             }
@@ -291,8 +258,8 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         // Shrinking
         pair<bool, bool> shrunk = shrink_before_merge_step(
             fts,
-            merge_index1,
-            merge_index2,
+            next_merge.indices.first,
+            next_merge.indices.second,
             max_states,
             max_states_before_merge,
             shrink_threshold_before_merge,
@@ -308,7 +275,7 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
 
         // Label reduction (before merging)
         if (label_reduction && label_reduction->reduce_before_merging()) {
-            bool reduced = label_reduction->reduce(merge_indices, fts, log);
+            bool reduced = label_reduction->reduce(next_merge.indices, fts, log);
             if (log.is_at_least_normal() && reduced) {
                 log_main_loop_progress("after label reduction");
             }
@@ -319,7 +286,7 @@ void NonOrthogonalMergeAndShrinkAlgorithm::main_loop(
         }
 
         // Merging
-        int merged_index = fts.cloning_merge(merge_index1, merge_index2, clone_first, clone_second, log);
+        int merged_index = fts.merge(next_merge.indices.first, next_merge.indices.second, log);
         int abs_size = fts.get_transition_system(merged_index).get_size();
         if (abs_size > maximum_intermediate_size) {
             maximum_intermediate_size = abs_size;

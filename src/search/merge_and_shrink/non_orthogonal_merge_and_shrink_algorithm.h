@@ -44,11 +44,6 @@ class NonOrthogonalMergeAndShrinkAlgorithm {
     const bool prune_unreachable_states;
     const bool prune_irrelevant_states;
 
-    // TODO: Options for cloning
-    const int tokens;
-    const int preclone;
-    const double max_clone_size_factor;
-
     mutable utils::LogProxy log;
     const double main_loop_max_time;
 

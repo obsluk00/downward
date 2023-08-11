@@ -103,9 +103,9 @@ public:
 
     // Merge-and-shrink transformations.
     /*
-      Clones the factor specified by the index.
+      Clones the factor specified by the index. Returns index of clone.
     */
-    void clone_factor(
+    int clone_factor(
         int index,
         utils::LogProxy &log);
 

@@ -108,7 +108,7 @@ void FactoredTransitionSystem::assert_all_components_valid() const {
     }
 }
 
-void FactoredTransitionSystem::clone_factor(
+int FactoredTransitionSystem::clone_factor(
     int index,
     utils::LogProxy &log) {
     assert(is_component_valid(index));
@@ -123,7 +123,8 @@ void FactoredTransitionSystem::clone_factor(
     assert(is_component_valid(transition_systems.size() - 1));
     if (log.is_at_least_verbose())
         log << "Cloned factor at index: " << index << endl;
-    }
+    return transition_systems.size() - 1;
+}
 
 void FactoredTransitionSystem::remove_factor(
         int index,

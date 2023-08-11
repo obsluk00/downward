@@ -50,9 +50,8 @@ namespace merge_and_shrink {
         const bool prune_unreachable_states;
         const bool prune_irrelevant_states;
 
-        // Options for cloning
+        // Options for cloning TODO: move cloning to strategy,let main loop know for reservation of bitset
         const int tokens;
-        const double max_clone_size_factor;
 
         mutable utils::LogProxy log;
         const double main_loop_max_time;

@@ -457,7 +457,7 @@ void add_merge_and_shrink_algorithm_options_to_feature(plugins::Feature &feature
         "reached.",
         "true");
 
-    // TODO: Restructure cloning options
+    // TODO: Restructure cloning options, tokens should not be here at all and non_orthogonal should ultimately be implied by the merge strategy
     feature.add_option<bool>(
             "non_orthogonal",
             "Allows for cloning of factors.",
@@ -466,17 +466,6 @@ void add_merge_and_shrink_algorithm_options_to_feature(plugins::Feature &feature
             "tokens",
             "Specify how often the algorithm may clone factors. If negative, the algorithm may clone unlimited times.",
             "0");
-    //TODO: fix this one
-    feature.add_option<int>(
-            "preclone",
-            "Specifies whether to clone for successors (1), predecessors (2), both (3), or neither (4), if the "
-            "number is negative it will do the same but normalize how many successors/predecessors each variable has "
-            "and will then distribute the tokens accordingly",
-            "0");
-    feature.add_option<double>(
-            "max_clone_size_factor",
-            "Specifies how large in terms of amount of variables, relative to the amount of variables, the cloned factors may be.",
-            "-1");
 
 
     add_transition_system_size_limit_options_to_feature(feature);
