@@ -695,10 +695,12 @@ fast_downward_plugin(
         merge_and_shrink/merge_strategy_factory
         merge_and_shrink/merge_strategy_factory_precomputed
         merge_and_shrink/merge_strategy_factory_sccs
+        merge_and_shrink/merge_strategy_factory_non_orthogonal_clusters
         merge_and_shrink/merge_strategy_factory_stateless
         merge_and_shrink/merge_strategy_factory_stateless_non_orthogonal
         merge_and_shrink/merge_strategy_precomputed
         merge_and_shrink/merge_strategy_sccs
+        merge_and_shrink/merge_strategy_non_orthogonal_clusters
         merge_and_shrink/merge_strategy_stateless
         merge_and_shrink/merge_strategy_stateless_non_orthogonal
         merge_and_shrink/merge_tree
