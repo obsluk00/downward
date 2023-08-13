@@ -49,7 +49,8 @@ public:
             "This merge strategy has a merge selector, which computes the next "
             "merges only depending on the current state of the factored transition "
             "system, not requiring any additional information. If sufficient tokens for cloning are available, "
-            "all merges are performed.");
+            "all merges are performed. Apart from label reductions, this effectively simulates performing multiple merges "
+            "at the same time.");
 
         add_option<int>(
                 "tokens",
@@ -60,20 +61,6 @@ public:
             "merge_selector",
             "The merge selector to be used.");
         add_merge_strategy_options_to_feature(*this);
-
-        document_note(
-            "Note",
-            "Examples include the DFP merge strategy, which can be obtained using:\n"
-            "{{{\n"
-            "merge_strategy=merge_stateless(merge_selector=score_based_filtering("
-            "scoring_functions=[goal_relevance,dfp,total_order(<order_option>))]))"
-            "\n}}}\n"
-            "and the (dynamic/score-based) MIASM strategy, which can be obtained "
-            "using:\n"
-            "{{{\n"
-            "merge_strategy=merge_stateless(merge_selector=score_based_filtering("
-            "scoring_functions=[sf_miasm(<shrinking_options>),total_order(<order_option>)]"
-            "\n}}}");
     }
 };
 
