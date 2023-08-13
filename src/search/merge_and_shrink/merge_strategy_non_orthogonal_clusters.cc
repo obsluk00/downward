@@ -53,7 +53,6 @@ NextMerge MergeStrategyNonOrthogonalClusters::get_next() {
         // Add the most recent merge to the current indices set
         current_ts_indices.push_back(fts.get_size() - 1);
     }
-
     // Select the next merge for the current set of indices, using the selector.
     vector<pair<int, int>>next_pairs = merge_selector->select_merge(fts, current_ts_indices);
     assert(next_pairs.size() == 1);
@@ -74,7 +73,7 @@ NextMerge MergeStrategyNonOrthogonalClusters::get_next() {
         var_count[next_pair.first] -= 1;
         clone.first = true;
     }
-    if (var_count[next_pair.second] > 1) {
+    if (var_count[next_pair.second] > 0) {
         var_count[next_pair.second] -= 1;
         clone.second = true;
     }
