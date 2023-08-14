@@ -5,6 +5,7 @@ import shutil
 
 import project
 from lab.reports import Attribute
+from lab.reports import geometric_mean, arithmetic_mean
 
 
 REPO = project.get_repo_base()
@@ -63,6 +64,40 @@ average_cloned,
 largest_cloned,
 ]
 
+extra_attributes=[
+     Attribute('search_out_of_memory', absolute=True, min_wins=True),
+     Attribute('search_out_of_time', absolute=True, min_wins=True),
+     Attribute('ms_construction_time', absolute=False, min_wins=True,
+function=geometric_mean),
+     Attribute('score_ms_construction_time', min_wins=False, digits=4),
+     Attribute('ms_atomic_construction_time', absolute=False,
+min_wins=True, function=geometric_mean),
+     Attribute('ms_abstraction_constructed', absolute=True, min_wins=False),
+     Attribute('ms_atomic_fts_constructed', absolute=True, min_wins=False),
+     Attribute('ms_out_of_memory', absolute=True, min_wins=True),
+     Attribute('ms_out_of_time', absolute=True, min_wins=True),
+     Attribute('ms_memory_delta', absolute=False, min_wins=True),
+     Attribute('ms_reached_time_limit', absolute=False, min_wins=True),
+
+     Attribute('ms_avg_imperfect_shrinking', absolute=False,
+min_wins=True, function=arithmetic_mean),
+     Attribute('ms_course_imperfect_shrinking', absolute=True),
+     Attribute('ms_course_label_reduction', absolute=True),
+     Attribute('ms_init_h_improvements', absolute=False, min_wins=False),
+     Attribute('ms_not_exact_iteration', absolute=False, min_wins=False),
+     Attribute('ms_one_scc', absolute=True, min_wins=False),
+     Attribute('ms_linear_order', absolute=True, min_wins=True),
+     Attribute('ms_merge_order', absolute=True),
+     Attribute('ms_course_pruning', absolute=True),
+     Attribute('ms_avg_pruning', absolute=False, min_wins=False,
+function=arithmetic_mean),
+     Attribute('ms_tiebreaking_iterations', absolute=True, min_wins=True),
+     Attribute('ms_tiebreaking_total', absolute=True, min_wins=True),
+     Attribute('ms_max_int_abs_size', absolute=False, min_wins=True,
+function=arithmetic_mean),
+]
+
+
 exp = project.FastDownwardExperiment(environment=ENV, revision_cache=REVISION_CACHE)
 for config_nick, config in CONFIGS:
     for rev, rev_nick in REVS:
@@ -93,7 +128,7 @@ if not project.REMOTE:
     project.add_scp_step(exp, SCP_LOGIN, REMOTE_REPOS_DIR)
 
 project.add_absolute_report(
-    exp, attributes=ATTRIBUTES, filter=[project.add_evaluations_per_time]
+    exp, attributes=ATTRIBUTES + extra_attributes, filter=[project.add_evaluations_per_time]
 )
 
 attributes = ["expansions_until_last_jump"]
