@@ -33,6 +33,10 @@ NextMerge MergeStrategyStatelessNonOrthogonal::get_next() {
             var_count.clear();
             times_to_clone = 0;
             for (pair<int,int> merge : stored_merges) {
+                var_count[merge.first] = 0;
+                var_count[merge.second] = 0;
+            }
+            for (pair<int,int> merge : stored_merges) {
                 var_count[merge.first] += 1;
                 var_count[merge.second] += 1;
                 if (var_count[merge.first] > 1)
@@ -57,11 +61,14 @@ NextMerge MergeStrategyStatelessNonOrthogonal::get_next() {
             var_count[next_merge.indices.first] -= 1;
             tokens -= 1;
             next_merge.clone.first = true;
+            times_to_clone -= 1;
         }
         if (var_count[next_merge.indices.second] > 1) {
             var_count[next_merge.indices.second] -= 1;
             tokens -= 1;
             next_merge.clone.second = true;
+            times_to_clone -= 1;
+
         }
         return next_merge;
     }
