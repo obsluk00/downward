@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <vector>
+#include <map>
 
 namespace utils {
 class LogProxy;
@@ -102,6 +103,13 @@ public:
 
     // Merge-and-shrink transformations.
     /*
+      Clones the factor specified by the index. Returns index of clone.
+    */
+    int clone_factor(
+        int index,
+        utils::LogProxy &log);
+
+    /*
       Apply the given label mapping to the factored transition system by
       updating all transitions of all transition systems. Only for the factor
       at combinable_index, the local equivalence relation over labels must be
@@ -136,10 +144,23 @@ public:
         utils::LogProxy &log);
 
     /*
+       Clone specified factors and merge them.
+     */
+    int cloning_merge(
+            int index1,
+            int index2,
+            bool clone1,
+            bool clone2,
+            utils::LogProxy &log);
+
+    /*
       Extract the factor at the given index, rendering the FTS invalid.
     */
     std::pair<std::unique_ptr<MergeAndShrinkRepresentation>,
               std::unique_ptr<Distances>> extract_factor(int index);
+    std::pair<std::unique_ptr<TransitionSystem>,
+              std::unique_ptr<MergeAndShrinkRepresentation>>
+    extract_ts_and_representation(int index);
 
     void statistics(int index, utils::LogProxy &log) const;
     void dump(int index, utils::LogProxy &log) const;
@@ -148,6 +169,9 @@ public:
     const TransitionSystem &get_transition_system(int index) const {
         return *transition_systems[index];
     }
+
+    const TransitionSystem *get_transition_system_raw_ptr(int index) const;
+    const MergeAndShrinkRepresentation *get_mas_representation_raw_ptr(int index) const;
 
     const Distances &get_distances(int index) const {
         return *distances[index];
@@ -203,6 +227,12 @@ public:
     }
 
     bool is_active(int index) const;
+    // counts how many variables are represented in the mas_representations by counting their leaves. relevant for cloning
+    int total_leaf_count();
+    int leaf_count(int index);
+
+    void remove_factor(int index,
+                       utils::LogProxy &log);
 };
 }
 

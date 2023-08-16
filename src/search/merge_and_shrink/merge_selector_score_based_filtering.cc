@@ -37,7 +37,7 @@ static vector<pair<int, int>> get_remaining_candidates(
     return result;
 }
 
-pair<int, int> MergeSelectorScoreBasedFiltering::select_merge(
+vector<pair<int, int>> MergeSelectorScoreBasedFiltering::select_merge(
     const FactoredTransitionSystem &fts,
     const vector<int> &indices_subset) const {
     vector<pair<int, int>> merge_candidates =
@@ -53,14 +53,7 @@ pair<int, int> MergeSelectorScoreBasedFiltering::select_merge(
         }
     }
 
-    if (merge_candidates.size() > 1) {
-        cerr << "More than one merge candidate remained after computing all "
-            "scores! Did you forget to include a uniquely tie-breaking "
-            "scoring function, e.g. total_order or single_random?" << endl;
-        utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
-    }
-
-    return merge_candidates.front();
+    return merge_candidates;
 }
 
 void MergeSelectorScoreBasedFiltering::initialize(const TaskProxy &task_proxy) {

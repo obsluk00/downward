@@ -48,6 +48,7 @@ MergeAndShrinkAlgorithm::MergeAndShrinkAlgorithm(const plugins::Options &opts) :
     prune_irrelevant_states(opts.get<bool>("prune_irrelevant_states")),
     log(utils::get_log_from_options(opts)),
     main_loop_max_time(opts.get<double>("main_loop_max_time")),
+    atomic_label_reduction(opts.get<bool>("atomic_label_reduction")),
     starting_peak_memory(0) {
     assert(max_states_before_merge > 0);
     assert(max_states >= max_states_before_merge);
@@ -182,9 +183,6 @@ void MergeAndShrinkAlgorithm::main_loop(
         }
     }
 
-    if (label_reduction) {
-        label_reduction->initialize(task_proxy);
-    }
     unique_ptr<MergeStrategy> merge_strategy =
         merge_strategy_factory->compute_merge_strategy(task_proxy, fts);
     merge_strategy_factory = nullptr;
@@ -195,9 +193,11 @@ void MergeAndShrinkAlgorithm::main_loop(
                 << " (" << msg << ")" << endl;
         };
     int iteration_counter = 0;
+
     while (fts.get_num_active_entries() > 1) {
         // Choose next transition systems to merge
-        pair<int, int> merge_indices = merge_strategy->get_next();
+        // TODO: break condition -> merge this with cost partitioning and cloning main loop perhaps
+        pair<int, int> merge_indices = merge_strategy->get_next().indices;
         if (ran_out_of_time(timer)) {
             break;
         }
@@ -227,7 +227,7 @@ void MergeAndShrinkAlgorithm::main_loop(
         }
 
         // Shrinking
-        bool shrunk = shrink_before_merge_step(
+        pair<bool, bool> shrunk = shrink_before_merge_step(
             fts,
             merge_index1,
             merge_index2,
@@ -236,7 +236,7 @@ void MergeAndShrinkAlgorithm::main_loop(
             shrink_threshold_before_merge,
             *shrink_strategy,
             log);
-        if (log.is_at_least_normal() && shrunk) {
+        if (log.is_at_least_normal() && (shrunk.first || shrunk.second)) {
             log_main_loop_progress("after shrinking");
         }
 
@@ -393,9 +393,27 @@ FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_syst
         log << endl;
     }
 
-    if (!unsolvable && main_loop_max_time > 0) {
-        main_loop(fts, task_proxy);
+    if (!unsolvable) {
+        if (label_reduction) {
+            label_reduction->initialize(task_proxy);
+        }
+
+        if (label_reduction && atomic_label_reduction) {
+            bool reduced = label_reduction->reduce(pair<int, int>(-1, -1), fts, log);
+            if (log.is_at_least_normal() && reduced) {
+                log_progress(timer, "after label reduction on atomic FTS", log);
+            }
+        }
+
+        if (log.is_at_least_normal()) {
+            log << endl;
+        }
+
+        if (main_loop_max_time > 0) {
+            main_loop(fts, task_proxy);
+        }
     }
+
     const bool final = true;
     report_peak_memory_delta(final);
     log << "Merge-and-shrink algorithm runtime: " << timer << endl;
@@ -439,6 +457,17 @@ void add_merge_and_shrink_algorithm_options_to_feature(plugins::Feature &feature
         "reached.",
         "true");
 
+    // TODO: Restructure cloning options, tokens should not be here at all and non_orthogonal should ultimately be implied by the merge strategy
+    feature.add_option<bool>(
+            "non_orthogonal",
+            "Allows for cloning of factors.",
+            "false");
+    feature.add_option<int>(
+            "tokens",
+            "Specify how often the algorithm may clone factors. If negative, the algorithm may clone unlimited times.",
+            "0");
+
+
     add_transition_system_size_limit_options_to_feature(feature);
 
     feature.add_option<double>(
@@ -451,6 +480,11 @@ void add_merge_and_shrink_algorithm_options_to_feature(plugins::Feature &feature
         "transformation is runtime-intense.",
         "infinity",
         Bounds("0.0", "infinity"));
+
+    feature.add_option<bool>(
+        "atomic_label_reduction",
+        "Use the label reduction method to reduce labels on the atomic FTS",
+        "false");
 }
 
 void add_transition_system_size_limit_options_to_feature(plugins::Feature &feature) {

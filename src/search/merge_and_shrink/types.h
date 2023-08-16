@@ -3,12 +3,12 @@
 
 #include <forward_list>
 #include <list>
+#include <memory>
 #include <vector>
 
 namespace merge_and_shrink {
 // Positive infinity. The name "INFINITY" is taken by an ISO C99 macro.
 extern const int INF;
-extern const int MINUSINF;
 extern const int PRUNED_STATE;
 
 /*
@@ -21,6 +21,10 @@ extern const int PRUNED_STATE;
 */
 using StateEquivalenceClass = std::forward_list<int>;
 using StateEquivalenceRelation = std::vector<StateEquivalenceClass>;
+
+struct Abstraction;
+using Abstractions = std::vector<std::unique_ptr<Abstraction>>;
+using Order = std::vector<int>;
 }
 
 #endif

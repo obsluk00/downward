@@ -14,7 +14,7 @@ public:
         const FactoredTransitionSystem &fts,
         std::unique_ptr<MergeTree> merge_tree);
     virtual ~MergeStrategyPrecomputed() override = default;
-    virtual std::pair<int, int> get_next() override;
+    virtual NextMerge get_next() override;
 };
 }
 

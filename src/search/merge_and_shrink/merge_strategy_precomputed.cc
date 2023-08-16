@@ -13,12 +13,12 @@ MergeStrategyPrecomputed::MergeStrategyPrecomputed(
     : MergeStrategy(fts), merge_tree(move(merge_tree)) {
 }
 
-pair<int, int> MergeStrategyPrecomputed::get_next() {
+NextMerge MergeStrategyPrecomputed::get_next() {
     assert(!merge_tree->done());
     int next_merge_index = fts.get_size();
     pair<int, int> next_merge = merge_tree->get_next_merge(next_merge_index);
     assert(fts.is_active(next_merge.first));
     assert(fts.is_active(next_merge.second));
-    return next_merge;
+    return NextMerge(next_merge);
 }
 }

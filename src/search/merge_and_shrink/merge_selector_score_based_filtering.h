@@ -20,7 +20,7 @@ protected:
 public:
     explicit MergeSelectorScoreBasedFiltering(const plugins::Options &options);
     virtual ~MergeSelectorScoreBasedFiltering() override = default;
-    virtual std::pair<int, int> select_merge(
+    virtual std::vector<std::pair<int, int>> select_merge(
         const FactoredTransitionSystem &fts,
         const std::vector<int> &indices_subset = std::vector<int>()) const override;
     virtual void initialize(const TaskProxy &task_proxy) override;

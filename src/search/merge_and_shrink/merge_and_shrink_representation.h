@@ -7,73 +7,82 @@
 class State;
 
 namespace utils {
-class LogProxy;
+    class LogProxy;
 }
 
 namespace merge_and_shrink {
-class Distances;
-class MergeAndShrinkRepresentation {
-protected:
-    int domain_size;
+    class Distances;
+    class MergeAndShrinkRepresentation {
+    protected:
+        int domain_size;
 
-public:
-    explicit MergeAndShrinkRepresentation(int domain_size);
-    virtual ~MergeAndShrinkRepresentation() = 0;
+    public:
+        explicit MergeAndShrinkRepresentation(int domain_size);
+        virtual ~MergeAndShrinkRepresentation() = 0;
 
-    int get_domain_size() const;
+        int get_domain_size() const;
 
-    // Store distances instead of abstract state numbers.
-    virtual void set_distances(const Distances &) = 0;
-    virtual void apply_abstraction_to_lookup_table(
-        const std::vector<int> &abstraction_mapping) = 0;
-    /*
-      Return the value that state is mapped to. This is either an abstract
-      state (if set_distances has not been called) or a distance (if it has).
-      If the represented function is not total, the returned value is DEAD_END
-      if the abstract state is PRUNED_STATE or if the (distance) value is INF.
-    */
-    virtual int get_value(const State &state) const = 0;
-    /* Return true iff the represented function is total, i.e., does not map
-       to PRUNED_STATE. */
-    virtual bool is_total() const = 0;
-    virtual void dump(utils::LogProxy &log) const = 0;
-};
-
-
-class MergeAndShrinkRepresentationLeaf : public MergeAndShrinkRepresentation {
-    const int var_id;
-
-    std::vector<int> lookup_table;
-public:
-    MergeAndShrinkRepresentationLeaf(int var_id, int domain_size);
-    virtual ~MergeAndShrinkRepresentationLeaf() = default;
-
-    virtual void set_distances(const Distances &) override;
-    virtual void apply_abstraction_to_lookup_table(
-        const std::vector<int> &abstraction_mapping) override;
-    virtual int get_value(const State &state) const override;
-    virtual bool is_total() const override;
-    virtual void dump(utils::LogProxy &log) const override;
-};
+        virtual int leaf_count() = 0;
+        virtual std::unique_ptr<MergeAndShrinkRepresentation> clone() const = 0;
+        // Store distances instead of abstract state numbers.
+        virtual void set_distances(const Distances &) = 0;
+        virtual void apply_abstraction_to_lookup_table(
+                const std::vector<int> &abstraction_mapping) = 0;
+        /*
+          Return the value that state is mapped to. This is either an abstract
+          state (if set_distances has not been called) or a distance (if it has).
+          If the represented function is not total, the returned value is DEAD_END
+          if the abstract state is PRUNED_STATE or if the (distance) value is INF.
+        */
+        virtual int get_value(const State &state) const = 0;
+        /* Return true iff the represented function is total, i.e., does not map
+           to PRUNED_STATE. */
+        virtual bool is_total() const = 0;
+        virtual void dump(utils::LogProxy &log) const = 0;
+    };
 
 
-class MergeAndShrinkRepresentationMerge : public MergeAndShrinkRepresentation {
-    std::unique_ptr<MergeAndShrinkRepresentation> left_child;
-    std::unique_ptr<MergeAndShrinkRepresentation> right_child;
-    std::vector<std::vector<int>> lookup_table;
-public:
-    MergeAndShrinkRepresentationMerge(
-        std::unique_ptr<MergeAndShrinkRepresentation> left_child,
-        std::unique_ptr<MergeAndShrinkRepresentation> right_child);
-    virtual ~MergeAndShrinkRepresentationMerge() = default;
+    class MergeAndShrinkRepresentationLeaf : public MergeAndShrinkRepresentation {
+        const int var_id;
 
-    virtual void set_distances(const Distances &distances) override;
-    virtual void apply_abstraction_to_lookup_table(
-        const std::vector<int> &abstraction_mapping) override;
-    virtual int get_value(const State &state) const override;
-    virtual bool is_total() const override;
-    virtual void dump(utils::LogProxy &log) const override;
-};
+        std::vector<int> lookup_table;
+    public:
+        MergeAndShrinkRepresentationLeaf(int var_id, int domain_size);
+        MergeAndShrinkRepresentationLeaf(const MergeAndShrinkRepresentationLeaf &other);
+        virtual ~MergeAndShrinkRepresentationLeaf() = default;
+
+        int leaf_count();
+        std::unique_ptr<MergeAndShrinkRepresentation> clone() const override;
+        virtual void set_distances(const Distances &) override;
+        virtual void apply_abstraction_to_lookup_table(
+                const std::vector<int> &abstraction_mapping) override;
+        virtual int get_value(const State &state) const override;
+        virtual bool is_total() const override;
+        virtual void dump(utils::LogProxy &log) const override;
+    };
+
+
+    class MergeAndShrinkRepresentationMerge : public MergeAndShrinkRepresentation {
+        std::unique_ptr<MergeAndShrinkRepresentation> left_child;
+        std::unique_ptr<MergeAndShrinkRepresentation> right_child;
+        std::vector<std::vector<int>> lookup_table;
+    public:
+        MergeAndShrinkRepresentationMerge(
+                std::unique_ptr<MergeAndShrinkRepresentation> left_child,
+                std::unique_ptr<MergeAndShrinkRepresentation> right_child);
+
+        MergeAndShrinkRepresentationMerge(const MergeAndShrinkRepresentationMerge &other);
+        virtual ~MergeAndShrinkRepresentationMerge() = default;
+
+        int leaf_count();
+        std::unique_ptr<MergeAndShrinkRepresentation> clone() const override;
+        virtual void set_distances(const Distances &distances) override;
+        virtual void apply_abstraction_to_lookup_table(
+                const std::vector<int> &abstraction_mapping) override;
+        virtual int get_value(const State &state) const override;
+        virtual bool is_total() const override;
+        virtual void dump(utils::LogProxy &log) const override;
+    };
 }
 
 #endif

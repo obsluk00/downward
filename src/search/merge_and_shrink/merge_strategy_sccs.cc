@@ -30,7 +30,7 @@ MergeStrategySCCs::MergeStrategySCCs(
 MergeStrategySCCs::~MergeStrategySCCs() {
 }
 
-pair<int, int> MergeStrategySCCs::get_next() {
+NextMerge MergeStrategySCCs::get_next() {
     if (current_ts_indices.empty()) {
         /*
           We are currently not dealing with merging all factors of an SCC, so
@@ -76,7 +76,7 @@ pair<int, int> MergeStrategySCCs::get_next() {
         }
     } else {
         assert(merge_selector);
-        next_pair = merge_selector->select_merge(fts, current_ts_indices);
+        next_pair = merge_selector->select_merge(fts, current_ts_indices).front();
     }
 
     // Remove the two merged indices from the current index set.
@@ -88,6 +88,6 @@ pair<int, int> MergeStrategySCCs::get_next() {
             ++it;
         }
     }
-    return next_pair;
+    return NextMerge(next_pair);
 }
 }

@@ -18,6 +18,14 @@ Distances::Distances(const TransitionSystem &transition_system)
     clear_distances();
 }
 
+Distances::Distances(const merge_and_shrink::Distances &other, const merge_and_shrink::TransitionSystem &new_system)
+    : transition_system(new_system),
+      init_distances_computed(other.init_distances_computed),
+      goal_distances_computed(other.goal_distances_computed),
+      init_distances(other.init_distances),
+      goal_distances(other.goal_distances){
+}
+
 void Distances::clear_distances() {
     init_distances_computed = false;
     goal_distances_computed = false;
@@ -111,7 +119,11 @@ static void dijkstra_search(
             const pair<int, int> &transition = graph[state][i];
             int successor = transition.first;
             int cost = transition.second;
-            int successor_cost = state_distance + cost;
+            int successor_cost = INF;
+            if (cost != INF) {
+                successor_cost = state_distance + cost;
+            }
+            assert(successor_cost >= 0);
             if (distances[successor] > successor_cost) {
                 distances[successor] = successor_cost;
                 queue.push(successor_cost, successor);
@@ -372,5 +384,95 @@ void Distances::statistics(utils::LogProxy &log) const {
         }
         log << endl;
     }
+}
+
+
+
+static void compute_goal_distances_unit_cost(
+    const TransitionSystem &transition_system, vector<int> &distances) {
+    int num_states = transition_system.get_size();
+
+    vector<vector<int>> backward_graph(num_states);
+    for (const LocalLabelInfo &local_label_info : transition_system) {
+        const vector<Transition> &transitions = local_label_info.get_transitions();
+        for (const Transition &transition : transitions) {
+            backward_graph[transition.target].push_back(transition.src);
+        }
+    }
+
+    deque<int> queue;
+    for (int state = 0; state < num_states; ++state) {
+        if (transition_system.is_goal_state(state)) {
+            distances[state] = 0;
+            queue.push_back(state);
+        }
+    }
+    breadth_first_search(backward_graph, queue, distances);
+}
+
+static void compute_goal_distances_general_cost(
+    const TransitionSystem &transition_system,
+    const vector<int> &label_costs,
+    vector<int> &distances) {
+    int num_states = transition_system.get_size();
+    vector<vector<pair<int, int>>> backward_graph(num_states);
+    for (const LocalLabelInfo &local_label_info : transition_system) {
+        const LabelGroup &label_group = local_label_info.get_label_group();
+        const vector<Transition> &transitions = local_label_info.get_transitions();
+        int cost = INF;
+        for (int label_no : label_group) {
+            int label_cost = label_costs[label_no];
+            assert(label_cost != -1); // should not encounter reduced labels
+            cost = min(cost, label_cost);
+        }
+        assert(cost >= 0);
+        for (const Transition &transition : transitions) {
+            backward_graph[transition.target].push_back(
+                make_pair(transition.src, cost));
+        }
+    }
+
+    // TODO: Reuse the same queue for multiple computations to save speed?
+    //       Also see compute_init_distances_general_cost.
+    priority_queues::AdaptiveQueue<int> queue;
+    for (int state = 0; state < num_states; ++state) {
+        if (transition_system.is_goal_state(state)) {
+            distances[state] = 0;
+            queue.push(0, state);
+        }
+    }
+    dijkstra_search(backward_graph, queue, distances);
+}
+
+vector<int> compute_goal_distances(
+    const TransitionSystem &transition_system,
+    const vector<int> &label_costs,
+    utils::LogProxy &log) {
+    int num_states = transition_system.get_size();
+    if (num_states == 0) {
+        return vector<int>();
+    }
+
+    bool unit_cost = true;
+    for (int label_cost : label_costs) {
+        if (label_cost != -1 && label_cost != 1) {
+            unit_cost = false;
+            break;
+        }
+    }
+
+    vector<int> distances(num_states, INF);
+    if (unit_cost) {
+        if (log.is_at_least_debug()) {
+            log << "Computing distances using unit cost" << endl;
+        }
+        compute_goal_distances_unit_cost(transition_system, distances);
+    } else {
+        if (log.is_at_least_debug()) {
+            log << "Computing distances using general cost" << endl;
+        }
+        compute_goal_distances_general_cost(transition_system, label_costs, distances);
+    }
+    return distances;
 }
 }

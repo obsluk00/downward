@@ -108,6 +108,36 @@ void FactoredTransitionSystem::assert_all_components_valid() const {
     }
 }
 
+int FactoredTransitionSystem::clone_factor(
+    int index,
+    utils::LogProxy &log) {
+    assert(is_component_valid(index));
+    const TransitionSystem &old_system = *transition_systems[index];
+    const Distances &original_distances = *distances[index];
+    const MergeAndShrinkRepresentation &old_representation = *mas_representations[index];
+    transition_systems.push_back(utils::make_unique_ptr<TransitionSystem>(old_system));
+    mas_representations.push_back(old_representation.clone());
+    const TransitionSystem &new_ts = *transition_systems.back();
+    distances.push_back(utils::make_unique_ptr<Distances>(original_distances, new_ts));
+    ++num_active_entries;
+    assert(is_component_valid(transition_systems.size() - 1));
+    if (log.is_at_least_verbose())
+        log << "Cloned factor at index: " << index << endl;
+    return transition_systems.size() - 1;
+}
+
+void FactoredTransitionSystem::remove_factor(
+        int index,
+        utils::LogProxy &log) {
+    assert(is_component_valid(index));
+    distances[index] = nullptr;
+    transition_systems[index] = nullptr;
+    mas_representations[index] = nullptr;
+    --num_active_entries;
+    if (log.is_at_least_verbose())
+        log << "Removed factor at index: " << index << endl;
+}
+
 void FactoredTransitionSystem::apply_label_mapping(
     const vector<pair<int, vector<int>>> &label_mapping,
     int combinable_index) {
@@ -124,6 +154,8 @@ void FactoredTransitionSystem::apply_label_mapping(
         }
     }
     assert_all_components_valid();
+int leaf_count();
+
 }
 
 bool FactoredTransitionSystem::apply_abstraction(
@@ -193,11 +225,69 @@ int FactoredTransitionSystem::merge(
     return new_index;
 }
 
+int FactoredTransitionSystem::cloning_merge(
+        int index1,
+        int index2,
+        bool clone1,
+        bool clone2,
+        utils::LogProxy &log) {
+    assert(is_component_valid(index1));
+    assert(is_component_valid(index2));
+    transition_systems.push_back(
+            TransitionSystem::merge(
+                    *labels,
+                    *transition_systems[index1],
+                    *transition_systems[index2],
+                    log));
+    mas_representations.push_back(
+            utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
+                    mas_representations[index1]->clone(),
+                    mas_representations[index2]->clone()));
+
+    const TransitionSystem &new_ts = *transition_systems.back();
+    distances.push_back(utils::make_unique_ptr<Distances>(new_ts));
+    int new_index = transition_systems.size() - 1;
+    // Restore the invariant that distances are computed.
+    if (compute_init_distances || compute_goal_distances) {
+        distances[new_index]->compute_distances(
+                compute_init_distances, compute_goal_distances, log);
+    }
+    ++num_active_entries;
+    assert(is_component_valid(new_index));
+    // Check which factors, if any, to remove
+    if (!clone1) {
+        distances[index1] = nullptr;
+        transition_systems[index1] = nullptr;
+        mas_representations[index1] = nullptr;
+        --num_active_entries;
+    }
+    if (!clone2) {
+        distances[index2] = nullptr;
+        transition_systems[index2] = nullptr;
+        mas_representations[index2] = nullptr;
+        --num_active_entries;
+    }
+    if (clone1 && log.is_at_least_verbose())
+        log << "Cloned factor at index: " << index1 << endl;
+    if (clone2 && log.is_at_least_verbose())
+        log << "Cloned factor at index: " << index2 << endl;
+
+    return new_index;
+}
+
+
 pair<unique_ptr<MergeAndShrinkRepresentation>, unique_ptr<Distances>>
 FactoredTransitionSystem::extract_factor(int index) {
     assert(is_component_valid(index));
     return make_pair(move(mas_representations[index]),
                      move(distances[index]));
+}
+
+pair<unique_ptr<TransitionSystem>, unique_ptr<MergeAndShrinkRepresentation>>
+FactoredTransitionSystem::extract_ts_and_representation(int index) {
+    assert(is_component_valid(index));
+    return make_pair(move(transition_systems[index]),
+                     move(mas_representations[index]));
 }
 
 void FactoredTransitionSystem::statistics(int index, utils::LogProxy &log) const {
@@ -226,6 +316,14 @@ void FactoredTransitionSystem::dump(utils::LogProxy &log) const {
     }
 }
 
+const TransitionSystem *FactoredTransitionSystem::get_transition_system_raw_ptr(int index) const {
+    return transition_systems[index].get();
+}
+
+const MergeAndShrinkRepresentation *FactoredTransitionSystem::get_mas_representation_raw_ptr(int index) const {
+    return mas_representations[index].get();
+}
+
 bool FactoredTransitionSystem::is_factor_solvable(int index) const {
     assert(is_component_valid(index));
     return transition_systems[index]->is_solvable(*distances[index]);
@@ -249,4 +347,18 @@ bool FactoredTransitionSystem::is_active(int index) const {
     assert_index_valid(index);
     return transition_systems[index] != nullptr;
 }
+
+int FactoredTransitionSystem::total_leaf_count() {
+    int res = 0;
+    for (unique_ptr<MergeAndShrinkRepresentation> &representation : mas_representations) {
+        if (representation != nullptr)
+        res += representation->leaf_count();
+    }
+    return res;
+}
+
+int FactoredTransitionSystem::leaf_count(int index) {
+    return mas_representations[index]->leaf_count();
+}
+
 }

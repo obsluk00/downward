@@ -22,7 +22,7 @@ protected:
 public:
     MergeSelector() = default;
     virtual ~MergeSelector() = default;
-    virtual std::pair<int, int> select_merge(
+    virtual std::vector<std::pair<int, int>> select_merge(
         const FactoredTransitionSystem &fts,
         const std::vector<int> &indices_subset = std::vector<int>()) const = 0;
     virtual void initialize(const TaskProxy &task_proxy) = 0;

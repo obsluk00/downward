@@ -28,7 +28,7 @@ public:
         const std::shared_ptr<MergeSelector> &merge_selector,
         std::vector<std::vector<int>> &&non_singleton_cg_sccs);
     virtual ~MergeStrategySCCs() override;
-    virtual std::pair<int, int> get_next() override;
+    virtual NextMerge get_next() override;
 };
 }
 
