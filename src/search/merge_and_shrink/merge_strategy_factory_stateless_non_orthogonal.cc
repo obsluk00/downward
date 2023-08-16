@@ -5,6 +5,7 @@
 
 #include "../plugins/plugin.h"
 #include "../utils/memory.h"
+#include "../utils/rng_options.h"
 
 using namespace std;
 
@@ -13,14 +14,15 @@ MergeStrategyFactoryStatelessNonOrthogonal::MergeStrategyFactoryStatelessNonOrth
     const plugins::Options &options)
     : MergeStrategyFactory(options),
       merge_selector(options.get<shared_ptr<MergeSelector>>("merge_selector")),
-      tokens(options.get<int>("tokens")){
+      tokens(options.get<int>("tokens")),
+      rng(utils::parse_rng_from_options(options)){
 }
 
 unique_ptr<MergeStrategy> MergeStrategyFactoryStatelessNonOrthogonal::compute_merge_strategy(
     const TaskProxy &task_proxy,
     const FactoredTransitionSystem &fts) {
     merge_selector->initialize(task_proxy);
-    return utils::make_unique_ptr<MergeStrategyStatelessNonOrthogonal>(fts, merge_selector, tokens);
+    return utils::make_unique_ptr<MergeStrategyStatelessNonOrthogonal>(fts, merge_selector, rng, tokens);
 }
 
 string MergeStrategyFactoryStatelessNonOrthogonal::name() const {
@@ -61,6 +63,8 @@ public:
             "merge_selector",
             "The merge selector to be used.");
         add_merge_strategy_options_to_feature(*this);
+
+        utils::add_rng_options(*this);
     }
 };
 

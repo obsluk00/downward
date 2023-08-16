@@ -3,22 +3,26 @@
 #include "merge_selector.h"
 
 #include "../plugins/plugin.h"
-//TODO: use this perhaps
 #include "../utils/rng.h"
 
-#include <random>
 #include <cassert>
 
 using namespace std;
+
+namespace utils {
+    class RandomNumberGenerator;
+}
 
 namespace merge_and_shrink {
 MergeStrategyStatelessNonOrthogonal::MergeStrategyStatelessNonOrthogonal(
     const FactoredTransitionSystem &fts,
     const shared_ptr<MergeSelector> &merge_selector,
+    const shared_ptr<utils::RandomNumberGenerator> &rng,
     int tokens)
     : MergeStrategy(fts),
       merge_selector(merge_selector),
-      tokens(tokens) {
+      rng(rng),
+      tokens(tokens){
 }
 
 NextMerge MergeStrategyStatelessNonOrthogonal::get_next() {
@@ -28,8 +32,7 @@ NextMerge MergeStrategyStatelessNonOrthogonal::get_next() {
         // if there are more than one merge returned in this iterations, shuffle them, see how many overlap
         // and track how many times we would have to clone
         if (stored_merges.size() > 1) {
-            random_device rd = random_device {};
-            std::shuffle(stored_merges.begin(), stored_merges.end(), rd);
+            rng->shuffle(stored_merges);
             var_count.clear();
             times_to_clone = 0;
             for (pair<int,int> merge : stored_merges) {

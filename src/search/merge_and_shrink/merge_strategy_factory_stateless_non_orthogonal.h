@@ -2,6 +2,11 @@
 #define MERGE_AND_SHRINK_MERGE_STRATEGY_FACTORY_STATELESS_NON_ORTHOGONAL_H
 
 #include "merge_strategy_factory.h"
+#include "../utils/rng_options.h"
+
+namespace utils {
+    class RandomNumberGenerator;
+}
 
 namespace merge_and_shrink {
 class MergeSelector;
@@ -9,6 +14,7 @@ class MergeSelector;
 class MergeStrategyFactoryStatelessNonOrthogonal : public MergeStrategyFactory {
     std::shared_ptr<MergeSelector> merge_selector;
     int tokens;
+    const std::shared_ptr<utils::RandomNumberGenerator> rng;
 protected:
     virtual std::string name() const override;
     virtual void dump_strategy_specific_options() const override;
