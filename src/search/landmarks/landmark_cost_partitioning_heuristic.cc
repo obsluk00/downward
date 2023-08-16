@@ -30,11 +30,6 @@ void LandmarkCostPartitioningHeuristic::check_unsupported_features(
     const plugins::Options &opts) {
     shared_ptr<LandmarkFactory> lm_graph_factory =
         opts.get<shared_ptr<LandmarkFactory>>("lm_factory");
-    if (lm_graph_factory->computes_reasonable_orders()) {
-        cerr << "Reasonable orderings should not be used for "
-             << "admissible heuristics." << endl;
-        utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
-    }
 
     if (task_properties::has_axioms(task_proxy)) {
         cerr << "Cost partitioning does not support axioms." << endl;
@@ -65,10 +60,11 @@ void LandmarkCostPartitioningHeuristic::set_cost_assignment(
 }
 
 int LandmarkCostPartitioningHeuristic::get_heuristic_value(
-    const State & /*state*/) {
+    const State &ancestor_state) {
     double epsilon = 0.01;
 
-    double h_val = lm_cost_assignment->cost_sharing_h_value(*lm_status_manager);
+    double h_val = lm_cost_assignment->cost_sharing_h_value(
+        *lm_status_manager, ancestor_state);
     if (h_val == numeric_limits<double>::max()) {
         return DEAD_END;
     } else {
@@ -136,12 +132,9 @@ public:
         document_note(
             "Preferred operators",
             "Preferred operators should not be used for optimal planning. "
-            "We allow computing preferred operators for this heuristic because "
-            "it could be used for satisficing planning where preferred "
-            "operators might improve performance (not tested). See "
-            "Evaluator#Landmark_sum_heuristic for more information on how "
-            "our implementation of preferred operators differs from the "
-            "description in the literature.");
+            "See Evaluator#Landmark_sum_heuristic for more information "
+            "on using preferred operators; the comments there also apply "
+            "to this heuristic.");
 
         document_language_support("action costs", "supported");
         document_language_support(
