@@ -462,10 +462,6 @@ void add_merge_and_shrink_algorithm_options_to_feature(plugins::Feature &feature
             "non_orthogonal",
             "Allows for cloning of factors.",
             "false");
-    feature.add_option<int>(
-            "tokens",
-            "Specify how often the algorithm may clone factors. If negative, the algorithm may clone unlimited times.",
-            "0");
 
 
     add_transition_system_size_limit_options_to_feature(feature);

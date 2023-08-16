@@ -54,7 +54,6 @@ namespace merge_and_shrink {
             shrink_threshold_before_merge(opts.get<int>("threshold_before_merge")),
             prune_unreachable_states(opts.get<bool>("prune_unreachable_states")),
             prune_irrelevant_states(opts.get<bool>("prune_irrelevant_states")),
-            tokens(opts.get<int>("tokens")),
             log(utils::get_log_from_options(opts)),
             main_loop_max_time(opts.get<double>("main_loop_max_time")),
             atomic_label_reduction(opts.get<bool>("atomic_label_reduction")),
@@ -292,9 +291,9 @@ namespace merge_and_shrink {
     }
 
     // TODO: fix code duplication, perhaps move to a utils class?
-    bool any_cp_mas_no(const Bitset &bitset) {
+    bool any_cp_mas_no(const vector<int> bitset) {
         for (size_t index = 0; index < bitset.size(); ++index) {
-            if (bitset.test(index)) {
+            if (!bitset.empty()) {
                 return true;
             }
         }
@@ -303,11 +302,12 @@ namespace merge_and_shrink {
 
     vector<unique_ptr<Abstraction>> CPMASNonOrthogonal::compute_abstractions_for_offline_cp(
             const FactoredTransitionSystem &fts,
-            const Bitset &factors_modified_since_last_snapshot,
+            const vector<int> factors_modified_since_last_snapshot,
             const vector<int> &original_to_current_labels) const {
         vector<int> considered_factors;
         for (int index : fts) {
-            if (factors_modified_since_last_snapshot.test(index) && (!filter_trivial_factors || !fts.is_factor_trivial(index))) {
+            if (find(factors_modified_since_last_snapshot.begin(), factors_modified_since_last_snapshot.end(), index) != factors_modified_since_last_snapshot.end()
+                && (!filter_trivial_factors || !fts.is_factor_trivial(index))) {
                 considered_factors.push_back(index);
             }
         }
@@ -344,7 +344,7 @@ namespace merge_and_shrink {
 
     void CPMASNonOrthogonal::handle_snapshot(
             const FactoredTransitionSystem &fts,
-            Bitset &factors_modified_since_last_snapshot,
+            vector<int> factors_modified_since_last_snapshot,
             const unique_ptr<vector<int>> &original_to_current_labels) {
         if (offline_cps) {
             assert(original_to_current_labels);
@@ -361,7 +361,7 @@ namespace merge_and_shrink {
             cost_partitionings.push_back(cp_factory->generate(
                     compute_label_costs(fts.get_labels()), compute_abstractions_for_factors(fts, compute_non_trivial_factors(fts, filter_trivial_factors)), log));
         }
-        factors_modified_since_last_snapshot.reset();
+        factors_modified_since_last_snapshot.clear();
     }
 
     void CPMASNonOrthogonal::compute_cp_and_print_statistics(
@@ -386,7 +386,7 @@ namespace merge_and_shrink {
     bool CPMASNonOrthogonal::main_loop(
             FactoredTransitionSystem &fts,
             const TaskProxy &task_proxy,
-            Bitset &factors_modified_since_last_snapshot,
+            vector<int> factors_modified_since_last_snapshot,
             const unique_ptr<vector<int>> &original_to_current_labels) {
         utils::CountdownTimer timer(main_loop_max_time);
         if (log.is_at_least_normal()) {
@@ -515,10 +515,10 @@ namespace merge_and_shrink {
                     log);
             if (shrunk.first || shrunk.second) {
                 if (shrunk.first) {
-                    factors_modified_since_last_snapshot.set(merge_index1);
+                    factors_modified_since_last_snapshot.emplace_back(next_merge.indices.first);
                 }
                 if (shrunk.second) {
-                    factors_modified_since_last_snapshot.set(merge_index2);
+                    factors_modified_since_last_snapshot.emplace_back(next_merge.indices.second);
                 }
             }
             if (log.is_at_least_normal() && (shrunk.first || shrunk.second)) {
@@ -574,9 +574,13 @@ namespace merge_and_shrink {
                 log_main_loop_progress("after merging");
             }
 
-            factors_modified_since_last_snapshot.reset(next_merge.indices.first);
-            factors_modified_since_last_snapshot.reset(next_merge.indices.second);
-            factors_modified_since_last_snapshot.set(merged_index);
+            vector<int>::iterator it = find(factors_modified_since_last_snapshot.begin(), factors_modified_since_last_snapshot.end(), next_merge.indices.first);
+            assert(it != factors_modified_since_last_snapshot.end());
+            factors_modified_since_last_snapshot.erase(it);
+            it = find(factors_modified_since_last_snapshot.begin(), factors_modified_since_last_snapshot.end(), next_merge.indices.second);
+            assert(it != factors_modified_since_last_snapshot.end());
+            factors_modified_since_last_snapshot.erase(it);
+            factors_modified_since_last_snapshot.emplace_back(merged_index);
             if (ran_out_of_time(timer)) {
                 break;
             }
@@ -604,7 +608,7 @@ namespace merge_and_shrink {
                         prune_irrelevant_states,
                         log);
                 if (pruned) {
-                    factors_modified_since_last_snapshot.set(merged_index);
+                    factors_modified_since_last_snapshot.emplace_back(merged_index);
                 }
                 if (log.is_at_least_normal() && pruned) {
                     if (log.is_at_least_verbose()) {
@@ -626,7 +630,7 @@ namespace merge_and_shrink {
                            "computation. " << endl << endl;
                 }
                 handle_unsolvable_snapshot(fts, merged_index);
-                factors_modified_since_last_snapshot.reset();
+                factors_modified_since_last_snapshot.clear();
                 unsolvable = true;
                 break;
             }
@@ -778,9 +782,9 @@ namespace merge_and_shrink {
 
             // Pos at index i is true iff the factor has been transformed since
             // the last recorded snapshot, excluding label reductions.
-            Bitset factors_modified_since_last_snapshot(fts.get_size() * 2 - 1 + tokens);
+            vector<int> factors_modified_since_last_snapshot;
             for (int index = 0; index < fts.get_size(); ++index) {
-                factors_modified_since_last_snapshot.set(index);
+                factors_modified_since_last_snapshot.emplace_back(index);
             }
             if (compute_atomic_snapshot) {
                 handle_snapshot(

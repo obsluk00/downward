@@ -1,8 +1,6 @@
 #ifndef MERGE_AND_SHRINK_CP_MAS_NON_ORTHOGONAL_H
 #define MERGE_AND_SHRINK_CP_MAS_NON_ORTHOGONAL_H
 
-#include "../algorithms/dynamic_bitset.h"
-
 #include "cp_mas.h"
 
 #include "../utils/logging.h"
@@ -27,8 +25,6 @@ namespace merge_and_shrink {
     class MergeStrategyFactory;
     class ShrinkStrategy;
 
-    using Bitset = dynamic_bitset::DynamicBitset<unsigned short>;
-
     class CPMASNonOrthogonal {
     protected:
         // TODO: when the option parser supports it, the following should become
@@ -49,9 +45,6 @@ namespace merge_and_shrink {
         // Options for pruning
         const bool prune_unreachable_states;
         const bool prune_irrelevant_states;
-
-        // Options for cloning TODO: move cloning to strategy,let main loop know for reservation of bitset
-        const int tokens;
 
         mutable utils::LogProxy log;
         const double main_loop_max_time;
@@ -113,19 +106,19 @@ namespace merge_and_shrink {
                 FactoredTransitionSystem &fts, int unsolvable_index);
         void handle_snapshot(
                 const FactoredTransitionSystem &fts,
-                Bitset &factors_modified_since_last_snapshot,
+                std::vector<int> factors_modified_since_last_snapshot,
                 const std::unique_ptr<std::vector<int>> &original_to_current_labels);
         // TODO: the method could be split further and partly combined with the function cp_utils
         std::vector<std::unique_ptr<Abstraction>> compute_abstractions_for_offline_cp(
                 const FactoredTransitionSystem &fts,
-                const Bitset &factors_modified_since_last_snapshot,
+                const std::vector<int> factors_modified_since_last_snapshot,
                 const std::vector<int> &original_to_current_labels) const;
         void compute_cp_and_print_statistics(
                 const FactoredTransitionSystem &fts,
                 int iteration) const;
         bool main_loop(FactoredTransitionSystem &fts,
                        const TaskProxy &task_proxy,
-                       Bitset &factors_modified_since_last_snapshot,
+                       std::vector<int> factors_modified_since_last_snapshot,
                        const std::unique_ptr<std::vector<int>> &original_to_current_labels);
     public:
         explicit CPMASNonOrthogonal(const plugins::Options &opts);
