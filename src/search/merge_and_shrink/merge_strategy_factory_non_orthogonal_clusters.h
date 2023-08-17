@@ -2,6 +2,7 @@
 #define MERGE_AND_SHRINK_MERGE_STRATEGY_FACTORY_NON_ORTHOGONAL_CLUSTERS_H
 
 #include "merge_strategy_factory.h"
+#include "cluster_factory.h"
 
 namespace merge_and_shrink {
     class MergeTreeFactory;
@@ -9,22 +10,16 @@ namespace merge_and_shrink {
 
     // How to distribute tokens
     enum class CloneStrategy {
-        TOTAL,
+        RANDOM,
         COMBINE_SMALLEST,
-        COMBINE_LARGEST
-    };
-
-    // How to create clusters
-    // TODO: new class for this
-    enum class ClusterStrategy {
-        PREDECESSORS,
-        SUCCESSORS,
-        BOTH
+        COMBINE_LARGEST,
+        TOTAL,
+        LARGEST_OVERLAP
     };
 
     class MergeStrategyFactoryNonOrthogonalClusters : public MergeStrategyFactory {
         CloneStrategy clone_strategy;
-        ClusterStrategy cluster_strategy;
+        std::shared_ptr<ClusterFactory> cluster_factory;
         int tokens;
         std::shared_ptr<MergeSelector> merge_selector;
     protected:

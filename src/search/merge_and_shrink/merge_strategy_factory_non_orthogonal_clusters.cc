@@ -4,6 +4,7 @@
 #include "merge_selector.h"
 #include "merge_tree_factory.h"
 #include "transition_system.h"
+#include "cluster_factory.h"
 
 #include "../task_proxy.h"
 
@@ -26,7 +27,7 @@ namespace merge_and_shrink {
     MergeStrategyFactoryNonOrthogonalClusters::MergeStrategyFactoryNonOrthogonalClusters(const plugins::Options &options)
             : MergeStrategyFactory(options),
               clone_strategy(options.get<CloneStrategy>("clone_strategy")),
-              cluster_strategy(options.get<ClusterStrategy>("cluster_strategy")),
+              cluster_factory(options.get<shared_ptr<ClusterFactory>>("cluster_strategy")),
               tokens(options.get<int>("tokens")),
               merge_selector(options.get<shared_ptr<MergeSelector>>("merge_selector")){
     }
@@ -39,52 +40,8 @@ namespace merge_and_shrink {
         for (VariableProxy var : vars) {
             var_count[var.get_id()] = 0;
         }
-        vector<vector<int>> clusters;
 
-        switch(cluster_strategy) {
-            case ClusterStrategy::PREDECESSORS:
-                for (VariableProxy var : vars) {
-                    const vector<int> &predecessors = cg.get_predecessors(var.get_id());
-                    for (int var_id : predecessors) {
-                        var_count[var_id] += 1;
-                    }
-                    if (predecessors.size() > 0) {
-                        clusters.push_back(predecessors);
-                        clusters.back().push_back(var.get_id());
-                    }
-                }
-                break;
-            case ClusterStrategy::SUCCESSORS:
-                for (VariableProxy var : vars) {
-                    const vector<int> &successors = cg.get_successors(var.get_id());
-                    for (int var_id : successors) {
-                        var_count[var_id] += 1;
-                    }
-                    if (successors.size() > 0) {
-                        clusters.push_back(successors);
-                        clusters.back().push_back(var.get_id());
-                    }
-                }
-                break;
-            case ClusterStrategy::BOTH:
-                for (VariableProxy var : vars) {
-                    const vector<int> &predecessors = cg.get_predecessors(var.get_id());
-                    const vector<int> &successors = cg.get_successors(var.get_id());
-                    vector<int> both;
-                    set_union(
-                            predecessors.begin(), predecessors.end(),
-                            successors.begin(), successors.end(),
-                            back_inserter(both));
-                    for (int var_id : both) {
-                        var_count[var_id] += 1;
-                    }
-                    if (both.size() > 0) {
-                        both.push_back(var.get_id());
-                        clusters.push_back(both);
-                    }
-                }
-                break;
-        }
+        vector<vector<int>> clusters = cluster_factory->create_clusters();
 
         // TODO: clone count case switch. if not enough tokens for all clusters, merge clusters such that the total of required clones decreases
         switch (clone_strategy) {
@@ -94,7 +51,10 @@ namespace merge_and_shrink {
                 break;
             case CloneStrategy::COMBINE_LARGEST:
                 break;
-
+            case CloneStrategy::RANDOM:
+                break;
+            case CloneStrategy::LARGEST_OVERLAP:
+                break;
         }
 
          merge_selector->initialize(task_proxy);
@@ -131,23 +91,17 @@ namespace merge_and_shrink {
                 case CloneStrategy::COMBINE_SMALLEST:
                     log << "Combine smallest clusters";
                     break;
-            }
-            log << endl;
-
-
-            log << "Clusters are being computed by: ";
-            switch (cluster_strategy) {
-                case ClusterStrategy::PREDECESSORS:
-                    log << "using predecessors in the causal graph.";
+                case CloneStrategy::RANDOM:
+                    log << "Combine random clusters";
                     break;
-                case ClusterStrategy::SUCCESSORS:
-                    log << "using successors in the causal graph.";
-                    break;
-                case ClusterStrategy::BOTH:
-                    log << "using predecessors and successors in the causal graph.";
+                case CloneStrategy::LARGEST_OVERLAP:
+                    log << "Combine clusters with largest overlap";
                     break;
             }
             log << endl;
+
+            log << "Clusters strategy: " << endl;
+            cluster_strategy->
 
             log << "Merge strategy for merging within clusters: " << endl;
             merge_selector->dump_options(log);
