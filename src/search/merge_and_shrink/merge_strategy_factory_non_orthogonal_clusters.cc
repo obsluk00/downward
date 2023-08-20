@@ -31,7 +31,8 @@ namespace merge_and_shrink {
             : MergeStrategyFactory(options),
               rng(utils::parse_rng_from_options(options)),
               combine_strategy(options.get<CombineStrategy>("combine_strategy")),
-              cluster_strategy(options.get<ClusterStrategy>("cluster_strategy")),
+              cluster_strategy(options.get_list<ClusterStrategy>("cluster_strategy")),
+              depth(options.get<int>("depth")),
               tokens(options.get<int>("tokens")),
               merge_selector(options.get<shared_ptr<MergeSelector>>("merge_selector")){
     }
@@ -42,45 +43,27 @@ namespace merge_and_shrink {
         causal_graph::CausalGraph cg = task_proxy.get_causal_graph();
         vector<vector<int>> clusters;
 
-        switch(cluster_strategy) {
-            case ClusterStrategy::PREDECESSORS:
-                for (VariableProxy var : vars) {
-                    vector<int> predecessors = cg.get_predecessors(var.get_id());
-                    if (predecessors.size() > 0) {
-                        // TODO: this would be a lot nicer if we insert at the right spot (same for other cases)
-                        predecessors.emplace_back(var.get_id());
-                        std::sort(predecessors.begin(), predecessors.end());
-                        clusters.push_back(predecessors);
+        for (VariableProxy var : vars) {
+            vector<int> cluster = compute_cluster_around(var.get_id(), depth, cg);
+            if(cluster.size() > 1) {
+                // check if cluster is already present, dont add it if it is
+                bool place = true;
+                for (vector <int> existing_cluster : clusters) {
+                    if (existing_cluster == cluster) {
+                        place = false;
+                        break;
                     }
                 }
-                break;
-            case ClusterStrategy::SUCCESSORS:
-                for (VariableProxy var : vars) {
-                    vector<int> successors = cg.get_successors(var.get_id());
-                    if (successors.size() > 0) {
-                        successors.emplace_back(var.get_id());
-                        std::sort(successors.begin(), successors.end());
-                        clusters.push_back(successors);
-                    }
-                }
-                break;
-            case ClusterStrategy::BOTH:
-                for (VariableProxy var : vars) {
-                    vector<int> predecessors = cg.get_predecessors(var.get_id());
-                    vector<int> successors = cg.get_successors(var.get_id());
-                    vector<int> both;
-                    set_union(
-                            predecessors.begin(), predecessors.end(),
-                            successors.begin(), successors.end(),
-                            back_inserter(both));
-                    if (both.size() > 0) {
-                        both.emplace_back(var.get_id());
-                        std::sort(both.begin(), both.end());
-                        clusters.push_back(both);
-                    }
-                }
-                break;
+                if (place)
+                    clusters.emplace_back(cluster);
+            }
         }
+
+        if (log.is_at_least_normal())
+            log << "Created " << clusters.size() << " non-singleton clusters." << endl;
+
+        for (vector<int> v : clusters)
+            cout << v << endl;
 
         map<int, int> var_count = compute_var_count(clusters, task_proxy);
         int times_to_clone = compute_times_to_clone(var_count, vars.size());
@@ -107,6 +90,53 @@ namespace merge_and_shrink {
                 move(clusters),
                 move(var_count),
                 tokens);
+    }
+
+    // i feel like there should be a better solution involving tracking which variables are in the cluster and which arent
+    // perhaps a bitset?
+    // current implementation taken from https://stackoverflow.com/questions/3633092/inplace-union-sorted-vectors
+    vector<int> MergeStrategyFactoryNonOrthogonalClusters::compute_cluster_around(int root, int depth, causal_graph::CausalGraph cg) {
+        vector<int> res = {root};
+        if (depth == 0)
+            return res;
+        vector<int> neighbors, neighbors_neighborhood;
+        int mid;
+
+        for (ClusterStrategy strategy : cluster_strategy) {
+            switch(strategy) {
+                case ClusterStrategy::PRE_EFF:
+                    neighbors = cg.get_pre_to_eff(root);
+                    for (int neighbor : neighbors) {
+                        neighbors_neighborhood = compute_cluster_around(neighbor, depth - 1, cg);
+                        mid = res.size();
+                        copy(neighbors_neighborhood.begin(), neighbors_neighborhood.end(), back_inserter(res));
+                        inplace_merge(res.begin(), res.begin() + mid, res.end());
+                        res.erase(unique(res.begin(), res.end()), res.end());
+                    }
+                    break;
+                case ClusterStrategy::EFF_EFF:
+                    neighbors = cg.get_eff_to_eff(root);
+                    for (int neighbor : neighbors) {
+                        neighbors_neighborhood = compute_cluster_around(neighbor, depth - 1, cg);
+                        mid = res.size();
+                        copy(neighbors_neighborhood.begin(), neighbors_neighborhood.end(), back_inserter(res));
+                        inplace_merge(res.begin(), res.begin() + mid, res.end());
+                        res.erase(unique(res.begin(), res.end()), res.end());
+                    }
+                    break;
+                case ClusterStrategy::EFF_PRE:
+                    neighbors = cg.get_eff_to_pre(root);
+                    for (int neighbor : neighbors) {
+                        neighbors_neighborhood = compute_cluster_around(neighbor, depth - 1, cg);
+                        mid = res.size();
+                        copy(neighbors_neighborhood.begin(), neighbors_neighborhood.end(), back_inserter(res));
+                        inplace_merge(res.begin(), res.begin() + mid, res.end());
+                        res.erase(unique(res.begin(), res.end()), res.end());
+                    }
+                    break;
+            }
+        }
+        return res;
     }
 
     int MergeStrategyFactoryNonOrthogonalClusters::compute_times_to_clone(std::map<int, int> var_count, int variable_count) {
@@ -197,7 +227,7 @@ namespace merge_and_shrink {
         return merge_selector->requires_goal_distances();
     }
 
-    // TODO: output
+    // TODO: output amount of tokens and depth
     void MergeStrategyFactoryNonOrthogonalClusters::dump_strategy_specific_options() const {
         if (log.is_at_least_normal()) {
             log << "Method used to determine how to handle more required clones than available tokens: ";
@@ -221,19 +251,20 @@ namespace merge_and_shrink {
             log << endl;
 
 
-            log << "Clusters are being computed by: ";
-            switch (cluster_strategy) {
-                case ClusterStrategy::PREDECESSORS:
-                    log << "using predecessors in the causal graph.";
-                    break;
-                case ClusterStrategy::SUCCESSORS:
-                    log << "using successors in the causal graph.";
-                    break;
-                case ClusterStrategy::BOTH:
-                    log << "using predecessors and successors in the causal graph.";
-                    break;
+            log << "Clusters are being computed by: " << endl;
+            for (ClusterStrategy i : cluster_strategy) {
+                switch (i) {
+                    case ClusterStrategy::PRE_EFF:
+                        log << "pre->eff arcs" << endl;
+                        break;
+                    case ClusterStrategy::EFF_EFF:
+                        log << "eff->eff arcs" << endl;
+                        break;
+                    case ClusterStrategy::EFF_PRE:
+                        log << "eff->pre arcs" << endl;
+                        break;
+                }
             }
-            log << endl;
 
             log << "Merge strategy for merging within clusters: " << endl;
             merge_selector->dump_options(log);
@@ -255,10 +286,10 @@ namespace merge_and_shrink {
                     "combine_strategy",
                     "how to clone if not enough tokens",
                     "complete");
-            add_option<ClusterStrategy>(
+            add_list_option<ClusterStrategy>(
                     "cluster_strategy",
                     "how to create clusters",
-                    "predecessors");
+                    "(pre->eff, eff->eff)");
             add_option<shared_ptr<MergeSelector>>(
                     "merge_selector",
                     "the fallback merge strategy to use if a stateless strategy should "
@@ -267,6 +298,9 @@ namespace merge_and_shrink {
             add_option<int>(
                     "tokens",
                     "Amount of times the algorithm is allowed to cloned.");
+            add_option<int>(
+                    "depth",
+                    "depth of clusters");
             add_merge_strategy_options_to_feature(*this);
 
             utils::add_rng_options(*this);
@@ -292,11 +326,11 @@ namespace merge_and_shrink {
                                                                              ""},
                                                              });
     static plugins::TypedEnumPlugin<ClusterStrategy> _enum_plugin({
-                                                                     {"predecessors",
+                                                                     {"pre_eff",
                                                                              ""},
-                                                                     {"successors",
+                                                                     {"eff_eff",
                                                                              ""},
-                                                                     {"both",
+                                                                     {"eff_pre",
                                                                                 ""}
                                                              });
 }

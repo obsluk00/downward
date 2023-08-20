@@ -4,6 +4,7 @@
 #include "merge_strategy_factory.h"
 
 #include "../utils/rng_options.h"
+#include "../task_utils/causal_graph.h"
 
 #include <map>
 
@@ -27,16 +28,17 @@ namespace merge_and_shrink {
     // How to create clusters
     // TODO: new class for this
     enum class ClusterStrategy {
-        PREDECESSORS,
-        SUCCESSORS,
-        BOTH
+        PRE_EFF,
+        EFF_EFF,
+        EFF_PRE
     };
 
     class MergeStrategyFactoryNonOrthogonalClusters : public MergeStrategyFactory {
         const std::shared_ptr<utils::RandomNumberGenerator> rng;
         CombineStrategy combine_strategy;
-        ClusterStrategy cluster_strategy;
+        std::vector<ClusterStrategy> cluster_strategy;
         int tokens;
+        int depth;
         std::shared_ptr<MergeSelector> merge_selector;
 
     protected:
@@ -51,6 +53,7 @@ namespace merge_and_shrink {
         virtual bool requires_init_distances() const override;
         virtual bool requires_goal_distances() const override;
     private:
+        std::vector<int> compute_cluster_around(int root, int depth, causal_graph::CausalGraph cg);
         int compute_times_to_clone(std::map<int, int> var_count, int variable_count);
         std::map<int, int> compute_var_count(std::vector<std::vector<int>> clusters, const TaskProxy &task_proxy);
         std::vector<std::vector<int>> combine_clusters(std::vector<std::vector<int>> clusters, CombineStrategy combine_strategy);
