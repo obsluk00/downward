@@ -13,6 +13,7 @@
 #include "../utils/markup.h"
 #include "../utils/system.h"
 #include "../utils/rng_options.h"
+#include "../utils/rng.h"
 
 #include <algorithm>
 #include <cassert>
@@ -166,7 +167,8 @@ namespace merge_and_shrink {
     vector<vector<int>> MergeStrategyFactoryNonOrthogonalClusters::combine_clusters(std::vector<std::vector<int>> clusters,
                                                                      merge_and_shrink::CombineStrategy combine_strategy) {
         assert(clusters.size() > 2 && combine_strategy != CombineStrategy::TOTAL);
-        // TODO: shuffle before checking, this also randomly tiebreaks if there are more than 2 smallest/largest
+        // shuffle to simulate tiebreak incase more than 2 candidates are equally fit to combine
+        rng->shuffle(clusters);
         int index_1 = 0;
         int index_2 = 1;
         switch (combine_strategy) {
@@ -189,11 +191,6 @@ namespace merge_and_shrink {
                 }
                 break;
             case CombineStrategy::RANDOM:
-                // TODO: figure out whats wrong here
-                //first_to_combine = rng->
-                //second_to_combine = rng->choose(clusters);
-                //while (first_to_combine == second_to_combine)
-                //    second_to_combine = rng->choose(clusters);
                 break;
             case CombineStrategy::LARGEST_OVERLAP:
                 // TODO: implement if its worth it
