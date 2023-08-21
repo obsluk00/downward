@@ -575,11 +575,11 @@ namespace merge_and_shrink {
             }
 
             vector<int>::iterator it = find(factors_modified_since_last_snapshot.begin(), factors_modified_since_last_snapshot.end(), next_merge.indices.first);
-            assert(it != factors_modified_since_last_snapshot.end());
-            factors_modified_since_last_snapshot.erase(it);
+            if (it != factors_modified_since_last_snapshot.end())
+                factors_modified_since_last_snapshot.erase(it);
             it = find(factors_modified_since_last_snapshot.begin(), factors_modified_since_last_snapshot.end(), next_merge.indices.second);
-            assert(it != factors_modified_since_last_snapshot.end());
-            factors_modified_since_last_snapshot.erase(it);
+            if (it != factors_modified_since_last_snapshot.end())
+                factors_modified_since_last_snapshot.erase(it);
             factors_modified_since_last_snapshot.emplace_back(merged_index);
             if (ran_out_of_time(timer)) {
                 break;
