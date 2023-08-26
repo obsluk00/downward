@@ -30,7 +30,7 @@ CONFIGS = [
 BUILD_OPTIONS = []
 DRIVER_OPTIONS = ["--overall-time-limit", "30m"]
 REVS = [
-    ("574314a", "clone")
+    ("39b734b", "clone")
 ]
 
 non_orthogonality = Attribute("non_orthogonality", absolute=True)
