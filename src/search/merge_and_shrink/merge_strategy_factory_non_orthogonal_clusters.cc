@@ -63,11 +63,14 @@ namespace merge_and_shrink {
         if (log.is_at_least_normal())
             log << "Created " << clusters.size() << " non-singleton clusters." << endl;
 
-        for (vector<int> v : clusters)
-            cout << v << endl;
-
         map<int, int> var_count = compute_var_count(clusters, task_proxy);
         int times_to_clone = compute_times_to_clone(var_count, vars.size());
+
+
+        cout << "before combine" << endl;
+        for (vector<int> cluster : clusters) {
+            cout << cluster << endl;
+        }
 
         if (combine_strategy != CombineStrategy::TOTAL) {
             // TODO: might find a more elegant way for this, needs to be ordered so that equality checks in combination steps work
@@ -75,11 +78,40 @@ namespace merge_and_shrink {
             for (vector<int> cluster : clusters) {
                 sort(cluster.begin(), cluster.end());
             }
+
+            // remove clusters that are subsets of other cluster
+            // TODO: can this be optimized? perhaps integrated into creation and combination of clusters
+            for (int i = 0; i < clusters.size(); i++) {
+                bool remove_i = false;
+                for (int j = 0; j < clusters.size(); j++) {
+                    if (i == j) {
+                        continue;
+                    } else if (includes(clusters[i].begin(), clusters[i].end(),
+                                 clusters[j].begin(), clusters[j].end())) {
+                        clusters.erase(clusters.begin() + j);
+                        j--;
+                    } else if(includes(clusters[j].begin(), clusters[j].end(),
+                                       clusters[i].begin(), clusters[i].end())) {
+                        remove_i = true;
+                    }
+                }
+                if (remove_i)
+                    clusters.erase(clusters.begin() + i);
+            }
+
+            var_count = compute_var_count(clusters, task_proxy);
+            times_to_clone = compute_times_to_clone(var_count, vars.size());
+
             while (tokens < times_to_clone) {
                 clusters = combine_clusters(clusters, combine_strategy);
                 var_count = compute_var_count(clusters, task_proxy);
                 times_to_clone = compute_times_to_clone(var_count, vars.size());
             }
+        }
+
+        cout << "after remove" << endl;
+        for (vector<int> cluster : clusters) {
+            cout << cluster << endl;
         }
 
         merge_selector->initialize(task_proxy);
