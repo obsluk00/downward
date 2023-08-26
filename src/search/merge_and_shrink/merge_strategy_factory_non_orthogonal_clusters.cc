@@ -66,12 +66,6 @@ namespace merge_and_shrink {
         map<int, int> var_count = compute_var_count(clusters, task_proxy);
         int times_to_clone = compute_times_to_clone(var_count, vars.size());
 
-
-        cout << "before combine" << endl;
-        for (vector<int> cluster : clusters) {
-            cout << cluster << endl;
-        }
-
         if (combine_strategy != CombineStrategy::TOTAL) {
             // TODO: might find a more elegant way for this, needs to be ordered so that equality checks in combination steps work
             //  -> optimize insertion of variable into its own cluster
@@ -107,11 +101,6 @@ namespace merge_and_shrink {
                 var_count = compute_var_count(clusters, task_proxy);
                 times_to_clone = compute_times_to_clone(var_count, vars.size());
             }
-        }
-
-        cout << "after remove" << endl;
-        for (vector<int> cluster : clusters) {
-            cout << cluster << endl;
         }
 
         merge_selector->initialize(task_proxy);
