@@ -71,7 +71,7 @@ function=arithmetic_mean),
 
 
 def filter_one(run):
-    return "clone:0 tokens, dfp, no cp, avoid_existing" in run["algorithm"]
+    return ["clone:0 tokens, dfp, no cp, avoid_existing", "clone:15 tokens, dfp, no cp, avoid_existing"] in run["algorithm"]
 
 def filter_two(run):
     return "clone:50 tokens, dfp, no cp, avoid_existing" in run["algorithm"]
