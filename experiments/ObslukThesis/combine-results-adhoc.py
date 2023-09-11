@@ -3,6 +3,7 @@
 from downward.experiment import FastDownwardExperiment
 from downward.reports import Attribute
 from downward.reports.absolute import AbsoluteReport
+from lab.reports import geometric_mean, arithmetic_mean
 
 non_orthogonality = Attribute("non_orthogonality", absolute=True)
 times_cloned = Attribute("times_cloned", absolute=True)
