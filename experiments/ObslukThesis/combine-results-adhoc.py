@@ -113,7 +113,7 @@ def filter_50_tokens(run):
         or "clone:50 tokens, miasm, online cp, avoid_existing" in run["algorithm"])
 
 def filter_100_tokens(run):
-    return ("clone:0 tokens, dfp, no cp" in run["algorithm"] 
+    return ("clone:100 tokens, dfp, no cp" in run["algorithm"] 
         or "clone:100 tokens, dfp, no cp, avoid_existing" in run["algorithm"]
         or "clone:100 tokens, dfp, offline cp" in run["algorithm"]
         or "clone:100 tokens, dfp, offline cp, avoid_existing" in run["algorithm"]
