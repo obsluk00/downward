@@ -70,8 +70,19 @@ function=arithmetic_mean),
 ]
 
 
-def filter_one(run):
-    return ["clone:0 tokens, dfp, no cp, avoid_existing" in run["algorithm"], "clone:15 tokens, dfp, no cp, avoid_existing" in run["algorithm"]]
+def filter_baseline(run):
+    return ("clone:0 tokens, dfp, no cp" in run["algorithm"] 
+        or "clone:0 tokens, dfp, no cp, avoid_existing" in run["algorithm"]
+        or "clone:0 tokens, dfp, offline cp" in run["algorithm"]
+        or "clone:0 tokens, dfp, offline cp, avoid_existing" in run["algorithm"]
+        or "clone:0 tokens, dfp, online cp" in run["algorithm"]
+        or "clone:0 tokens, dfp, online cp, avoid_existing" in run["algorithm"]
+        or "clone:0 tokens, miasm, no cp" in run["algorithm"] 
+        or "clone:0 tokens, miasm, no cp, avoid_existing" in run["algorithm"]
+        or "clone:0 tokens, miasm, offline cp" in run["algorithm"]
+        or "clone:0 tokens, miasm, offline cp, avoid_existing" in run["algorithm"]
+        or "clone:0 tokens, miasm, online cp" in run["algorithm"]
+        or "clone:0 tokens, miasm, online cp, avoid_existing" in run["algorithm"])
 
 def filter_two(run):
     return "clone:50 tokens, dfp, no cp, avoid_existing" in run["algorithm"]
@@ -88,9 +99,9 @@ exp.add_fetcher("data/2023-08-21-adhoc-cloning-eval", merge=True)
 
 exp.add_report(
     AbsoluteReport(
-        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_one
+        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_baseline
     ),
-    name="0 tokens",
+    name="baseline-0-tokens",
 )
 
 exp.add_report(
