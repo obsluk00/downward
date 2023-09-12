@@ -84,14 +84,47 @@ def filter_baseline(run):
         or "clone:0 tokens, miasm, online cp" in run["algorithm"]
         or "clone:0 tokens, miasm, online cp, avoid_existing" in run["algorithm"])
 
-def filter_two(run):
-    return "clone:50 tokens, dfp, no cp, avoid_existing" in run["algorithm"]
+def filter_15_tokens(run):
+    return ("clone:15 tokens, dfp, no cp" in run["algorithm"] 
+        or "clone:15 tokens, dfp, no cp, avoid_existing" in run["algorithm"]
+        or "clone:15 tokens, dfp, offline cp" in run["algorithm"]
+        or "clone:15 tokens, dfp, offline cp, avoid_existing" in run["algorithm"]
+        or "clone:15 tokens, dfp, online cp" in run["algorithm"]
+        or "clone:15 tokens, dfp, online cp, avoid_existing" in run["algorithm"]
+        or "clone:15 tokens, miasm, no cp" in run["algorithm"] 
+        or "clone:15 tokens, miasm, no cp, avoid_existing" in run["algorithm"]
+        or "clone:15 tokens, miasm, offline cp" in run["algorithm"]
+        or "clone:15 tokens, miasm, offline cp, avoid_existing" in run["algorithm"]
+        or "clone:15 tokens, miasm, online cp" in run["algorithm"]
+        or "clone:15 tokens, miasm, online cp, avoid_existing" in run["algorithm"])
 
-def filter_three(run):
-    return "clone:0 tokens, dfp, no cp, avoid_existing" in run["algorithm"]
+def filter_50_tokens(run):
+    return ("clone:50 tokens, dfp, no cp" in run["algorithm"] 
+        or "clone:50 tokens, dfp, no cp, avoid_existing" in run["algorithm"]
+        or "clone:50 tokens, dfp, offline cp" in run["algorithm"]
+        or "clone:50 tokens, dfp, offline cp, avoid_existing" in run["algorithm"]
+        or "clone:50 tokens, dfp, online cp" in run["algorithm"]
+        or "clone:50 tokens, dfp, online cp, avoid_existing" in run["algorithm"]
+        or "clone:50 tokens, miasm, no cp" in run["algorithm"] 
+        or "clone:50 tokens, miasm, no cp, avoid_existing" in run["algorithm"]
+        or "clone:50 tokens, miasm, offline cp" in run["algorithm"]
+        or "clone:50 tokens, miasm, offline cp, avoid_existing" in run["algorithm"]
+        or "clone:50 tokens, miasm, online cp" in run["algorithm"]
+        or "clone:50 tokens, miasm, online cp, avoid_existing" in run["algorithm"])
 
-def filter_four(run):
-    return "clone:0 tokens, dfp, no cp, avoid_existing" in run["algorithm"]
+def filter_100_tokens(run):
+    return ("clone:0 tokens, dfp, no cp" in run["algorithm"] 
+        or "clone:100 tokens, dfp, no cp, avoid_existing" in run["algorithm"]
+        or "clone:100 tokens, dfp, offline cp" in run["algorithm"]
+        or "clone:100 tokens, dfp, offline cp, avoid_existing" in run["algorithm"]
+        or "clone:100 tokens, dfp, online cp" in run["algorithm"]
+        or "clone:100 tokens, dfp, online cp, avoid_existing" in run["algorithm"]
+        or "clone:100 tokens, miasm, no cp" in run["algorithm"] 
+        or "clone:100 tokens, miasm, no cp, avoid_existing" in run["algorithm"]
+        or "clone:100 tokens, miasm, offline cp" in run["algorithm"]
+        or "clone:100 tokens, miasm, offline cp, avoid_existing" in run["algorithm"]
+        or "clone:100 tokens, miasm, online cp" in run["algorithm"]
+        or "clone:100 tokens, miasm, online cp, avoid_existing" in run["algorithm"])
 
 exp = FastDownwardExperiment("combined")
 
@@ -106,23 +139,23 @@ exp.add_report(
 
 exp.add_report(
     AbsoluteReport(
-        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_two
+        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_15_tokens
     ),
-    name="15 tokens",
+    name="15-tokens",
 )
 
 exp.add_report(
     AbsoluteReport(
-        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_three
+        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_50_tokens
     ),
-    name="50 tokens",
+    name="50-tokens",
 )
 
 exp.add_report(
     AbsoluteReport(
-        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_four
+        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_100_tokens
     ),
-    name="100 tokens",
+    name="100-tokens",
 )
 
 exp.run_steps()
