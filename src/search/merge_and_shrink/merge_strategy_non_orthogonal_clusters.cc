@@ -39,10 +39,7 @@ NextMerge MergeStrategyNonOrthogonalClusters::get_next() {
         // Get the next indices we need to merge
         if (clusters.empty()) {
             // TODO: deal with this more elegantly
-            vector<pair<int, int>>next_pairs = merge_selector->select_merge(fts);
-            assert(next_pairs.size() == 1);
-            pair<int, int> next_pair = next_pairs.front();
-            return NextMerge(next_pair);
+            return NextMerge({-1, -1}, true)
         } else {
             vector<int> &current_cluster = clusters.front();
             assert(current_cluster.size() > 1);
