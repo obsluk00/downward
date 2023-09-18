@@ -25,7 +25,7 @@ CONFIGS = [
     (f"clustering {clusters}, combining {combine}, depth {depth},{tokens} tokens, offline CP: {CP}", ["--search", f"let(h, max_cp_ms(verbosity=normal, non_orthogonal=true, shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_non_orthogonal_clusters(merge_selector=score_based_filtering(scoring_functions=[goal_relevance(), dfp(), single_random()]), tokens={tokens}, combine_strategy={combine}, cluster_strategy={clusters}, depth={depth}),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1, cost_partitioning=scp(order_generator=random_orders(random_seed=42)),compute_atomic_snapshot=true,main_loop_target_num_snapshots=0,main_loop_snapshot_each_iteration=0,atomic_label_reduction=false,snapshot_moment=after_label_reduction,filter_trivial_factors=false,offline_cps={CP}), astar(h))"])
     for clusters in ["[pre_eff, eff_eff]", "[eff_pre, eff_eff]" , "[pre_eff, eff_pre, eff_eff]"]
     for combine in ["combine_smallest", "combine_largest", "random"]
-    for depth in [1, 4]
+    for depth in [1, 2, 4]
     for tokens in [15, 50, 100]
     for CP in ["true", "false"]
 ]
