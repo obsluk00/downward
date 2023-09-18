@@ -22,13 +22,13 @@ else:
     ENV = project.LocalEnvironment(processes=2)
 
 CONFIGS = [
-    (f"scc, dfp, offline cp", ["--search", "let(h, max_cp_ms(verbosity=normal, non_orthogonal=false, shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_stateless(merge_selector=score_based_filtering(scoring_functions=[goal_relevance(), dfp(), single_random()])),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1, cost_partitioning=scp(order_generator=random_orders(random_seed=42)),compute_atomic_snapshot=true,main_loop_target_num_snapshots=0,main_loop_snapshot_each_iteration=0,atomic_label_reduction=false,snapshot_moment=after_label_reduction,filter_trivial_factors=false,offline_cps=true), astar(h))"]),
-        (f"scc, dfp, online cp", ["--search", "let(h, max_cp_ms(verbosity=normal, non_orthogonal=false, shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_stateless(merge_selector=score_based_filtering(scoring_functions=[goal_relevance(), dfp(), single_random()])),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1, cost_partitioning=scp(order_generator=random_orders(random_seed=42)),compute_atomic_snapshot=true,main_loop_target_num_snapshots=0,main_loop_snapshot_each_iteration=0,atomic_label_reduction=false,snapshot_moment=after_label_reduction,filter_trivial_factors=false,offline_cps=false), astar(h))"])
+    (f"scc, dfp, offline cp", ["--search", "let(h, max_cp_ms(verbosity=normal, non_orthogonal=true, shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_sccs(order_of_sccs=topological, merge_selector=score_based_filtering(scoring_functions=[goal_relevance(), dfp(), single_random()]), verbosity=normal),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1, cost_partitioning=scp(order_generator=random_orders(random_seed=42)),compute_atomic_snapshot=true,main_loop_target_num_snapshots=0,main_loop_snapshot_each_iteration=0,atomic_label_reduction=false,snapshot_moment=after_label_reduction,filter_trivial_factors=false,offline_cps=true), astar(h))"]),
+        (f"scc, dfp, online cp", ["--search", "let(h, max_cp_ms(verbosity=normal, non_orthogonal=true, shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy=merge_sccs(order_of_sccs=topological, merge_selector=score_based_filtering(scoring_functions=[goal_relevance(), dfp(), single_random()]), verbosity=normal),label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50k,threshold_before_merge=1, cost_partitioning=scp(order_generator=random_orders(random_seed=42)),compute_atomic_snapshot=true,main_loop_target_num_snapshots=0,main_loop_snapshot_each_iteration=0,atomic_label_reduction=false,snapshot_moment=after_label_reduction,filter_trivial_factors=false,offline_cps=false), astar(h))"])
 ]
 BUILD_OPTIONS = []
 DRIVER_OPTIONS = ["--overall-time-limit", "30m"]
 REVS = [
-    ("84bbc2a", "clone")
+    ("5afdc5d", "clone")
 ]
 
 non_orthogonality = Attribute("non_orthogonality", absolute=True)
