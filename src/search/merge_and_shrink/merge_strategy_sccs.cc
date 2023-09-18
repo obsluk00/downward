@@ -38,11 +38,13 @@ NextMerge MergeStrategySCCs::get_next() {
           factors of the FTS if there is no SCC left.
         */
         if (non_singleton_cg_sccs.empty()) {
+            // TODO: this should be conditioned, at least in the main loop for non cost partitioning m&s
+            return NextMerge({-1, -1}, true);
             // We are done dealing with all SCCs, allow merging any factors.
-            current_ts_indices.reserve(fts.get_num_active_entries());
-            for (int ts_index: fts) {
-                current_ts_indices.push_back(ts_index);
-            }
+            //current_ts_indices.reserve(fts.get_num_active_entries());
+            //for (int ts_index: fts) {
+            //    current_ts_indices.push_back(ts_index);
+            //}
         } else {
             /*
               There is another SCC we have to deal with. Store its factors so
