@@ -164,14 +164,14 @@ exp.add_report(
 
 exp.add_report(
     AbsoluteReport(
-        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_no_offline_cp_100_tokens
+        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_no_offline_cp
     ),
     name="no_offline_cp",
 )
 
 exp.add_report(
     AbsoluteReport(
-        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_no_offline_cp
+        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_no_offline_cp_100_tokens
     ),
     name="no-offline-cp-100-tokens",
 )
