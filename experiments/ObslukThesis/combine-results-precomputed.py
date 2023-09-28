@@ -122,7 +122,34 @@ def filter_no_offline_cp(run):
         or "clustering [eff_pre, eff_eff], combining random, depth 4,100 tokens, offline CP: false" in run["algorithm"]
         or "clustering [pre_eff, eff_pre, eff_eff], combining random, depth 4,100 tokens, offline CP: false" in run["algorithm"])
 
-
+def filter_no_offline_cp_100_tokens(run):
+    return ("clustering [pre_eff, eff_eff], combining combine_smallest, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [eff_pre, eff_eff], combining combine_smallest, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_pre, eff_eff], combining combine_smallest, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_eff], combining combine_largest, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [eff_pre, eff_eff], combining combine_largest, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_pre, eff_eff], combining combine_largest, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_eff], combining random, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [eff_pre, eff_eff], combining random, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_pre, eff_eff], combining random, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_eff], combining combine_smallest, depth 2,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [eff_pre, eff_eff], combining combine_smallest, depth 2,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_pre, eff_eff], combining combine_smallest, depth 2,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_eff], combining combine_largest, depth 2,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [eff_pre, eff_eff], combining combine_largest, depth 2,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_pre, eff_eff], combining combine_largest, depth 2,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_eff], combining random, depth 2,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [eff_pre, eff_eff], combining random, depth 2,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_pre, eff_eff], combining random, depth 2,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_eff], combining combine_smallest, depth 4,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [eff_pre, eff_eff], combining combine_smallest, depth 4,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_pre, eff_eff], combining combine_smallest, depth 4,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_eff], combining combine_largest, depth 4,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [eff_pre, eff_eff], combining combine_largest, depth 4,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_pre, eff_eff], combining combine_largest, depth 4,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_eff], combining random, depth 4,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [eff_pre, eff_eff], combining random, depth 4,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_pre, eff_eff], combining random, depth 4,100 tokens, offline CP: false" in run["algorithm"])
 
 exp = FastDownwardExperiment("precomputed-combined")
 
@@ -140,6 +167,13 @@ exp.add_report(
         attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_no_offline_cp
     ),
     name="no_offline_cp",
+)
+
+exp.add_report(
+    AbsoluteReport(
+        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_no_offline_cp
+    ),
+    name="no-offline-cp-100-tokens",
 )
 
 exp.run_steps() 
