@@ -150,6 +150,17 @@ def filter_no_offline_cp_100_tokens(run):
         or "clustering [pre_eff, eff_eff], combining random, depth 4,100 tokens, offline CP: false" in run["algorithm"]
         or "clustering [eff_pre, eff_eff], combining random, depth 4,100 tokens, offline CP: false" in run["algorithm"]
         or "clustering [pre_eff, eff_pre, eff_eff], combining random, depth 4,100 tokens, offline CP: false" in run["algorithm"])
+        
+def filter_no_offline_cp_100_tokens_depth_1(run):
+    return ("clustering [pre_eff, eff_eff], combining combine_smallest, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [eff_pre, eff_eff], combining combine_smallest, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_pre, eff_eff], combining combine_smallest, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_eff], combining combine_largest, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [eff_pre, eff_eff], combining combine_largest, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_pre, eff_eff], combining combine_largest, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_eff], combining random, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [eff_pre, eff_eff], combining random, depth 1,100 tokens, offline CP: false" in run["algorithm"]
+        or "clustering [pre_eff, eff_pre, eff_eff], combining random, depth 1,100 tokens, offline CP: false" in run["algorithm"])
 
 exp = FastDownwardExperiment("precomputed-combined")
 
@@ -174,6 +185,13 @@ exp.add_report(
         attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_no_offline_cp_100_tokens
     ),
     name="no-offline-cp-100-tokens",
+)
+
+exp.add_report(
+    AbsoluteReport(
+        attributes=ATTRIBUTES + EXTRA_ATTRIBUTES, filter=filter_no_offline_cp_100_tokens_depth_1
+    ),
+    name="no-offline-cp-100-tokens-depth-1",
 )
 
 exp.run_steps() 
