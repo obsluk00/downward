@@ -383,6 +383,7 @@ namespace merge_and_shrink {
         log << "Max value in iteration " << iteration << ": " << max_h << endl;
     }
 
+    //TODO: check if cost partitioning is performed in case of timeout during construction!!!
     bool CPMASNonOrthogonal::main_loop(
             FactoredTransitionSystem &fts,
             const TaskProxy &task_proxy,
